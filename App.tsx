@@ -189,7 +189,7 @@ export default function App() {
         <Text style={s.price}>{money(item.price_mwk)}</Text>
         {item.compare_at_price_mwk ? <Text style={s.oldPrice}>{money(item.compare_at_price_mwk)}</Text> : null}
         <Text numberOfLines={1} style={s.seller}>{item.seller?.name ?? "Malawi Market seller"}{item.seller?.is_verified ? "  ✓" : ""}</Text>
-        <Pressable disabled={item.stock_quantity<=0} style={[s.addButton,item.stock_quantity<=0&&{opacity:0.45}]} onPress={() => addToCart(item.id)}><Text style={s.addText}>{item.stock_quantity>0?"Add to cart":"Out of stock"}</Text></Pressable>
+        <Pressable disabled={item.stock_quantity<=0} style={[s.addButton,item.stock_quantity<=0&&{opacity:0.45}]} onPress={() => addToCart(item.id)}><Text style={s.addText}>{marketText(language,item.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
       </View>
     </Pressable>;
   };
@@ -280,7 +280,7 @@ export default function App() {
           <Pressable onPress={() => setCart(v => v.filter(id=>id!==p.id))}><Text style={{color:"#c44",padding:8}}>Remove</Text></Pressable>
         </View>)}
         <Text style={s.total}>Subtotal: {money(cartTotal)}</Text>
-        <Pressable style={s.primaryButton} onPress={()=>setCheckout(true)}><Text style={s.primaryText}>Proceed to secure checkout</Text></Pressable>
+        <Pressable style={s.primaryButton} onPress={()=>setCheckout(true)}><Text style={s.primaryText}>{marketText(language,"Proceed to secure checkout")}</Text></Pressable>
         <Text style={s.detailDescription}>Checkout uses OneKhusa. Payment is only confirmed after a verified provider notification.</Text>
         </>}
     </ScrollView>
