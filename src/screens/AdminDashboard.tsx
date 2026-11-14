@@ -1,11 +1,11 @@
-import React,{useEffect,useState} from "react";
+import React,{useEffect,useRef,useState} from "react";
 import {ScrollView,View,Text,TextInput,Pressable,StyleSheet,ActivityIndicator,Alert} from "react-native";
 import {supabase} from "../lib/supabase";
 
 type Tab="overview"|"sellers"|"products"|"orders"|"users"|"reports"|"content";
 const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 export function AdminDashboard(){
- const [allowed,setAllowed]=useState(false);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [syncing,setSyncing]=useState(false);const [tab,setTab]=useState<Tab>("overview");
+ const [allowed,setAllowed]=useState(false);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [syncing,setSyncing]=useState(false);const actionLock=useRef(false);const [tab,setTab]=useState<Tab>("overview");
  const [stats,setStats]=useState({sellers:0,pending:0,products:0,orders:0,paid:0,revenue:0});
  const [sellers,setSellers]=useState<any[]>([]);const [products,setProducts]=useState<any[]>([]);const [orders,setOrders]=useState<any[]>([]);const [users,setUsers]=useState<any[]>([]);const [reports,setReports]=useState<any[]>([]);
  const [contentType,setContentType]=useState<"news"|"jobs"|"stocks"|"football"|"standings">("news");
@@ -36,30 +36,37 @@ export function AdminDashboard(){
  };
  useEffect(()=>{void load();},[]);
  const updateSeller=async(id:string,status:"active"|"suspended")=>{
-  setBusy(true);const {error}=await supabase.from("market_sellers").update({status,is_verified:status==="active"}).eq("id",id);
-  if(error)Alert.alert("Seller update failed",error.message);else await load();setBusy(false);
+  if(actionLock.current)return;actionLock.current=true;setBusy(true);
+  try{const {error}=await supabase.from("market_sellers").update({status,is_verified:status==="active"}).eq("id",id);if(error)throw error;await load();}
+  catch(e:any){Alert.alert("Seller update failed",e?.message||"Please try again.");}
+  finally{actionLock.current=false;setBusy(false);}
  };
  const updateUserStatus=async(userId:string,suspended:boolean)=>{
-  setBusy(true);
-  const {error}=await supabase.from("profiles").update({suspended}).eq("id",userId);
-  if(error)Alert.alert("User update failed",error.message);
-  else{
+  if(actionLock.current)return;actionLock.current=true;setBusy(true);
+  try{
+   const {error}=await supabase.from("profiles").update({suspended}).eq("id",userId);if(error)throw error;
    const sellerResult=suspended
     ? await supabase.from("market_sellers").update({status:"suspended",is_verified:false}).eq("auth_user_id",userId).eq("status","active")
     : await supabase.from("market_sellers").update({status:"active",is_verified:true}).eq("auth_user_id",userId).eq("status","suspended");
    if(sellerResult.error)Alert.alert("Seller access warning",sellerResult.error.message);
    await load();
-  }
-  setBusy(false);
+  }catch(e:any){Alert.alert("User update failed",e?.message||"Please try again.");}
+  finally{actionLock.current=false;setBusy(false);}
  };
  const updateReport=async(reportId:string,status:"reviewing"|"resolved"|"dismissed")=>{
-  const {data:{user}}=await supabase.auth.getUser();if(!user)return;
-  setBusy(true);const {error}=await supabase.from("market_reports").update({status,reviewed_by:user.id,reviewed_at:new Date().toISOString()}).eq("id",reportId);
-  if(error)Alert.alert("Report update failed",error.message);else await load();setBusy(false);
+  if(actionLock.current)return;actionLock.current=true;setBusy(true);
+  try{
+   const {data:{user},error:userError}=await supabase.auth.getUser();if(userError)throw userError;if(!user)return;
+   const {error}=await supabase.from("market_reports").update({status,reviewed_by:user.id,reviewed_at:new Date().toISOString()}).eq("id",reportId);if(error)throw error;
+   await load();
+  }catch(e:any){Alert.alert("Report update failed",e?.message||"Please try again.");}
+  finally{actionLock.current=false;setBusy(false);}
  };
  const updateProduct=async(id:string,status:"published"|"archived")=>{
-  setBusy(true);const {error}=await supabase.from("market_products").update({status,published_at:status==="published"?new Date().toISOString():null}).eq("id",id);
-  if(error)Alert.alert("Listing update failed",error.message);else await load();setBusy(false);
+  if(actionLock.current)return;actionLock.current=true;setBusy(true);
+  try{const {error}=await supabase.from("market_products").update({status,published_at:status==="published"?new Date().toISOString():null}).eq("id",id);if(error)throw error;await load();}
+  catch(e:any){Alert.alert("Listing update failed",e?.message||"Please try again.");}
+  finally{actionLock.current=false;setBusy(false);}
  };
  const syncNews=async()=>{
   setSyncing(true);
@@ -68,7 +75,7 @@ export function AdminDashboard(){
   finally{setSyncing(false);}
  };
  const publishContent=async()=>{
-  setBusy(true);
+  if(actionLock.current)return;actionLock.current=true;setBusy(true);
   try{
    let error:any=null;
    if(contentType==="news"){
@@ -92,7 +99,7 @@ export function AdminDashboard(){
    }
    if(error)throw error;Alert.alert("Published","The verified content record is now available in Explore.");setTitle("");setSummary("");setSource("");setSourceUrl("");setCompany("");setLocation("");setDescription("");setSalary("");setApplicationUrl("");setSymbol("");setPrice("");setChange("");setHome("");setAway("");setKickoff("");setTeam("");setPlayed("0");setWon("0");setDrawn("0");setLost("0");setGoalsFor("0");setGoalsAgainst("0");setPoints("0");setPosition("1");await load();
   }catch(e:any){Alert.alert("Could not publish content",e?.message||"Check the details and try again.");}
-  finally{setBusy(false);}
+  finally{setBusy(false);actionLock.current=false;}
  };
  if(loading)return <View style={s.center}><ActivityIndicator color="#ef7b25"/><Text style={s.meta}>Checking administrator access…</Text></View>;
  if(!allowed)return <View style={s.wrap}><Text style={s.title}>Administrator access required</Text><Text style={s.meta}>This account does not currently have the admin role in Malawi Market. The dashboard is protected by Supabase role checks; a normal seller or buyer cannot approve sellers or moderate listings.</Text></View>;

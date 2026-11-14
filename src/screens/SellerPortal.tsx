@@ -1,4 +1,4 @@
-import React,{useEffect,useMemo,useState} from "react";
+import React,{useEffect,useMemo,useRef,useState} from "react";
 import {ScrollView,View,Text,TextInput,Pressable,StyleSheet,Alert,ActivityIndicator,Image} from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import {supabase} from "../lib/supabase";
@@ -10,7 +10,7 @@ const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 const slugify=(v:string)=>v.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 export function SellerPortal(){
- const [seller,setSeller]=useState<Seller|null>(null);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);
+ const [seller,setSeller]=useState<Seller|null>(null);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const actionLock=useRef(false);
  const [name,setName]=useState("");const [location,setLocation]=useState("");const [storeDescription,setStoreDescription]=useState("");const [productDescription,setProductDescription]=useState("");const [whatsapp,setWhatsapp]=useState("");
  const [title,setTitle]=useState("");const [price,setPrice]=useState("");const [category,setCategory]=useState("");const [condition,setCondition]=useState("new");const [quantity,setQuantity]=useState("1");const [imageUrl,setImageUrl]=useState("");const [pickedImage,setPickedImage]=useState<{uri:string;mimeType:string;fileSize?:number}|null>(null);
  const [editingId,setEditingId]=useState<string|null>(null);const [categories,setCategories]=useState<Category[]>([]);const [myProducts,setMyProducts]=useState<Listing[]>([]);const [orderItems,setOrderItems]=useState<any[]>([]);
@@ -49,18 +49,27 @@ export function SellerPortal(){
   setEditingId(item.id);setTitle(item.title);setPrice(String(item.price_mwk));setQuantity(String(item.stock_quantity));setProductDescription(item.description??"");setCategory(item.category_id);setCondition(item.condition);setImageUrl(item.images?.find(x=>x.is_primary)?.image_url??item.images?.[0]?.image_url??"");setPickedImage(null);
  };
  const apply=async()=>{
-  const {data:{user}}=await supabase.auth.getUser();if(!user){Alert.alert("Sign in required","Sign in before applying for a seller account.");return;}
+  if(actionLock.current)return;
   if(name.trim().length<2||location.trim().length<2){Alert.alert("Missing details","Enter your store name and location.");return;}
-  setBusy(true);
-  try{const slug=slugify(name)+"-"+user.id.slice(0,6);const {error}=await supabase.from("market_sellers").insert({auth_user_id:user.id,name:name.trim(),slug,location:location.trim(),description:storeDescription.trim(),status:"pending"});if(error)throw error;Alert.alert("Application submitted","Your seller profile is awaiting administrator approval.");await load();}
-  catch(e:any){Alert.alert("Application failed",e?.message||"Please try again.");}finally{setBusy(false);}
+  actionLock.current=true;setBusy(true);
+  try{
+   const {data:{user},error:userError}=await supabase.auth.getUser();
+   if(userError)throw userError;
+   if(!user){Alert.alert("Sign in required","Sign in before applying for a seller account.");return;}
+   const slug=slugify(name)+"-"+user.id.slice(0,6);
+   const {error}=await supabase.from("market_sellers").insert({auth_user_id:user.id,name:name.trim(),slug,location:location.trim(),description:storeDescription.trim(),status:"pending"});
+   if(error)throw error;
+   Alert.alert("Application submitted","Your seller profile is awaiting administrator approval.");await load();
+  }catch(e:any){Alert.alert("Application failed",e?.message||"Please try again.");}
+  finally{setBusy(false);actionLock.current=false;}
  };
  const saveListing=async()=>{
+  if(actionLock.current)return;
   const amount=Number(price),stock=Number(quantity),cat=categories.find(x=>x.id===category);
   if(!seller||seller.status!=="active")return;
   if(title.trim().length<3||!Number.isSafeInteger(amount)||amount<=0||!Number.isInteger(stock)||stock<0||!cat){Alert.alert("Check listing","Enter a title, valid whole-number price, stock quantity and category.");return;}
   if(imageUrl.trim()&&!/^https:\/\//i.test(imageUrl.trim())){Alert.alert("Invalid image URL","Use HTTPS or choose a photo from your device.");return;}
-  setBusy(true);
+  actionLock.current=true;setBusy(true);
   let uploadedPath:string|null=null;
   try{
    const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Sign in again to continue.");
@@ -84,14 +93,18 @@ export function SellerPortal(){
    Alert.alert(editingId?"Listing updated":"Product published",editingId?"Your changes have been saved.":"Your product is now published.");
    clearForm();await load();
   }catch(e:any){if(uploadedPath)await supabase.storage.from("market-media").remove([uploadedPath]);Alert.alert("Could not save listing",e?.message||"Please try again.");}
-  finally{setBusy(false);}
+  finally{setBusy(false);actionLock.current=false;}
  };
  const updateSeller=async()=>{
-  if(!seller)return;if(name.trim().length<2||location.trim().length<2){Alert.alert("Check store details","Store name and location are required.");return;}
-  setBusy(true);try{const {error}=await supabase.from("market_sellers").update({name:name.trim(),slug:slugify(name)+"-"+seller.id.slice(0,6),description:storeDescription.trim(),location:location.trim(),whatsapp_url:whatsapp.trim()||null}).eq("id",seller.id);if(error)throw error;Alert.alert("Store updated","Your seller profile was updated.");await load();}catch(e:any){Alert.alert("Update failed",e?.message||"Could not update store.");}finally{setBusy(false);}
+  if(actionLock.current||!seller)return;if(name.trim().length<2||location.trim().length<2){Alert.alert("Check store details","Store name and location are required.");return;}
+  actionLock.current=true;setBusy(true);try{const {error}=await supabase.from("market_sellers").update({name:name.trim(),slug:slugify(name)+"-"+seller.id.slice(0,6),description:storeDescription.trim(),location:location.trim(),whatsapp_url:whatsapp.trim()||null}).eq("id",seller.id);if(error)throw error;Alert.alert("Store updated","Your seller profile was updated.");await load();}catch(e:any){Alert.alert("Update failed",e?.message||"Could not update store.");}finally{setBusy(false);actionLock.current=false;}
  };
  const setFulfilment=async(item:any,status:"shipped"|"delivered")=>{
-  const {error}=await supabase.rpc("update_market_order_item_status",{p_item_id:item.id,p_status:status,p_seller_note:null});if(error)Alert.alert("Update failed",error.message);else await load();
+  if(actionLock.current)return;
+  actionLock.current=true;setBusy(true);
+  try{const {error}=await supabase.rpc("update_market_order_item_status",{p_item_id:item.id,p_status:status,p_seller_note:null});if(error)throw error;await load();}
+  catch(e:any){Alert.alert("Update failed",e?.message||"Could not update fulfilment.");}
+  finally{actionLock.current=false;setBusy(false);}
  };
  if(loading)return <View style={s.center}><ActivityIndicator color="#ef7b25"/><Text style={s.meta}>Loading seller account…</Text></View>;
  if(!seller)return <ScrollView contentContainerStyle={s.wrap}><Text style={s.title}>Become a seller</Text><Text style={s.meta}>Create your store profile. Publishing unlocks after approval.</Text><Text style={s.label}>Store name</Text><TextInput value={name} onChangeText={setName} style={s.input} placeholder="Your business or shop name"/><Text style={s.label}>City / District</Text><TextInput value={location} onChangeText={setLocation} style={s.input} placeholder="e.g. Lilongwe"/><Text style={s.label}>About your store</Text><TextInput value={storeDescription} onChangeText={setStoreDescription} style={[s.input,{height:90,textAlignVertical:"top"}]} multiline/><Pressable disabled={busy} style={s.button} onPress={()=>void apply()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>Submit seller application</Text>}</Pressable></ScrollView>;
@@ -108,14 +121,14 @@ export function SellerPortal(){
   <Text style={s.label}>Condition</Text><View style={s.pills}>{["new","used","refurbished"].map(v=><Pressable key={v} onPress={()=>setCondition(v)} style={[s.pill,condition===v&&s.pillActive]}><Text style={[s.pillText,condition===v&&{color:"#fff"}]}>{v}</Text></Pressable>)}</View>
   <Text style={s.label}>Stock quantity</Text><TextInput value={quantity} onChangeText={setQuantity} keyboardType="numeric" style={s.input}/>
   <Text style={s.label}>Product location</Text><TextInput value={location} onChangeText={setLocation} style={s.input}/>
-  <Text style={s.label}>Product photo</Text>{pickedImage?<Image source={{uri:pickedImage.uri}} style={s.preview}/>:imageUrl?<Image source={{uri:imageUrl}} style={s.preview}/>:null}<Pressable style={s.secondary} onPress={()=>void pickImage()}><Text style={s.secondaryText}>{pickedImage?"Choose a different photo":"Select photo from device"}</Text></Pressable><TextInput value={imageUrl} onChangeText={v=>{setImageUrl(v);setPickedImage(null);}} autoCapitalize="none" style={s.input} placeholder="Or paste an HTTPS image URL"/>
+  <Text style={s.label}>Product photo</Text>{pickedImage?<Image source={{uri:pickedImage.uri}} style={s.preview}/>:imageUrl?<Image source={{uri:imageUrl}} style={s.preview}/>:null}<Pressable disabled={busy} style={s.secondary} onPress={()=>void pickImage()}><Text style={s.secondaryText}>{pickedImage?"Choose a different photo":"Select photo from device"}</Text></Pressable><TextInput value={imageUrl} onChangeText={v=>{setImageUrl(v);setPickedImage(null);}} autoCapitalize="none" style={s.input} placeholder="Or paste an HTTPS image URL"/>
   <Text style={s.label}>Description</Text><TextInput value={productDescription} onChangeText={setProductDescription} multiline style={[s.input,{height:90,textAlignVertical:"top"}]} placeholder="Describe your product"/>
   <Text style={s.small}>Photos are stored in the Malawi Market media bucket. Maximum image size: 5 MB.</Text>
   <Pressable disabled={busy} style={s.button} onPress={()=>void saveListing()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>{editingId?"Save listing changes":"Publish product"}</Text>}</Pressable>{editingId?<Pressable style={s.secondary} onPress={clearForm}><Text style={s.secondaryText}>Cancel editing</Text></Pressable>:null}
   <Text style={s.section}>Your listings ({myProducts.length})</Text>
   {myProducts.map(item=><View key={item.id} style={s.listing}><View style={{flex:1}}><Text style={s.listingTitle}>{item.title}</Text><Text style={s.meta}>{money(item.price_mwk)} · Stock {item.stock_quantity} · {item.status.toUpperCase()}</Text></View><View style={s.actions}><Pressable onPress={()=>startEdit(item)}><Text style={s.action}>Edit</Text></Pressable><Pressable onPress={async()=>{const next=item.status==="published"?"archived":"published";const {error}=await supabase.from("market_products").update({status:next,published_at:next==="published"?new Date().toISOString():null}).eq("id",item.id);if(error)Alert.alert("Update failed",error.message);else await load();}}><Text style={s.action}>{item.status==="published"?"Archive":"Republish"}</Text></Pressable></View></View>)}
   <Text style={s.section}>Customer orders ({paidItems.length})</Text>
-  {paidItems.map(item=><View key={item.id} style={s.listing}><View style={{flex:1}}><Text style={s.listingTitle}>{item.product_title} × {item.quantity}</Text><Text style={s.meta}>Order {String(item.order.id).slice(0,8)} · {money(Number(item.unit_price_mwk)*Number(item.quantity))} · {String(item.fulfillment_status).replace(/_/g," ")}</Text><Text style={s.meta}>Deliver to: {item.order.delivery_name} · {item.order.delivery_phone}</Text><Text style={s.meta}>{item.order.delivery_address}</Text></View><View style={s.actions}>{item.fulfillment_status==="processing"?<Pressable onPress={()=>void setFulfilment(item,"shipped")}><Text style={s.action}>Mark shipped</Text></Pressable>:null}{item.fulfillment_status==="shipped"||item.fulfillment_status==="ready_for_pickup"?<Pressable onPress={()=>void setFulfilment(item,"delivered")}><Text style={s.action}>Mark delivered</Text></Pressable>:null}</View></View>)}
+  {paidItems.map(item=><View key={item.id} style={s.listing}><View style={{flex:1}}><Text style={s.listingTitle}>{item.product_title} × {item.quantity}</Text><Text style={s.meta}>Order {String(item.order.id).slice(0,8)} · {money(Number(item.unit_price_mwk)*Number(item.quantity))} · {String(item.fulfillment_status).replace(/_/g," ")}</Text><Text style={s.meta}>Deliver to: {item.order.delivery_name} · {item.order.delivery_phone}</Text><Text style={s.meta}>{item.order.delivery_address}</Text></View><View style={s.actions}>{item.fulfillment_status==="processing"?<Pressable disabled={busy} onPress={()=>void setFulfilment(item,"shipped")}><Text style={s.action}>Mark shipped</Text></Pressable>:null}{item.fulfillment_status==="shipped"||item.fulfillment_status==="ready_for_pickup"?<Pressable disabled={busy} onPress={()=>void setFulfilment(item,"delivered")}><Text style={s.action}>Mark delivered</Text></Pressable>:null}</View></View>)}
   {!paidItems.length?<Text style={s.meta}>Paid orders will appear here. Do not fulfil orders awaiting payment.</Text>:null}
  </ScrollView>;
 }
