@@ -19,15 +19,17 @@ export function AdminDashboard(){
    const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Sign in to access administration.");
    const {data:role,error:roleError}=await supabase.rpc("has_role",{_user_id:user.id,_role:"admin"});if(roleError)throw roleError;
    if(role!==true){setAllowed(false);return;}setAllowed(true);
-   const [s,p,o,paid,rev]=await Promise.all([
+   const [s,p,o,paid,rev,u,rp]=await Promise.all([
     supabase.from("market_sellers").select("id,name,slug,location,status,is_verified,created_at,auth_user_id").order("created_at",{ascending:false}),
     supabase.from("market_products").select("id,title,price_mwk,status,stock_quantity,created_at,seller:market_sellers(name)").order("created_at",{ascending:false}).limit(100),
     supabase.from("market_orders").select("id,status,payment_status,total_mwk,delivery_name,delivery_phone,delivery_address,created_at").order("created_at",{ascending:false}).limit(100),
     supabase.from("market_orders").select("id",{count:"exact",head:true}).eq("payment_status","paid"),
-    supabase.from("market_orders").select("total_mwk").eq("payment_status","paid")
+    supabase.from("market_orders").select("total_mwk").eq("payment_status","paid"),
+    supabase.from("profiles").select("id,display_name,phone,location,suspended,created_at").order("created_at",{ascending:false}).limit(200),
+    supabase.from("market_reports").select("id,reporter_user_id,target_type,target_id,reason,details,status,created_at").order("created_at",{ascending:false}).limit(100)
    ]);
-   if(s.error)throw s.error;if(p.error)throw p.error;if(o.error)throw o.error;if(paid.error)throw paid.error;if(rev.error)throw rev.error;
-   setSellers(s.data??[]);setProducts(p.data??[]);setOrders(o.data??[]);
+   if(s.error)throw s.error;if(p.error)throw p.error;if(o.error)throw o.error;if(paid.error)throw paid.error;if(rev.error)throw rev.error;if(u.error)throw u.error;if(rp.error)throw rp.error;
+   setSellers(s.data??[]);setProducts(p.data??[]);setOrders(o.data??[]);setUsers(u.data??[]);setReports(rp.data??[]);
    setStats({sellers:(s.data??[]).length,pending:(s.data??[]).filter(x=>x.status==="pending").length,products:(p.data??[]).length,orders:(o.data??[]).length,paid:paid.count??0,revenue:(rev.data??[]).reduce((sum,x)=>sum+Number(x.total_mwk),0)});
   }catch(e:any){Alert.alert("Admin dashboard",e?.message||"Could not load administration data.");}
   finally{setLoading(false);}
