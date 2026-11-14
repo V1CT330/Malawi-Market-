@@ -36,6 +36,7 @@ const productImage = (p: Product) =>
 export default function App() {
   const [tab, setTab] = useState("Home");
   const [language, setLanguage] = useState<MarketLanguage>("English");
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [checkout, setCheckout] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
@@ -100,6 +101,7 @@ export default function App() {
           const refresh_token = params.get("refresh_token");
           if (access_token && refresh_token) await supabase.auth.setSession({ access_token, refresh_token });
         }
+        setPasswordRecovery(true);
         setTab("Account");
       } catch (error) {
         console.warn("Password recovery link could not be processed", error);
@@ -289,7 +291,7 @@ export default function App() {
       {savedProducts.length ? <FlatList data={savedProducts} renderItem={productCard} keyExtractor={p=>p.id} numColumns={2} scrollEnabled={false} columnWrapperStyle={s.productRow}/> :
         <Text style={s.empty}>Products you save will appear here.</Text>}
     </ScrollView>
-    : tab === "Explore" ? <ExploreScreens language={language} /> : <AccountScreens language={language} onLanguageChange={setLanguage} />}
+    : tab === "Explore" ? <ExploreScreens language={language} /> : <AccountScreens language={language} onLanguageChange={setLanguage} passwordRecovery={passwordRecovery} onPasswordRecoveryComplete={()=>setPasswordRecovery(false)} />}
     {nav}
   </SafeAreaView>;
 }
