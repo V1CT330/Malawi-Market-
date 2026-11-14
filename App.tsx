@@ -213,7 +213,7 @@ export default function App() {
     </Pressable>;
   };
 
-  const nav = <View style={[s.bottomNav,{bottom:8,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8}]}>
+  const nav = <View style={[s.bottomNav,{bottom:0,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8}]}>
     {[[ "Home","⌂" ],[ "Search","⌕" ],[ "Explore","▦" ],[ "Wishlist","♡" ],[ "Cart","🛒" ],[ "Account","♙" ]].map(([name,icon]) =>
       <Pressable key={name} onPress={() => { setSelected(null); setTab(name); }} style={s.navItem}>
         <Text style={[s.navIcon,{fontSize:isCompact?20:23,color:tab===name?"#ef7b25":"#777"}]}>{icon}</Text>
@@ -227,8 +227,8 @@ export default function App() {
     <Pressable style={s.outlineButton} onPress={() => void loadCatalogue(true)}><Text style={s.outlineText}>{marketText(language,"Refresh catalogue")}</Text></Pressable>
   </View>;
 
-  return <SafeAreaView style={[s.safe,{paddingBottom:Platform.OS==="android"?24:0}]}>
-    <StatusBar backgroundColor="#fff" barStyle="dark-content" />
+  return <SafeAreaView style={[s.safe,{paddingTop:Platform.OS==="android"?(StatusBar.currentHeight ?? 0):0,paddingBottom:Platform.OS==="android"?(StatusBar.currentHeight ?? 0):0}]}>
+    <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
     <View style={{width:"100%",maxWidth:contentMaxWidth,alignSelf:"center",flex:1,overflow:"hidden"}}>
     {header}
     {checkout ? <CheckoutScreen items={cartProducts.map(({product,quantity})=>({id:product.id,title:product.title,price_mwk:product.price_mwk,quantity,demo:product.demo}))} onBack={()=>setCheckout(false)} onComplete={()=>{cartRef.current=[];setCart([]);setCheckout(false);setTab("Home");}} onOrderCreated={()=>{cartRef.current=[];setCart([]);}} />
