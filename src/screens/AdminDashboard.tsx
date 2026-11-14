@@ -2,12 +2,12 @@ import React,{useEffect,useState} from "react";
 import {ScrollView,View,Text,TextInput,Pressable,StyleSheet,ActivityIndicator,Alert} from "react-native";
 import {supabase} from "../lib/supabase";
 
-type Tab="overview"|"sellers"|"products"|"orders"|"content";
+type Tab="overview"|"sellers"|"products"|"orders"|"users"|"reports"|"content";
 const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 export function AdminDashboard(){
  const [allowed,setAllowed]=useState(false);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [syncing,setSyncing]=useState(false);const [tab,setTab]=useState<Tab>("overview");
  const [stats,setStats]=useState({sellers:0,pending:0,products:0,orders:0,paid:0,revenue:0});
- const [sellers,setSellers]=useState<any[]>([]);const [products,setProducts]=useState<any[]>([]);const [orders,setOrders]=useState<any[]>([]);
+ const [sellers,setSellers]=useState<any[]>([]);const [products,setProducts]=useState<any[]>([]);const [orders,setOrders]=useState<any[]>([]);const [users,setUsers]=useState<any[]>([]);const [reports,setReports]=useState<any[]>([]);
  const [contentType,setContentType]=useState<"news"|"jobs"|"stocks"|"football">("news");
  const [title,setTitle]=useState("");const [summary,setSummary]=useState("");const [source,setSource]=useState("");const [sourceUrl,setSourceUrl]=useState("");const [category,setCategory]=useState("general");
  const [company,setCompany]=useState("");const [location,setLocation]=useState("");const [description,setDescription]=useState("");const [salary,setSalary]=useState("");const [applicationUrl,setApplicationUrl]=useState("");
