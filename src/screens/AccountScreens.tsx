@@ -17,7 +17,7 @@ const initialProfile:Profile={displayName:"",phone:"",location:"",language:"Engl
 const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 const tr=(language:string,english:string)=>marketText(language,english);
 
-export function AccountScreens({language,onLanguageChange}:{language:MarketLanguage;onLanguageChange:(language:MarketLanguage)=>void}){
+export function AccountScreens({language,onLanguageChange,passwordRecovery,onPasswordRecoveryComplete}:{language:MarketLanguage;onLanguageChange:(language:MarketLanguage)=>void;passwordRecovery:boolean;onPasswordRecoveryComplete:()=>void}){
  const [screen,setScreen]=useState<"menu"|"seller"|"orders"|"profile"|"settings"|"auth"|"drafts"|"notifications"|"admin">("menu");
  const [drafts,setDrafts]=useState<Draft[]>([]);
  const [profile,setProfile]=useState<Profile>(initialProfile);
@@ -27,6 +27,7 @@ export function AccountScreens({language,onLanguageChange}:{language:MarketLangu
  const [isAdmin,setIsAdmin]=useState(false);
  const [loadingProfile,setLoadingProfile]=useState(false);
  useEffect(()=>{setProfile(v=>({...v,language}));},[language]);
+ useEffect(()=>{if(passwordRecovery)setScreen("auth");},[passwordRecovery]);
  const [saving,setSaving]=useState(false);
  const unread=notifications.filter(x=>!x.read_at).length;
  useEffect(()=>{
@@ -104,7 +105,7 @@ export function AccountScreens({language,onLanguageChange}:{language:MarketLangu
   {row("▤","Saved drafts","Local seller drafts on this device",()=>setScreen("drafts"))}
   {accountEmail?<Pressable style={s.menuRow} onPress={()=>Alert.alert("Sign out?","You will need to sign in again to access account features.",[{text:"Cancel"},{text:"Sign out",style:"destructive",onPress:()=>void supabase.auth.signOut()}])}><Text style={s.menuTitle}>Sign out of {accountEmail}</Text></Pressable>:null}
  </>}
- {screen==="auth"&&<AuthScreen onBack={back} onDone={()=>setScreen("menu")}/>}
+ {screen==="auth"&&<AuthScreen initialMode={passwordRecovery?"reset":"signin"} onBack={back} onDone={()=>{setScreen("menu");onPasswordRecoveryComplete();}}/>}
  {screen==="seller"&&<SellerPortal/>}
  {screen==="admin"&&<AdminDashboard/>}
  {screen==="drafts"&&<>{header("Saved drafts")}{drafts.length?drafts.map(d=><View key={d.id} style={s.card}><Text style={s.menuTitle}>{d.title}</Text><Text style={s.price}>{money(Number(d.price)||0)} · {d.category}</Text><Text style={s.meta}>{d.description||"No description"}</Text><Pressable onPress={()=>Alert.alert("Delete draft?","Remove this saved draft from this device?",[{text:"Cancel"},{text:"Delete",style:"destructive",onPress:()=>void persistDrafts(drafts.filter(x=>x.id!==d.id))}])}><Text style={s.delete}>Delete draft</Text></Pressable></View>):<Text style={s.empty}>No saved drafts on this device.</Text>}</>}
