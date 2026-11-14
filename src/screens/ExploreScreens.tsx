@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import {marketText,MarketLanguage} from "../lib/i18n";
 import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking } from "react-native";
 
 type Section = "hub" | "news" | "jobs" | "stocks" | "football";
@@ -12,7 +13,7 @@ const fixtures: {league:string;home:string;away:string;time:string;score:string;
 const categories = ["All","Business","Technology","Agriculture","Sports"];
 const jobTypes = ["All","Full time","Part time","Contract","Internship"];
 
-export function ExploreScreens() {
+export function ExploreScreens({language}:{language:MarketLanguage}) {
   const [section,setSection] = useState<Section>("hub");
   const [newsCategory,setNewsCategory] = useState("All");
   const [jobType,setJobType] = useState("All");
@@ -39,22 +40,21 @@ export function ExploreScreens() {
   const filteredNews = useMemo(()=>newsRows.filter(x=>(newsCategory==="All"||x.category===newsCategory)&&(!search||x.title.toLowerCase().includes(search.toLowerCase()))),[newsRows,newsCategory,search]);
   const filteredJobs = useMemo(()=>jobRows.filter(x=>(jobType==="All"||x.type===jobType)&&(!search||[x.title,x.company,x.location,x.category].join(" ").toLowerCase().includes(search.toLowerCase()))),[jobRows,jobType,search]);
   const go = (next:Section) => { setSearch(""); setSection(next); };
-  const heading = section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":"Explore Malawi Market";
+  const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":"Explore Malawi Market");
   const pill = (label:string, active:boolean, action:()=>void) => <Pressable key={label} onPress={action} style={[s.pill,active&&s.pillActive]}><Text style={[s.pillText,active&&{color:"#fff"}]}>{label}</Text></Pressable>;
   const notice = (text:string) => <View style={s.notice}><Text style={s.noticeText}>DATA STATUS · {text}</Text></View>;
   return <ScrollView style={s.root} contentContainerStyle={s.content}>
-    {section!=="hub" && <Pressable onPress={()=>go("hub")} style={s.back}><Text style={s.backText}>‹  Explore</Text></Pressable>}
+    {section!=="hub" && <Pressable onPress={()=>go("hub")} style={s.back}><Text style={s.backText}>‹  {marketText(language,"Explore")}</Text></Pressable>}
     <Text style={s.title}>{heading}</Text>
     {section==="hub" ? <>
-      <Text style={s.subtitle}>Discover more services and information from across Malawi.</Text>
+      <Text style={s.subtitle}>News, jobs, stock information and football from verified sources across Malawi.</Text>
       {[
         ["news","📰","News","Stories and updates by category"],
         ["jobs","💼","Job vacancies","Explore published opportunities"],
         ["stocks","📈","Stocks","Market watchlist and company overview"],
         ["football","⚽","Football","Fixtures, results and league information"],
-      ].map(([key,icon,label,desc])=><Pressable key={key} style={s.menuCard} onPress={()=>go(key as Section)}><Text style={s.menuIcon}>{icon}</Text><View style={{flex:1}}><Text style={s.menuTitle}>{label}</Text><Text style={s.menuDesc}>{desc}</Text></View><Text style={s.arrow}>›</Text></Pressable>)}
-      <Text style={s.subheading}>Coming in later phases</Text>
-      {["Orders & delivery tracking","Seller centre & product publishing","Profile, KYC & account settings","Help centre & support"].map(x=><View key={x} style={s.coming}><Text style={s.comingText}>{x}</Text><Text style={s.soon}>PLANNED</Text></View>)}
+      ].map(([key,icon,label,desc])=><Pressable key={key} style={s.menuCard} onPress={()=>go(key as Section)}><Text style={s.menuIcon}>{icon}</Text><View style={{flex:1}}><Text style={s.menuTitle}>{marketText(language,label)}</Text><Text style={s.menuDesc}>{desc}</Text></View><Text style={s.arrow}>›</Text></Pressable>)}
+      <View style={s.coming}><Text style={s.comingText}>Orders, seller tools, profiles and notifications are available under Account.</Text></View>
     </> : null}
     {section==="news" ? <>
       {notice(liveFlags.news?"Verified articles loaded from Malawi Market content feed.":"No verified articles are published yet. Sync Malawi24 RSS or add sourced articles in Admin.")}
@@ -72,7 +72,7 @@ export function ExploreScreens() {
     </> : null}
     {section==="stocks" ? <>
       {notice(liveFlags.stocks?"Latest available quotes from the configured stock data feed.":"No verified Malawi Stock Exchange quotes are available yet. Do not treat empty data as a market price.")}
-      <View style={s.marketSummary}><Text style={s.summaryLabel}>MARKET WATCHLIST</Text><Text style={s.summaryValue}>Malawi Stock Exchange</Text><Text style={s.meta}>Live market data integration is still required.</Text></View>
+      <View style={s.marketSummary}><Text style={s.summaryLabel}>MARKET WATCHLIST</Text><Text style={s.summaryValue}>Malawi Stock Exchange</Text><Text style={s.meta}>Only sourced quotes are displayed. No live market-data provider is connected yet.</Text></View>
       {stockRows.map((item,i)=><View key={i} style={s.stockRow}><View style={{flex:1}}><Text style={s.stockSymbol}>{item.symbol}</Text><Text style={s.body}>{item.name}</Text><Text style={s.meta}>{item.sector}</Text></View><View style={{alignItems:"flex-end"}}><Text style={s.stockPrice}>{item.price}</Text><Text style={s.meta}>{item.change} · {item.sourceName||"Source not recorded"}</Text><Text style={s.meta}>{item.quoteTime||""}</Text></View></View>)}
       {!stockRows.length?<Text style={s.empty}>No current quotes are available. Administrators must publish sourced market data.</Text>:null}
     </> : null}
