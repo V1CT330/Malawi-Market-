@@ -8,11 +8,11 @@ export function AdminDashboard(){
  const [allowed,setAllowed]=useState(false);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [syncing,setSyncing]=useState(false);const [tab,setTab]=useState<Tab>("overview");
  const [stats,setStats]=useState({sellers:0,pending:0,products:0,orders:0,paid:0,revenue:0});
  const [sellers,setSellers]=useState<any[]>([]);const [products,setProducts]=useState<any[]>([]);const [orders,setOrders]=useState<any[]>([]);const [users,setUsers]=useState<any[]>([]);const [reports,setReports]=useState<any[]>([]);
- const [contentType,setContentType]=useState<"news"|"jobs"|"stocks"|"football">("news");
+ const [contentType,setContentType]=useState<"news"|"jobs"|"stocks"|"football"|"standings">("news");
  const [title,setTitle]=useState("");const [summary,setSummary]=useState("");const [source,setSource]=useState("");const [sourceUrl,setSourceUrl]=useState("");const [category,setCategory]=useState("general");
  const [company,setCompany]=useState("");const [location,setLocation]=useState("");const [description,setDescription]=useState("");const [salary,setSalary]=useState("");const [applicationUrl,setApplicationUrl]=useState("");
  const [symbol,setSymbol]=useState("");const [price,setPrice]=useState("");const [change,setChange]=useState("");const [currency,setCurrency]=useState("MWK");
- const [competition,setCompetition]=useState("TNM Super League");const [home,setHome]=useState("");const [away,setAway]=useState("");const [kickoff,setKickoff]=useState("");
+ const [competition,setCompetition]=useState("TNM Super League");const [home,setHome]=useState("");const [away,setAway]=useState("");const [kickoff,setKickoff]=useState("");const [season,setSeason]=useState("2026");const [team,setTeam]=useState("");const [played,setPlayed]=useState("0");const [won,setWon]=useState("0");const [drawn,setDrawn]=useState("0");const [lost,setLost]=useState("0");const [goalsFor,setGoalsFor]=useState("0");const [goalsAgainst,setGoalsAgainst]=useState("0");const [points,setPoints]=useState("0");const [position,setPosition]=useState("1");
  const load=async()=>{
   setLoading(true);
   try{
