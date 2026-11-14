@@ -41,23 +41,26 @@ export function ExploreScreens() {
   const [stockRows,setStockRows] = useState(stocks);
   const [fixtureRows,setFixtureRows] = useState(fixtures);
   const [liveFlags,setLiveFlags] = useState({news:false,jobs:false,stocks:false,football:false});
+  const [standings,setStandings] = useState<any[]>([]);
   useEffect(()=>{ let active=true; Promise.all([
     supabase.from("market_news_articles").select("id,title,summary,category,source_name,source_url,published_at").eq("is_published",true).order("published_at",{ascending:false}).limit(40),
     supabase.from("market_job_listings").select("id,title,company_name,location,job_type,category,description,salary_range").eq("is_published",true).order("created_at",{ascending:false}).limit(40),
     supabase.from("market_stock_quotes").select("id,symbol,company_name,price,change_percent,currency,quote_time,source_name").order("quote_time",{ascending:false}).limit(50),
-    supabase.from("market_football_fixtures").select("id,competition,home_team,away_team,home_score,away_score,kickoff_at,status,source_name").eq("is_published",true).order("kickoff_at",{ascending:true}).limit(40)
-  ]).then(([n,j,st,ft])=>{if(!active)return;
+    supabase.from("market_football_fixtures").select("id,competition,home_team,away_team,home_score,away_score,kickoff_at,status,source_name").eq("is_published",true).order("kickoff_at",{ascending:true}).limit(40),
+    supabase.from("market_football_standings").select("id,competition,season,team_name,played,won,drawn,lost,goals_for,goals_against,points,position").order("position",{ascending:true}).limit(100)
+   ]).then(([n,j,st,ft,table])=>{if(!active)return;
     if(n.data?.length){setNewsRows(n.data.map(x=>({category:x.category,title:x.title,summary:x.summary||"",source:x.source_name,age:new Date(x.published_at).toLocaleDateString()})));setLiveFlags(v=>({...v,news:true}));}
-    if(j.data?.length){setJobRows(j.data.map(x=>({title:x.title,company:x.company_name,location:x.location||"Malawi",type:x.job_type.replace(/_/g," "),category:x.category,salary:x.salary_range||"Not specified"})));setLiveFlags(v=>({...v,jobs:true}));}
+    if(j.data?.length){setJobRows(j.data.map(x=>({title:x.title,company:x.company_name,location:x.location||"Malawi",type:x.job_type.replace(/_/g," ").replace(/\\b\\w/g,m=>m.toUpperCase()),category:x.category,salary:x.salary_range||"Not specified"})));setLiveFlags(v=>({...v,jobs:true}));}
     if(st.data?.length){const latest=new Map();st.data.forEach(x=>{if(!latest.has(x.symbol))latest.set(x.symbol,x);});setStockRows(Array.from(latest.values()).map(x=>({symbol:x.symbol,name:x.company_name,sector:"Malawi Stock Exchange",price:x.price===null?"Unavailable":x.currency+" "+Number(x.price).toLocaleString(),change:x.change_percent===null?"—":(Number(x.change_percent)>0?"+":"")+Number(x.change_percent).toFixed(2)+"%"})));setLiveFlags(v=>({...v,stocks:true}));}
     if(ft.data?.length){setFixtureRows(ft.data.map(x=>({league:x.competition,home:x.home_team,away:x.away_team,time:new Date(x.kickoff_at).toLocaleString(),score:x.home_score===null||x.away_score===null?"— : —":x.home_score+" : "+x.away_score,status:x.status})));setLiveFlags(v=>({...v,football:true}));}
+    if(table.data?.length)setStandings(table.data);
   }).catch(()=>{}); return ()=>{active=false;}; },[]);
   const filteredNews = useMemo(()=>newsRows.filter(x=>(newsCategory==="All"||x.category===newsCategory)&&(!search||x.title.toLowerCase().includes(search.toLowerCase()))),[newsRows,newsCategory,search]);
   const filteredJobs = useMemo(()=>jobRows.filter(x=>(jobType==="All"||x.type===jobType)&&(!search||[x.title,x.company,x.location,x.category].join(" ").toLowerCase().includes(search.toLowerCase()))),[jobRows,jobType,search]);
   const go = (next:Section) => { setSearch(""); setSection(next); };
   const heading = section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":"Explore Malawi Market";
   const pill = (label:string, active:boolean, action:()=>void) => <Pressable key={label} onPress={action} style={[s.pill,active&&s.pillActive]}><Text style={[s.pillText,active&&{color:"#fff"}]}>{label}</Text></Pressable>;
-  const notice = (text:string) => <View style={s.notice}><Text style={s.noticeText}>DEMO PREVIEW · {text}</Text></View>;
+  const notice = (text:string) => <View style={s.notice}><Text style={s.noticeText}>DATA STATUS · {text}</Text></View>;
   return <ScrollView style={s.root} contentContainerStyle={s.content}>
     {section!=="hub" && <Pressable onPress={()=>go("hub")} style={s.back}><Text style={s.backText}>‹  Explore</Text></Pressable>}
     <Text style={s.title}>{heading}</Text>
@@ -83,19 +86,19 @@ export function ExploreScreens() {
       {notice(liveFlags.jobs?"Published job listings from Malawi Market content feed.":"Sample vacancies only; no real employer listings are available yet.")}
       <TextInput value={search} onChangeText={setSearch} placeholder="Search role, company or location" style={s.search}/>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:10}}>{jobTypes.map(c=>pill(c,jobType===c,()=>setJobType(c)))}</ScrollView>
-      {filteredJobs.map((item,i)=><View key={i} style={s.article}><View style={s.row}><Text style={s.category}>{item.category.toUpperCase()}</Text><Text style={s.type}>{item.type}</Text></View><Text style={s.cardTitle}>{item.title}</Text><Text style={s.body}>{item.company}</Text><Text style={s.meta}>⌖ {item.location}   ·   {item.salary}</Text><Text style={s.soon}>DEMO VACANCY</Text></View>)}
+      {filteredJobs.map((item,i)=><View key={i} style={s.article}><View style={s.row}><Text style={s.category}>{item.category.toUpperCase()}</Text><Text style={s.type}>{item.type}</Text></View><Text style={s.cardTitle}>{item.title}</Text><Text style={s.body}>{item.company}</Text><Text style={s.meta}>⌖ {item.location}   ·   {item.salary}</Text><Text style={s.soon}>{liveFlags.jobs?"PUBLISHED LISTING":"DEMO VACANCY"}</Text></View>)}
       {!filteredJobs.length&&<Text style={s.empty}>No sample vacancies match your search.</Text>}
     </> : null}
     {section==="stocks" ? <>
       {notice(liveFlags.stocks?"Latest available quotes from the configured stock data feed.":"Illustrative watchlist only; live exchange quotes are not available yet.")}
       <View style={s.marketSummary}><Text style={s.summaryLabel}>MARKET WATCHLIST</Text><Text style={s.summaryValue}>Malawi Stock Exchange</Text><Text style={s.meta}>Live market data integration is still required.</Text></View>
-      {stockRows.map((item,i)=><View key={i} style={s.stockRow}><View style={{flex:1}}><Text style={s.stockSymbol}>{item.symbol}</Text><Text style={s.body}>{item.name}</Text><Text style={s.meta}>{item.sector}</Text></View><View style={{alignItems:"flex-end"}}><Text style={s.stockPrice}>{item.price}</Text><Text style={s.meta}>{item.change} · sample</Text></View></View>)}
+      {stockRows.map((item,i)=><View key={i} style={s.stockRow}><View style={{flex:1}}><Text style={s.stockSymbol}>{item.symbol}</Text><Text style={s.body}>{item.name}</Text><Text style={s.meta}>{item.sector}</Text></View><View style={{alignItems:"flex-end"}}><Text style={s.stockPrice}>{item.price}</Text><Text style={s.meta}>{item.change}{liveFlags.stocks?" · provider feed":" · illustrative"}</Text></View></View>)}
     </> : null}
     {section==="football" ? <>
       {notice(liveFlags.football?"Fixtures loaded from Malawi Market football data feed.":"Sample fixtures only; live scores and authoritative dates are not available yet.")}
       <View style={s.marketSummary}><Text style={s.summaryLabel}>FOOTBALL CENTRE</Text><Text style={s.summaryValue}>Malawi football</Text><Text style={s.meta}>Fixtures · Results · Competitions</Text></View>
-      {fixtureRows.map((item,i)=><View key={i} style={s.fixture}><Text style={s.category}>{item.league.toUpperCase()}</Text><View style={s.fixtureTeams}><Text style={s.team}>{item.home}</Text><Text style={s.score}>{item.score}</Text><Text style={s.team}>{item.away}</Text></View><Text style={s.meta}>{item.time}</Text></View>)}
-      <View style={s.coming}><Text style={s.comingText}>League tables and match centre</Text><Text style={s.soon}>AWAITING VERIFIED DATA SOURCE</Text></View>
+      {fixtureRows.map((item,i)=><View key={i} style={s.fixture}><Text style={s.category}>{item.league.toUpperCase()}</Text><View style={s.fixtureTeams}><Text style={s.team}>{item.home}</Text><Text style={s.score}>{item.score}</Text><Text style={s.team}>{item.away}</Text></View><Text style={s.meta}>{item.time} · {item.status||"demo"}</Text></View>)}
+      {standings.length?<><Text style={s.subheading}>League standings</Text>{standings.map((team,i)=><View key={team.id} style={s.stockRow}><Text style={s.stockSymbol}>{team.position}.</Text><View style={{flex:1,marginLeft:10}}><Text style={s.menuTitle}>{team.team_name}</Text><Text style={s.meta}>{team.competition} · {team.season} · P {team.played} · W {team.won} · D {team.drawn} · L {team.lost}</Text></View><Text style={s.stockPrice}>{team.points} pts</Text></View>)}</>:<View style={s.coming}><Text style={s.comingText}>League standings</Text><Text style={s.soon}>AWAITING VERIFIED DATA SOURCE</Text></View> }
     </> : null}
   </ScrollView>;
 }
