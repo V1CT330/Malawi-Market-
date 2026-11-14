@@ -213,7 +213,7 @@ export default function App() {
     {header}
     {checkout ? <CheckoutScreen items={cartProducts.map(({product,quantity})=>({id:product.id,title:product.title,price_mwk:product.price_mwk,quantity,demo:product.demo}))} onBack={()=>setCheckout(false)} onOrderCreated={()=>setCart([])} />
     : selected ? <ScrollView contentContainerStyle={{paddingBottom:100}}>
-      <Pressable onPress={() => setSelected(null)} style={s.back}><Text style={s.backText}>‹  Back to shopping</Text></Pressable>
+      <Pressable onPress={() => setSelected(null)} style={s.back}><Text style={s.backText}>‹  {marketText(language,"Back to shopping")}</Text></Pressable>
       {productImage(selected) ? <Image source={{uri:productImage(selected)}} style={s.detailImage} resizeMode="contain" /> :
         <View style={[s.detailImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No product image</Text></View>}
       <View style={{padding:18}}>
@@ -224,7 +224,7 @@ export default function App() {
         {selected.demo ? <Text style={s.demoDetail}>DEMO LISTING — product, seller and price are illustrative only.</Text> : null}
         <Text style={s.detailDescription}>{selected.description || "No product description has been provided."}</Text>
         <ProductReviews productId={selected.id} />
-        <Pressable disabled={selected.stock_quantity<=0} style={[s.primaryButton,selected.stock_quantity<=0&&{opacity:0.45}]} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>{selected.stock_quantity>0?"Add to cart":"Out of stock"}</Text></Pressable>
+        <Pressable disabled={selected.stock_quantity<=0} style={[s.primaryButton,selected.stock_quantity<=0&&{opacity:0.45}]} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>{marketText(language,selected.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
         <Pressable style={s.reportButton} onPress={() => {
           Alert.alert("Report this listing","Send a report to the Malawi Market moderation team?",[
             {text:"Cancel",style:"cancel"},
@@ -246,14 +246,14 @@ export default function App() {
         <Text style={s.heroSub}>Find products from sellers across Malawi.</Text>
         <Pressable style={s.heroButton} onPress={() => setTab("Search")}><Text style={s.heroButtonText}>Explore products  →</Text></Pressable>
       </View>
-      <View style={s.sectionHead}><Text style={s.sectionTitle}>Shop by category</Text></View>
+      <View style={s.sectionHead}><Text style={s.sectionTitle}>{marketText(language,"Shop by category")}</Text></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.categoryRow}>
         {[{id:"all",name:"All",slug:"all"},...categories].map(c =>
           <Pressable key={c.id} onPress={() => setCategory(c.slug)} style={[s.categoryPill,category===c.slug&&s.categoryActive]}>
             <Text style={[s.categoryText,category===c.slug&&{color:"#fff"}]}>{c.name}</Text>
           </Pressable>)}
       </ScrollView>
-      <View style={s.sectionHead}><Text style={s.sectionTitle}>{tab === "Search" ? "Find products" : query ? "Search results" : "Latest products"}</Text><Text style={s.viewAll}>{filtered.length} items</Text></View>
+      <View style={s.sectionHead}><Text style={s.sectionTitle}>{marketText(language,tab === "Search" ? "Find products" : query ? "Search results" : "Latest products")}</Text><Text style={s.viewAll}>{filtered.length} items</Text></View>
       {tab === "Search" ? <View style={s.filterPanel}>
         <Text style={s.filterHeading}>Sort by</Text>
         <View style={s.filterRow}>{[["relevance","Featured"],["price-low","Price ↑"],["price-high","Price ↓"],["name","Name"]].map(([v,label])=><Pressable key={v} onPress={()=>setSortBy(v)} style={[s.filterPill,sortBy===v&&s.filterActive]}><Text style={[s.filterText,sortBy===v&&{color:"#fff"}]}>{label}</Text></Pressable>)}</View>
@@ -266,7 +266,7 @@ export default function App() {
       <View style={s.trust}><Text style={s.trustTitle}>Made for Malawi</Text><Text style={s.trustText}>Discover products, support local sellers and shop from one place.</Text></View>
     </ScrollView>
     : tab === "Cart" ? <ScrollView contentContainerStyle={s.page}>
-      <Text style={s.pageTitle}>Your cart</Text>
+      <Text style={s.pageTitle}>{marketText(language,"Your cart")}</Text>
       {cartProducts.length === 0 ? <Text style={s.empty}>Your cart is empty. Explore products and add something you like.</Text> :
         <>{cartProducts.map(({product:p,quantity},index) => <View key={p.id} style={s.cartRow}>
           {productImage(p) ? <Image source={{uri:productImage(p)}} style={s.cartImage}/> : <View style={[s.cartImage,s.imagePlaceholder]}/>}
@@ -285,11 +285,11 @@ export default function App() {
         </>}
     </ScrollView>
     : tab === "Wishlist" ? <ScrollView contentContainerStyle={s.page}>
-      <Text style={s.pageTitle}>Wishlist</Text>
+      <Text style={s.pageTitle}>{marketText(language,"Wishlist")}</Text>
       {savedProducts.length ? <FlatList data={savedProducts} renderItem={productCard} keyExtractor={p=>p.id} numColumns={2} scrollEnabled={false} columnWrapperStyle={s.productRow}/> :
         <Text style={s.empty}>Products you save will appear here.</Text>}
     </ScrollView>
-    : tab === "Explore" ? <ExploreScreens /> : <AccountScreens />}
+    : tab === "Explore" ? <ExploreScreens language={language} /> : <AccountScreens language={language} onLanguageChange={setLanguage} />}
     {nav}
   </SafeAreaView>;
 }
