@@ -141,10 +141,14 @@ async function receiveWebhook(req: Request) {
     .select("id,order_id,amount_mwk,status").eq("provider_reference", reference).maybeSingle();
   if (error || !attempt) return json({ error: "No matching Malawi Market payment attempt." }, 404);
   if (attempt.status === "paid" && event === "payrequest.success") return json({ acknowledged: true, duplicate: true });
+  if (attempt.status === "reversed" && event === "payrequest.success") {
+    await admin.from("market_orders").update({ status: "review_required", payment_status: "review_required", updated_at: new Date().toISOString() }).eq("id", attempt.order_id);
+    return json({ acknowledged: true, review_required: true });
+  }
   const orderResult = await admin.from("market_orders").select("id,status,payment_status,total_mwk").eq("id", attempt.order_id).single();
   const order = orderResult.data;
   if (!order) return json({ error: "Order not found." }, 404);
-  if (Math.round(amount) !== Number(attempt.amount_mwk) || Number(order.total_mwk) !== Number(attempt.amount_mwk)) {
+  if (Math.abs(amount - Number(attempt.amount_mwk)) > 0.000001 || Number(order.total_mwk) !== Number(attempt.amount_mwk)) {
     await admin.from("market_payment_attempts").update({ status: "review_required", provider_transaction_reference: transactionReference, provider_response_code: String(payload.responseCode ?? ""), updated_at: new Date().toISOString() }).eq("id", attempt.id);
     await admin.from("market_orders").update({ status: "review_required", payment_status: "review_required", updated_at: new Date().toISOString() }).eq("id", order.id);
     return json({ acknowledged: true, review_required: true });
