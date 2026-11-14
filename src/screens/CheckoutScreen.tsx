@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, ActivityIndicator, Alert } from "react-native";
 import { supabase } from "../lib/supabase";
 
@@ -20,8 +20,12 @@ export function CheckoutScreen({ items, onBack, onOrderCreated }: { items: Check
   const [orderId,setOrderId]=useState("");
   const [payment,setPayment]=useState<PaymentInfo|null>(null);
   const [error,setError]=useState("");
+  const submitLock=useRef(false);
+  const paymentLock=useRef(false);
   const subtotal=items.reduce((sum,item)=>sum+Number(item.price_mwk)*item.quantity,0);
   const startPayment=async(id:string)=>{
+    if(paymentLock.current)return;
+    paymentLock.current=true;
     setBusy(true);setError("");
     try {
       const {data,error:paymentError}=await supabase.functions.invoke("onekhusa-payments",{body:{action:"initiate",order_id:id}});
@@ -32,15 +36,17 @@ export function CheckoutScreen({ items, onBack, onOrderCreated }: { items: Check
       onOrderCreated();
     } catch(e:any) {
       setError(e?.message||"Could not start the OneKhusa payment. Your order is saved; retry when payment service is configured.");
-    } finally {setBusy(false);}
+    } finally {paymentLock.current=false;setBusy(false);}
   };
   const submit=async()=>{
+    if(submitLock.current)return;
     if(items.length===0||items.some(x=>x.demo)){setError("Demo products cannot be purchased. Remove them and use a published seller listing.");return;}
     if(!name.trim()||phone.trim().replace(/[^0-9]/g,"").length<7||address.trim().length<5){setError("Enter your full name, valid phone number and delivery address.");return;}
+    submitLock.current=true;
     setBusy(true);setError("");
     try {
       const {data:{user}}=await supabase.auth.getUser();
-      if(!user){Alert.alert("Sign in required","Sign in before placing an order.");setBusy(false);return;}
+      if(!user){Alert.alert("Sign in required","Sign in before placing an order.");return;}
       const {data:orderIdResult,error:orderError}=await supabase.rpc("create_market_order",{
         p_items:items.map(x=>({product_id:x.id,quantity:x.quantity})),
         p_delivery_name:name.trim(),p_delivery_phone:phone.trim(),p_delivery_address:address.trim(),
@@ -50,7 +56,8 @@ export function CheckoutScreen({ items, onBack, onOrderCreated }: { items: Check
       const id=String(orderIdResult);
       setOrderId(id);
       await startPayment(id);
-    } catch(e:any){setError(e?.message||"Could not create your order.");setBusy(false);}
+    } catch(e:any){setError(e?.message||"Could not create your order.");}
+    finally{submitLock.current=false;setBusy(false);}
   };
   return <ScrollView style={s.root} contentContainerStyle={s.content}>
     <Pressable onPress={onBack} style={s.back}><Text style={s.backText}>‹  Back to cart</Text></Pressable>

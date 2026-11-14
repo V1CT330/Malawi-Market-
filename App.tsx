@@ -170,7 +170,7 @@ export default function App() {
       </View>
       <View style={s.search}>
         <Text style={s.searchGlyph}>⌕</Text>
-        <TextInput placeholder="Search products, brands and more" placeholderTextColor="#858b94" value={query} onChangeText={setQuery} style={s.searchInput} returnKeyType="search" onFocus={() => setTab("Search")} />
+        <TextInput placeholder="Search products, brands and more" placeholderTextColor="#858b94" value={query} onChangeText={setQuery} style={s.searchInput} returnKeyType="search" onSubmitEditing={() => setTab("Search")} onFocus={() => setTab("Search")} />
         <Pressable style={s.searchAction} onPress={() => setTab("Search")}><Text style={s.searchActionText}>Search</Text></Pressable>
       </View>
       <View style={s.locationLine}><Text style={s.locationText}>⌖  Shopping across Malawi</Text><Text style={s.locationText}>Local sellers · Local deals</Text></View>

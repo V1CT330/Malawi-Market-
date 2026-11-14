@@ -1,27 +1,28 @@
-import React,{useEffect,useState} from "react";
+import React,{useEffect,useRef,useState} from "react";
 import {View,Text,TextInput,Pressable,StyleSheet,Alert,ActivityIndicator} from "react-native";
 import {supabase} from "../lib/supabase";
 
 type Mode="signin"|"signup"|"recover"|"reset";
 export function AuthScreen({onDone,onBack,initialMode="signin"}:{onDone:()=>void;onBack:()=>void;initialMode?:Mode}){
- const [mode,setMode]=useState<Mode>(initialMode);const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [confirm,setConfirm]=useState("");const [busy,setBusy]=useState(false);
+ const [mode,setMode]=useState<Mode>(initialMode);const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [confirm,setConfirm]=useState("");const [busy,setBusy]=useState(false);const submitLock=useRef(false);
  useEffect(()=>{if(initialMode==="reset")setMode("reset");},[initialMode]);
  useEffect(()=>{const {data:{subscription}}=supabase.auth.onAuthStateChange(event=>{if(event==="PASSWORD_RECOVERY")setMode("reset");});return()=>subscription.unsubscribe();},[]);
  const submit=async()=>{
+  if(submitLock.current)return;
   const clean=email.trim().toLowerCase();
   if(mode!=="reset"&&!/^\S+@\S+\.\S+$/.test(clean)){Alert.alert("Check your email","Enter a valid email address.");return;}
   if(mode==="recover"){
-   setBusy(true);try{const {error}=await supabase.auth.resetPasswordForEmail(clean,{redirectTo:"mw.wealthgrid.malawimarket://auth/reset-password"});if(error)throw error;Alert.alert("Recovery email sent","Open the recovery link on this device. The app redirect URL must be allowed in Supabase Auth settings.");setMode("signin");}catch(e:any){Alert.alert("Recovery failed",e?.message||"Could not send recovery email.");}finally{setBusy(false);}return;
+   submitLock.current=true;setBusy(true);try{const {error}=await supabase.auth.resetPasswordForEmail(clean,{redirectTo:"mw.wealthgrid.malawimarket://auth/reset-password"});if(error)throw error;Alert.alert("Recovery email sent","Open the recovery link on this device. The app redirect URL must be allowed in Supabase Auth settings.");setMode("signin");}catch(e:any){Alert.alert("Recovery failed",e?.message||"Could not send recovery email.");}finally{setBusy(false);submitLock.current=false;}return;
   }
   if(password.length<8){Alert.alert("Weak password","Use at least 8 characters.");return;}
   if(mode==="reset"&&password!==confirm){Alert.alert("Passwords do not match","Enter the same new password twice.");return;}
-  setBusy(true);
+  submitLock.current=true;setBusy(true);
   try{
    if(mode==="signin"){const {error}=await supabase.auth.signInWithPassword({email:clean,password});if(error)throw error;onDone();}
    else if(mode==="signup"){const {data,error}=await supabase.auth.signUp({email:clean,password});if(error)throw error;if(data.session)onDone();else Alert.alert("Check your email","Your account was created. Confirm your email, then sign in.");}
    else{const {error}=await supabase.auth.updateUser({password});if(error)throw error;Alert.alert("Password updated","Your password has been changed.");onDone();}
   }catch(e:any){Alert.alert("Account error",e?.message||"Could not complete account request.");}
-  finally{setBusy(false);}
+  finally{setBusy(false);submitLock.current=false;}
  };
  const heading=mode==="signin"?"Welcome back":mode==="signup"?"Create your account":mode==="recover"?"Reset your password":"Choose a new password";
  return <View style={s.wrap}>
