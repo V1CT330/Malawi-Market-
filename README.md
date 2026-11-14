@@ -15,3 +15,5 @@ GitHub Actions builds a debug APK on pushes to `Filorux-Blockchain` or via **Act
 The first frontend milestone includes the storefront, product browsing, local cart and wishlist interactions. Authentication, live catalogue data, and checkout/payment are not yet integrated.
 
 Android SDK build setup uses the hosted runner's SDK manager directly.
+
+Build workflow uses the hosted Android SDK command-line tools path.
