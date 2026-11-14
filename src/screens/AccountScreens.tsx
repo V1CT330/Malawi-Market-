@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Switch, Alert } from "react-native";
+import { supabase } from "../lib/supabase";
+import { AuthScreen } from "./AuthScreen";
 
 const KEY_DRAFTS="@malawi-market/seller-drafts";
 const KEY_PROFILE="@malawi-market/profile";
@@ -11,12 +13,14 @@ const initialProfile:Profile={displayName:"Guest shopper",phone:"",location:"",l
 const money=(n:number)=>"MK "+n.toLocaleString("en-US");
 
 export function AccountScreens(){
- const [screen,setScreen]=useState<"menu"|"seller"|"orders"|"profile"|"settings">("menu");
+ const [screen,setScreen]=useState<"menu"|"seller"|"orders"|"profile"|"settings"|"auth">("menu");
  const [drafts,setDrafts]=useState<Draft[]>([]);
  const [profile,setProfile]=useState<Profile>(initialProfile);
  const [title,setTitle]=useState(""); const [price,setPrice]=useState(""); const [category,setCategory]=useState("Electronics"); const [description,setDescription]=useState("");
  const [orders,setOrders]=useState<any[]>([]);
  const [sort,setSort]=useState("newest");
+ const [accountEmail,setAccountEmail]=useState("");
+ useEffect(()=>{ void supabase.auth.getSession().then(({data})=>setAccountEmail(data.session?.user.email??"")); const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>setAccountEmail(session?.user.email??"")); return ()=>subscription.unsubscribe(); },[]);
  useEffect(()=>{AsyncStorage.multiGet([KEY_DRAFTS,KEY_PROFILE,KEY_ORDERS]).then(rows=>{const map=Object.fromEntries(rows);if(map[KEY_DRAFTS])setDrafts(JSON.parse(map[KEY_DRAFTS]));if(map[KEY_PROFILE])setProfile({...initialProfile,...JSON.parse(map[KEY_PROFILE])});if(map[KEY_ORDERS])setOrders(JSON.parse(map[KEY_ORDERS]));}).catch(()=>{});},[]);
  const persistDrafts=async(next:Draft[])=>{setDrafts(next);await AsyncStorage.setItem(KEY_DRAFTS,JSON.stringify(next));};
  const persistProfile=async(next:Profile)=>{setProfile(next);await AsyncStorage.setItem(KEY_PROFILE,JSON.stringify(next));};
@@ -26,12 +30,15 @@ export function AccountScreens(){
  return <ScrollView style={s.root} contentContainerStyle={s.content}>
  {screen==="menu"&&<><Text style={s.title}>Your account</Text><Text style={s.subtitle}>Manage your marketplace activity on this device.</Text>
   <View style={s.profileCard}><Text style={s.avatar}>👤</Text><View style={{flex:1}}><Text style={s.menuTitle}>{profile.displayName||"Guest shopper"}</Text><Text style={s.meta}>{profile.phone||"No phone number added"} · {profile.location||"Location not set"}</Text></View><Text style={s.demo}>LOCAL</Text></View>
+  {row("♙",accountEmail?"Signed in":"Sign in / Register",accountEmail||"Unlock buyer and seller account features",()=>setScreen("auth"))}
   {row("▣","Seller Centre","Create and save product listing drafts",()=>setScreen("seller"))}
   {row("▤","Orders","View order history and delivery status",()=>setScreen("orders"))}
   {row("♙","Profile","Edit your local profile details",()=>setScreen("profile"))}
   {row("⚙","Settings","Notifications, language and app preferences",()=>setScreen("settings"))}
-  <View style={s.note}><Text style={s.noteText}>Authentication, publishing, order placement and payments are not enabled yet. Drafts and profile preferences are stored on this device.</Text></View>
+  {accountEmail?<Pressable style={s.menuRow} onPress={()=>Alert.alert("Sign out?","You will need to sign in again to access account features.",[{text:"Cancel"},{text:"Sign out",style:"destructive",onPress:()=>void supabase.auth.signOut()}])}><Text style={s.menuTitle}>Sign out of {accountEmail}</Text></Pressable>:null}
+  <View style={s.note}><Text style={s.noteText}>Account sign-in is connected. Seller publishing and payment-backed checkout still require seller approval and payment integration.</Text></View>
  </>}
+ {screen==="auth"&&<AuthScreen onBack={back} onDone={()=>setScreen("menu")}/>}
  {screen==="seller"&&<>{header("Seller Centre")}<View style={s.note}><Text style={s.noteText}>LOCAL DRAFTS ONLY · These listings are not published and are not visible to shoppers.</Text></View>
   <Text style={s.label}>Product title</Text><TextInput value={title} onChangeText={setTitle} placeholder="e.g. Samsung Galaxy A15" style={s.input}/>
   <Text style={s.label}>Price (MWK)</Text><TextInput value={price} onChangeText={setPrice} keyboardType="numeric" placeholder="e.g. 250000" style={s.input}/>
