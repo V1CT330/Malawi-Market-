@@ -24,19 +24,24 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
   const [fixtureRows,setFixtureRows] = useState(fixtures);
   const [liveFlags,setLiveFlags] = useState({news:false,jobs:false,stocks:false,football:false});
   const [standings,setStandings] = useState<any[]>([]);
-  useEffect(()=>{ let active=true; Promise.all([
+  const [loadingData,setLoadingData] = useState(true);
+  const [loadError,setLoadError] = useState("");
+  const [reloadKey,setReloadKey] = useState(0);
+  useEffect(()=>{ let active=true; setLoadingData(true); setLoadError(""); Promise.all([
     supabase.from("market_news_articles").select("id,title,summary,category,source_name,source_url,published_at").eq("is_published",true).order("published_at",{ascending:false}).limit(40),
     supabase.from("market_job_listings").select("id,title,company_name,location,job_type,category,description,salary_range,application_url").eq("is_published",true).order("created_at",{ascending:false}).limit(40),
     supabase.from("market_stock_quotes").select("id,symbol,company_name,price,change_percent,currency,quote_time,source_name,source_url").order("quote_time",{ascending:false}).limit(50),
     supabase.from("market_football_fixtures").select("id,competition,home_team,away_team,home_score,away_score,kickoff_at,status,source_name,source_url").eq("is_published",true).order("kickoff_at",{ascending:true}).limit(40),
     supabase.from("market_football_standings").select("id,competition,season,team_name,played,won,drawn,lost,goals_for,goals_against,points,position,source_name,source_url").order("position",{ascending:true}).limit(100)
    ]).then(([n,j,st,ft,table])=>{if(!active)return;
+    const firstError=n.error||j.error||st.error||ft.error||table.error;
+    if(firstError)setLoadError(firstError.message||"Some Explore data could not be loaded. Try again.");
     if(n.data?.length){setNewsRows(n.data.map(x=>({category:x.category,title:x.title,summary:x.summary||"",source:x.source_name,sourceUrl:x.source_url,age:new Date(x.published_at).toLocaleDateString()})));setLiveFlags(v=>({...v,news:true}));}
     if(j.data?.length){setJobRows(j.data.map(x=>({title:x.title,company:x.company_name,location:x.location||"Malawi",type:x.job_type.replace(/_/g," ").replace(/\b\w/g,(m:string)=>m.toUpperCase()),category:x.category,salary:x.salary_range||"Not specified",applicationUrl:x.application_url||undefined})));setLiveFlags(v=>({...v,jobs:true}));}
     if(st.data?.length){const latest=new Map();st.data.forEach(x=>{if(!latest.has(x.symbol))latest.set(x.symbol,x);});setStockRows(Array.from(latest.values()).map(x=>({symbol:x.symbol,name:x.company_name,sector:"Malawi Stock Exchange",price:x.price===null?"Unavailable":x.currency+" "+Number(x.price).toLocaleString(),change:x.change_percent===null?"—":(Number(x.change_percent)>0?"+":"")+Number(x.change_percent).toFixed(2)+"%",sourceName:x.source_name,quoteTime:new Date(x.quote_time).toLocaleString()})));setLiveFlags(v=>({...v,stocks:true}));}
     if(ft.data?.length){setFixtureRows(ft.data.map(x=>({league:x.competition,home:x.home_team,away:x.away_team,time:new Date(x.kickoff_at).toLocaleString(),score:x.home_score===null||x.away_score===null?"— : —":x.home_score+" : "+x.away_score,status:x.status,sourceName:x.source_name,sourceUrl:x.source_url})));setLiveFlags(v=>({...v,football:true}));}
     if(table.data?.length)setStandings(table.data);
-  }).catch(()=>{}); return ()=>{active=false;}; },[]);
+  }).catch((error:any)=>{if(active)setLoadError(error?.message||"Explore data could not be loaded. Check your connection and try again.");}).finally(()=>{if(active)setLoadingData(false);}); return ()=>{active=false;}; },[reloadKey]);
   const filteredNews = useMemo(()=>newsRows.filter(x=>(newsCategory==="All"||x.category===newsCategory)&&(!search||x.title.toLowerCase().includes(search.toLowerCase()))),[newsRows,newsCategory,search]);
   const filteredJobs = useMemo(()=>jobRows.filter(x=>(jobType==="All"||x.type===jobType)&&(!search||[x.title,x.company,x.location,x.category].join(" ").toLowerCase().includes(search.toLowerCase()))),[jobRows,jobType,search]);
   const go = (next:Section) => { setSearch(""); setSection(next); };
@@ -51,6 +56,8 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
   return <ScrollView style={s.root} contentContainerStyle={s.content}>
     {section!=="hub" && <Pressable onPress={()=>go("hub")} style={s.back}><Text style={s.backText}>‹  {marketText(language,"Explore")}</Text></Pressable>}
     <Text style={s.title}>{heading}</Text>
+    {loadingData?<View style={s.statusPanel}><Text style={s.statusTitle}>Loading verified information…</Text><Text style={s.statusBody}>Fetching the latest available content.</Text></View>:null}
+    {loadError?<View style={s.statusPanel}><Text style={s.statusTitle}>Some information could not be loaded</Text><Text style={s.statusBody}>{loadError}</Text><Pressable onPress={()=>setReloadKey(v=>v+1)} style={s.retry}><Text style={s.retryText}>Try again</Text></Pressable></View>:null}
     {section==="hub" ? <>
       <Text style={s.subtitle}>News, jobs, stock information and football from verified sources across Malawi.</Text>
       {[
@@ -96,6 +103,7 @@ const s=StyleSheet.create({
  title:{fontSize:27,fontWeight:"900",color:navy,marginTop:10,letterSpacing:-.5},subtitle:{fontSize:13,color:"#687386",lineHeight:20,marginTop:6,marginBottom:16},
  menuCard:{flexDirection:"row",alignItems:"center",backgroundColor:"#fff",borderWidth:0,borderColor:"#e9edf2",borderRadius:16,padding:17,marginTop:11,elevation:2,shadowColor:"#172b4d",shadowOpacity:.045,shadowRadius:9,shadowOffset:{width:0,height:3}},menuIcon:{fontSize:26,marginRight:13},menuTitle:{fontSize:15,fontWeight:"800",color:navy},menuDesc:{fontSize:11,color:"#788293",marginTop:4},arrow:{fontSize:26,color:orange,marginLeft:8},
  subheading:{fontSize:15,fontWeight:"900",color:navy,marginTop:24,marginBottom:8},coming:{backgroundColor:"#fff",borderRadius:10,padding:13,marginTop:7,borderWidth:1,borderColor:"#edf0f3"},comingText:{fontSize:12,fontWeight:"700",color:"#465267"},soon:{fontSize:9,color:"#9a6a3a",fontWeight:"900",marginTop:7,letterSpacing:.5},
+ statusPanel:{backgroundColor:"#fff",borderRadius:12,padding:14,marginTop:12,borderWidth:1,borderColor:"#e7ebf0"},statusTitle:{fontSize:13,fontWeight:"900",color:navy},statusBody:{fontSize:11,color:"#687386",lineHeight:17,marginTop:5},retry:{alignSelf:"flex-start",backgroundColor:orange,borderRadius:8,paddingHorizontal:13,paddingVertical:9,marginTop:10},retryText:{fontSize:11,color:"#fff",fontWeight:"900"},
  notice:{backgroundColor:"#fff1e5",borderRadius:9,padding:11,marginTop:12},noticeText:{fontSize:10,color:"#8a4c19",fontWeight:"800",lineHeight:15},
  search:{height:44,backgroundColor:"#fff",borderWidth:1,borderColor:"#e5e9ef",borderRadius:10,paddingHorizontal:13,marginTop:14,color:navy},
  pill:{borderRadius:18,borderWidth:1,borderColor:"#dfe4ea",paddingHorizontal:13,paddingVertical:8,backgroundColor:"#fff"},pillActive:{backgroundColor:navy,borderColor:navy},pillText:{fontSize:11,color:"#4f5a6c",fontWeight:"700"},
