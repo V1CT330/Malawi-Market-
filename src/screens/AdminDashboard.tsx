@@ -40,8 +40,17 @@ export function AdminDashboard(){
   if(error)Alert.alert("Seller update failed",error.message);else await load();setBusy(false);
  };
  const updateUserStatus=async(userId:string,suspended:boolean)=>{
-  setBusy(true);const {error}=await supabase.from("profiles").update({suspended}).eq("id",userId);
-  if(error)Alert.alert("User update failed",error.message);else await load();setBusy(false);
+  setBusy(true);
+  const {error}=await supabase.from("profiles").update({suspended}).eq("id",userId);
+  if(error)Alert.alert("User update failed",error.message);
+  else{
+   const sellerResult=suspended
+    ? await supabase.from("market_sellers").update({status:"suspended",is_verified:false}).eq("auth_user_id",userId).eq("status","active")
+    : await supabase.from("market_sellers").update({status:"active",is_verified:true}).eq("auth_user_id",userId).eq("status","suspended");
+   if(sellerResult.error)Alert.alert("Seller access warning",sellerResult.error.message);
+   await load();
+  }
+  setBusy(false);
  };
  const updateReport=async(reportId:string,status:"reviewing"|"resolved"|"dismissed")=>{
   const {data:{user}}=await supabase.auth.getUser();if(!user)return;
