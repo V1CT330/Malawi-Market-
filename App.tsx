@@ -206,6 +206,17 @@ export default function App() {
         <Text style={s.detailDescription}>{selected.description || "No product description has been provided."}</Text>
         <ProductReviews productId={selected.id} />
         <Pressable style={s.primaryButton} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>Add to cart</Text></Pressable>
+        <Pressable style={s.reportButton} onPress={() => {
+          Alert.alert("Report this listing","Send a report to the Malawi Market moderation team?",[
+            {text:"Cancel",style:"cancel"},
+            {text:"Submit report",onPress:async()=>{
+              const {data:{user}}=await supabase.auth.getUser();
+              if(!user){Alert.alert("Sign in required","Sign in before reporting a listing.");return;}
+              const {error}=await supabase.from("market_reports").insert({reporter_user_id:user.id,target_type:"product",target_id:selected.id,reason:"Suspicious or misleading listing"});
+              if(error)Alert.alert("Report failed",error.message);else Alert.alert("Report submitted","The moderation team will review this listing.");
+            }}
+          ]);
+        }}><Text style={s.reportText}>Report this listing</Text></Pressable>
       </View>
     </ScrollView>
     : tab === "Home" || tab === "Search" ? <ScrollView contentContainerStyle={{paddingBottom:100}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadCatalogue(true)} />}>
@@ -278,5 +289,5 @@ const s = StyleSheet.create({
  demoNotice:{marginHorizontal:14,marginTop:8,padding:10,borderRadius:8,backgroundColor:"#fff4e9"},demoNoticeText:{fontSize:10,color:"#8b4c18",fontWeight:"700",lineHeight:15},demoDetail:{fontSize:11,color:"#9a5b20",fontWeight:"800",marginTop:10},trust:{margin:15,padding:18,backgroundColor:"#f4f6f9",borderRadius:12},trustTitle:{fontWeight:"900",fontSize:15,color:"#172b4d"},trustText:{fontSize:12,color:"#667085",marginTop:5,lineHeight:18},
  filterPanel:{marginHorizontal:14,marginTop:4,padding:12,backgroundColor:"#f7f8fa",borderRadius:10},filterHeading:{fontSize:10,fontWeight:"900",color:"#536073",marginTop:4,marginBottom:7},filterRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginBottom:9},filterPill:{borderWidth:1,borderColor:"#dfe4ea",borderRadius:16,paddingHorizontal:10,paddingVertical:7,backgroundColor:"#fff"},filterActive:{backgroundColor:"#172b4d",borderColor:"#172b4d"},filterText:{fontSize:10,color:"#536073",fontWeight:"700"},page:{padding:18,paddingBottom:100},pageTitle:{fontSize:25,fontWeight:"900",color:"#172b4d",marginBottom:16},empty:{color:"#777",fontSize:13,lineHeight:20,paddingVertical:25,textAlign:"center"},emptyBox:{marginHorizontal:16,marginTop:22,padding:20,backgroundColor:"#f6f7f9",borderRadius:13,alignItems:"center"},emptyTitle:{fontSize:16,fontWeight:"900",color:"#172b4d"},outlineButton:{marginTop:12,borderWidth:1,borderColor:"#ef7b25",paddingHorizontal:14,paddingVertical:9,borderRadius:8},outlineText:{fontSize:12,color:"#df6c19",fontWeight:"800"},loading:{padding:35,alignItems:"center",gap:10},loadingText:{fontSize:12,color:"#777"},
  cartRow:{flexDirection:"row",alignItems:"center",gap:10,borderBottomWidth:1,borderColor:"#eee",paddingVertical:12},cartImage:{width:65,height:65,borderRadius:9,backgroundColor:"#f2f3f5"},qtyButton:{width:28,height:28,borderRadius:7,backgroundColor:"#fff1e5",alignItems:"center",justifyContent:"center"},qtyText:{fontSize:13,fontWeight:"900",color:"#172b4d"},total:{fontSize:17,fontWeight:"900",color:"#172b4d",marginTop:20,textAlign:"right"},
- back:{padding:16},backText:{color:"#ef7b25",fontWeight:"800"},detailImage:{width:"100%",height:300,backgroundColor:"#f4f4f4"},detailTitle:{fontSize:22,fontWeight:"900",color:"#172b4d"},priceLarge:{fontSize:24,fontWeight:"900",color:"#ef7b25",marginTop:12},detailMeta:{fontSize:11,color:"#7a8492",marginTop:9},detailDescription:{fontSize:13,color:"#667085",lineHeight:20,marginTop:18},primaryButton:{backgroundColor:"#ef7b25",padding:15,borderRadius:10,alignItems:"center",marginTop:20},primaryText:{color:"#fff",fontWeight:"900"}
+ back:{padding:16},backText:{color:"#ef7b25",fontWeight:"800"},detailImage:{width:"100%",height:300,backgroundColor:"#f4f4f4"},detailTitle:{fontSize:22,fontWeight:"900",color:"#172b4d"},priceLarge:{fontSize:24,fontWeight:"900",color:"#ef7b25",marginTop:12},detailMeta:{fontSize:11,color:"#7a8492",marginTop:9},detailDescription:{fontSize:13,color:"#667085",lineHeight:20,marginTop:18},primaryButton:{backgroundColor:"#ef7b25",padding:15,borderRadius:10,alignItems:"center",marginTop:20},primaryText:{color:"#fff",fontWeight:"900"},reportButton:{alignItems:"center",padding:12,marginTop:8},reportText:{color:"#a33",fontWeight:"800",fontSize:11}
 });
