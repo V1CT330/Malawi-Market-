@@ -161,17 +161,19 @@ export default function App() {
   const savedProducts = products.filter(p => saved.includes(p.id));
 
   const header = <>
-    <View style={s.topStrip}><Text style={s.stripText}>MALAWI MARKET  ·  SHOP LOCAL, SELL NATIONWIDE</Text></View>
-    <View style={s.header}>
-      <View><Text style={s.brand}><Text style={{color:"#ef7b25"}}>Malawi</Text> Market</Text><Text style={s.tagline}>Malawi's marketplace</Text></View>
-      <Pressable style={s.cartIcon} onPress={() => { setSelected(null); setTab("Cart"); }}>
-        <Text style={{fontSize:23}}>🛒</Text>{cart.length > 0 ? <Text style={s.cartCount}>{cart.length}</Text> : null}
-      </Pressable>
-    </View>
-    <View style={s.search}>
-      <Text style={{fontSize:18,color:"#777"}}>⌕</Text>
-      <TextInput placeholder="Search products, brands and more" placeholderTextColor="#888" value={query} onChangeText={setQuery} style={s.searchInput} returnKeyType="search" onFocus={() => setTab("Search")} />
-      <Text style={{color:"#777"}}>☷</Text>
+    <View style={s.marketHeader}>
+      <View style={s.marketHeaderTop}>
+        <View><Text style={s.marketEyebrow}>WELCOME TO</Text><Text style={s.brand}><Text style={{color:"#f36f21"}}>Malawi</Text> Market</Text></View>
+        <Pressable style={s.headerAction} onPress={() => { setSelected(null); setTab("Cart"); }}>
+          <Text style={{fontSize:23}}>🛒</Text>{cart.length > 0 ? <Text style={s.cartCount}>{cart.length}</Text> : null}
+        </Pressable>
+      </View>
+      <View style={s.search}>
+        <Text style={s.searchGlyph}>⌕</Text>
+        <TextInput placeholder="Search products, brands and more" placeholderTextColor="#858b94" value={query} onChangeText={setQuery} style={s.searchInput} returnKeyType="search" onFocus={() => setTab("Search")} />
+        <Pressable style={s.searchAction} onPress={() => setTab("Search")}><Text style={s.searchActionText}>Search</Text></Pressable>
+      </View>
+      <View style={s.locationLine}><Text style={s.locationText}>⌖  Shopping across Malawi</Text><Text style={s.locationText}>Local sellers · Local deals</Text></View>
     </View>
   </>;
 
@@ -242,20 +244,38 @@ export default function App() {
     </ScrollView>
     : tab === "Home" || tab === "Search" ? <ScrollView contentContainerStyle={{paddingBottom:100}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadCatalogue(true)} />}>
       
-      <View style={s.hero}>
-        <View style={s.heroTop}><Text style={s.heroKicker}>THE MARKETPLACE FOR EVERYONE</Text><Text style={s.heroTag}>MALAWI</Text></View>
-        <Text style={s.heroTitle}>Everything you need.{"\n"}All in one marketplace.</Text>
-        <Text style={s.heroSub}>Discover great finds from sellers across Malawi.</Text>
-        <Pressable style={s.heroButton} onPress={() => setTab("Search")}><Text style={s.heroButtonText}>Start shopping  →</Text></Pressable>
-      </View>
-      <View style={s.sectionHead}><Text style={s.sectionTitle}>{marketText(language,"Shop by category")}</Text></View>
+      {tab === "Home" ? <>
+        <View style={s.promoBanner}>
+          <View style={s.promoCopy}>
+            <Text style={s.promoKicker}>DISCOVER MORE FOR LESS</Text>
+            <Text style={s.promoTitle}>Your next great find is here.</Text>
+            <Text style={s.promoSub}>Shop products from sellers across Malawi.</Text>
+            <Pressable style={s.promoButton} onPress={() => setTab("Search")}><Text style={s.promoButtonText}>Explore marketplace  ›</Text></Pressable>
+          </View>
+          <View style={s.promoMark}><Text style={s.promoMarkTop}>MM</Text><Text style={s.promoMarkBottom}>SHOP</Text></View>
+        </View>
+        <View style={s.shortcutRow}>
+          {[["▦","All categories",()=>{setCategory("all");setTab("Search");}],["✦","Featured",()=>{setSortBy("relevance");setTab("Search");}],["♡","Wishlist",()=>setTab("Wishlist")],["▣","My cart",()=>setTab("Cart")]].map(([icon,label,action])=><Pressable key={String(label)} style={s.shortcut} onPress={action as ()=>void}><View style={s.shortcutIcon}><Text style={s.shortcutGlyph}>{icon}</Text></View><Text style={s.shortcutLabel}>{label}</Text></Pressable>)}
+        </View>
+      </> : null}
+      <View style={s.sectionHead}><Text style={s.sectionTitle}>Shop by category</Text><Pressable onPress={()=>setTab("Search")}><Text style={s.viewAll}>See all  ›</Text></Pressable></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.categoryRow}>
         {[{id:"all",name:"All products",slug:"all",icon:"✦"},...categories].map(c =>
-          <Pressable key={c.id} onPress={() => setCategory(c.slug)} style={[s.categoryTile,category===c.slug&&s.categoryTileActive]}>
-            <View style={[s.categoryIcon,category===c.slug&&s.categoryIconActive]}><Text style={[s.categoryIconText,category===c.slug&&{color:"#fff"}]}>{c.icon || (c.name==="All products"?"✦":c.name.slice(0,1).toUpperCase())}</Text></View>
-            <Text numberOfLines={2} style={[s.categoryText,category===c.slug&&s.categoryTextActive]}>{c.name}</Text>
+          <Pressable key={c.id} onPress={() => {setCategory(c.slug);setTab("Search");}} style={s.categoryTile}>
+            <View style={s.categoryIcon}><Text style={s.categoryIconText}>{c.icon || (c.name==="All products"?"✦":c.name.slice(0,1).toUpperCase())}</Text></View>
+            <Text numberOfLines={2} style={s.categoryText}>{c.name}</Text>
           </Pressable>)}
       </ScrollView>
+      {tab === "Home" && products.some(p=>p.is_featured) ? <>
+        <View style={s.sectionHead}><View><Text style={s.sectionTitle}>Featured finds</Text><Text style={s.sectionHint}>Selected products from Malawi Market sellers</Text></View><Text style={s.viewAll}>{products.filter(p=>p.is_featured).length} items</Text></View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.featuredRow}>
+          {products.filter(p=>p.is_featured).slice(0,8).map(p=><Pressable key={p.id} style={s.featuredCard} onPress={()=>setSelected(p)}>
+            {productImage(p)?<Image source={{uri:productImage(p)}} style={s.featuredImage} resizeMode="cover"/>:<View style={[s.featuredImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No image</Text></View>}
+            <Text numberOfLines={2} style={s.featuredName}>{p.title}</Text><Text style={s.featuredPrice}>{money(p.price_mwk)}</Text>
+            {p.seller?.is_verified?<Text style={s.featuredSeller}>✓ Verified seller</Text>:null}
+          </Pressable>)}
+        </ScrollView>
+      </> : null}
       <View style={s.sectionHead}><Text style={s.sectionTitle}>{marketText(language,tab === "Search" ? "Find products" : query ? "Search results" : "Recommended for you")}</Text><Text style={s.viewAll}>{filtered.length} items</Text></View>
       {tab === "Search" ? <View style={s.filterPanel}>
         <Text style={s.filterHeading}>Sort by</Text>
@@ -299,18 +319,19 @@ export default function App() {
 
 
 const s = StyleSheet.create({
- safe:{flex:1,backgroundColor:"#f6f7f9"},topStrip:{backgroundColor:"#172b4d",paddingVertical:6,alignItems:"center"},stripText:{color:"#fff",fontSize:9,fontWeight:"800",letterSpacing:1},
- header:{height:62,paddingHorizontal:18,flexDirection:"row",alignItems:"center",justifyContent:"space-between",backgroundColor:"#fff"},brand:{fontSize:25,fontWeight:"900",color:"#172b4d",letterSpacing:-.9},tagline:{fontSize:11,color:"#737d8c",marginTop:0},
+ safe:{flex:1,backgroundColor:"#f5f6f7"},topStrip:{backgroundColor:"#172b4d",paddingVertical:6,alignItems:"center"},stripText:{color:"#fff",fontSize:9,fontWeight:"800",letterSpacing:1},
+ header:{height:62,paddingHorizontal:18,flexDirection:"row",alignItems:"center",justifyContent:"space-between",backgroundColor:"#fff"},brand:{fontSize:22,fontWeight:"900",color:"#20252d",letterSpacing:-.6},tagline:{fontSize:11,color:"#737d8c",marginTop:0},
  cartIcon:{padding:10},cartCount:{position:"absolute",right:0,top:0,backgroundColor:"#ef7b25",color:"#fff",fontSize:10,fontWeight:"bold",borderRadius:10,minWidth:18,textAlign:"center",overflow:"hidden"},
- search:{marginHorizontal:14,marginBottom:10,height:49,borderRadius:10,backgroundColor:"#f1f3f5",borderWidth:1,borderColor:"#e5e8ec",paddingHorizontal:14,flexDirection:"row",alignItems:"center",gap:10},searchInput:{flex:1,fontSize:14,color:"#172b4d"},
+ search:{height:47,borderRadius:7,backgroundColor:"#f5f6f7",borderWidth:1,borderColor:"#e6e8eb",paddingLeft:12,paddingRight:5,flexDirection:"row",alignItems:"center",gap:9,marginTop:9},searchInput:{flex:1,fontSize:13,color:"#20252d",paddingVertical:0},
  hero:{backgroundColor:"#172b4d",marginHorizontal:14,marginTop:4,borderRadius:15,padding:19,overflow:"hidden"},heroTop:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},heroKicker:{color:"#ffbd82",fontSize:10,fontWeight:"900",letterSpacing:1.1},heroTag:{color:"#fff",fontSize:10,fontWeight:"900",letterSpacing:2,borderWidth:1,borderColor:"#64748b",borderRadius:5,paddingHorizontal:8,paddingVertical:5},heroTitle:{color:"#fff",fontSize:24,lineHeight:30,fontWeight:"900",marginTop:11},heroSub:{color:"#d8dfeb",fontSize:13,marginTop:7,lineHeight:19},heroButton:{backgroundColor:"#ef7b25",alignSelf:"flex-start",paddingHorizontal:16,paddingVertical:12,borderRadius:8,marginTop:14},heroButtonText:{color:"#fff",fontWeight:"900",fontSize:13},
  sectionHead:{paddingHorizontal:16,marginTop:20,marginBottom:11,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},sectionTitle:{fontSize:19,fontWeight:"900",color:"#172b4d"},viewAll:{fontSize:12,color:"#e76f18",fontWeight:"800"},
- categoryRow:{paddingHorizontal:14,gap:10},categoryTile:{width:94,minHeight:94,backgroundColor:"#fff",borderWidth:1,borderColor:"#e9ebef",borderRadius:12,padding:10,alignItems:"center",justifyContent:"center",gap:8},categoryTileActive:{borderColor:"#ef7b25",backgroundColor:"#fff8f2"},categoryIcon:{width:39,height:39,borderRadius:12,backgroundColor:"#fff0e4",alignItems:"center",justifyContent:"center"},categoryIconActive:{backgroundColor:"#ef7b25"},categoryIconText:{fontSize:18,fontWeight:"900",color:"#e87520"},categoryText:{fontSize:11,fontWeight:"800",color:"#39465a",textAlign:"center"},categoryTextActive:{color:"#d96612"},
- productRow:{gap:10,marginBottom:12},card:{flex:1,backgroundColor:"#fff",borderWidth:1,borderColor:"#e9ebef",borderRadius:12,overflow:"hidden"},imageWrap:{position:"relative"},productImage:{width:"100%",height:166,backgroundColor:"#f0f2f4"},imagePlaceholder:{alignItems:"center",justifyContent:"center"},placeholderText:{fontSize:12,color:"#8a93a2"},badge:{position:"absolute",left:9,top:9,backgroundColor:"#ef7b25",color:"#fff",fontSize:9,fontWeight:"900",paddingHorizontal:8,paddingVertical:5,borderRadius:5,overflow:"hidden"},heart:{position:"absolute",right:8,top:8,backgroundColor:"#fff",width:34,height:34,borderRadius:18,alignItems:"center",justifyContent:"center",elevation:2},
+ categoryRow:{paddingHorizontal:14,gap:10},categoryTile:{width:76,minHeight:83,backgroundColor:"#fff",borderRadius:7,padding:8,alignItems:"center",justifyContent:"center",gap:7},categoryTileActive:{borderColor:"#ef7b25",backgroundColor:"#fff8f2"},categoryIcon:{width:43,height:43,borderRadius:22,backgroundColor:"#fff1e8",alignItems:"center",justifyContent:"center"},categoryIconActive:{backgroundColor:"#ef7b25"},categoryIconText:{fontSize:18,fontWeight:"900",color:"#e87520"},categoryText:{fontSize:10,fontWeight:"700",color:"#424850",textAlign:"center"},categoryTextActive:{color:"#d96612"},
+ productRow:{gap:10,marginBottom:12},card:{flex:1,backgroundColor:"#fff",borderWidth:1,borderColor:"#e9ebef",borderRadius:12,overflow:"hidden"},imageWrap:{position:"relative"},productImage:{width:"100%",height:174,backgroundColor:"#f0f1f2"},imagePlaceholder:{alignItems:"center",justifyContent:"center"},placeholderText:{fontSize:12,color:"#8a93a2"},badge:{position:"absolute",left:9,top:9,backgroundColor:"#ef7b25",color:"#fff",fontSize:9,fontWeight:"900",paddingHorizontal:8,paddingVertical:5,borderRadius:5,overflow:"hidden"},heart:{position:"absolute",right:8,top:8,backgroundColor:"#fff",width:34,height:34,borderRadius:18,alignItems:"center",justifyContent:"center",elevation:2},
  cardInfo:{padding:12},productName:{fontSize:13,fontWeight:"700",color:"#202b3c",lineHeight:18,minHeight:36},price:{fontSize:16,fontWeight:"900",color:"#172b4d",marginTop:8},oldPrice:{fontSize:11,color:"#9299a4",textDecorationLine:"line-through"},seller:{fontSize:10,color:"#7a8492",marginTop:7},addButton:{backgroundColor:"#fff1e6",borderRadius:8,alignItems:"center",justifyContent:"center",paddingVertical:11,marginTop:11,minHeight:40},addText:{color:"#d96612",fontWeight:"900",fontSize:12},
  bottomNav:{position:"absolute",bottom:0,left:0,right:0,height:68,borderTopWidth:1,borderTopColor:"#e7e9ed",backgroundColor:"#fff",flexDirection:"row",justifyContent:"space-around",alignItems:"center",paddingBottom:4},navItem:{alignItems:"center",justifyContent:"center",flex:1,minHeight:54},navIcon:{fontSize:23},navLabel:{fontSize:10,fontWeight:"800",marginTop:3},
  demoNotice:{marginHorizontal:14,marginTop:8,padding:10,borderRadius:8,backgroundColor:"#fff4e9"},demoNoticeText:{fontSize:10,color:"#8b4c18",fontWeight:"700",lineHeight:15},demoDetail:{fontSize:11,color:"#9a5b20",fontWeight:"800",marginTop:10},trust:{margin:15,padding:18,backgroundColor:"#fff",borderWidth:1,borderColor:"#e9ebef",borderRadius:12},trustTitle:{fontWeight:"900",fontSize:16,color:"#172b4d"},trustText:{fontSize:13,color:"#667085",marginTop:5,lineHeight:19},
  filterPanel:{marginHorizontal:14,marginTop:4,padding:14,backgroundColor:"#fff",borderWidth:1,borderColor:"#e9ebef",borderRadius:12},filterHeading:{fontSize:12,fontWeight:"900",color:"#536073",marginTop:5,marginBottom:8},filterRow:{flexDirection:"row",flexWrap:"wrap",gap:7,marginBottom:10},filterPill:{borderWidth:1,borderColor:"#dfe4ea",borderRadius:18,paddingHorizontal:12,paddingVertical:9,backgroundColor:"#fff"},filterActive:{backgroundColor:"#172b4d",borderColor:"#172b4d"},filterText:{fontSize:11,color:"#536073",fontWeight:"800"},page:{padding:18,paddingBottom:110},pageTitle:{fontSize:26,fontWeight:"900",color:"#172b4d",marginBottom:16},empty:{color:"#777",fontSize:14,lineHeight:21,paddingVertical:25,textAlign:"center"},emptyBox:{marginHorizontal:16,marginTop:22,padding:22,backgroundColor:"#fff",borderRadius:13,alignItems:"center"},emptyTitle:{fontSize:17,fontWeight:"900",color:"#172b4d"},outlineButton:{marginTop:12,borderWidth:1,borderColor:"#ef7b25",paddingHorizontal:16,paddingVertical:11,borderRadius:8},outlineText:{fontSize:13,color:"#df6c19",fontWeight:"900"},loading:{padding:35,alignItems:"center",gap:10},loadingText:{fontSize:13,color:"#777"},
  cartRow:{flexDirection:"row",alignItems:"center",gap:10,borderBottomWidth:1,borderColor:"#eee",paddingVertical:12},cartImage:{width:72,height:72,borderRadius:9,backgroundColor:"#f2f3f5"},qtyButton:{width:32,height:32,borderRadius:8,backgroundColor:"#fff1e5",alignItems:"center",justifyContent:"center"},qtyText:{fontSize:14,fontWeight:"900",color:"#172b4d"},total:{fontSize:18,fontWeight:"900",color:"#172b4d",marginTop:20,textAlign:"right"},
  back:{padding:16},backText:{color:"#ef7b25",fontWeight:"900"},detailImage:{width:"100%",height:320,backgroundColor:"#f4f4f4"},detailTitle:{fontSize:24,fontWeight:"900",color:"#172b4d"},priceLarge:{fontSize:27,fontWeight:"900",color:"#ef7b25",marginTop:12},detailMeta:{fontSize:12,color:"#7a8492",marginTop:9},detailDescription:{fontSize:14,color:"#667085",lineHeight:22,marginTop:18},primaryButton:{backgroundColor:"#ef7b25",padding:17,borderRadius:10,alignItems:"center",marginTop:20,minHeight:52,justifyContent:"center"},primaryText:{color:"#fff",fontWeight:"900",fontSize:14},reportButton:{alignItems:"center",padding:14,marginTop:8},reportText:{color:"#a33",fontWeight:"800",fontSize:12}
+ marketHeader:{backgroundColor:"#fff",paddingHorizontal:15,paddingTop:7,paddingBottom:9,borderBottomWidth:1,borderBottomColor:"#eceef0"},marketHeaderTop:{height:49,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},marketEyebrow:{fontSize:9,fontWeight:"900",letterSpacing:1.2,color:"#8a9098",marginBottom:1},headerAction:{width:42,height:42,borderRadius:21,backgroundColor:"#f5f6f7",alignItems:"center",justifyContent:"center"},searchGlyph:{fontSize:22,color:"#666",width:22,textAlign:"center"},searchAction:{backgroundColor:"#f36f21",paddingHorizontal:14,paddingVertical:10,borderRadius:5},searchActionText:{color:"#fff",fontSize:12,fontWeight:"900"},locationLine:{flexDirection:"row",justifyContent:"space-between",marginTop:7},locationText:{fontSize:10,color:"#777f89",fontWeight:"600"},promoBanner:{marginHorizontal:12,marginTop:12,minHeight:160,borderRadius:8,backgroundColor:"#f36f21",padding:16,flexDirection:"row",overflow:"hidden",justifyContent:"space-between",alignItems:"center"},promoCopy:{flex:1,paddingRight:7},promoKicker:{fontSize:9,color:"#fff0e5",fontWeight:"900",letterSpacing:1},promoTitle:{fontSize:22,lineHeight:26,fontWeight:"900",color:"#fff",marginTop:7,maxWidth:230},promoSub:{fontSize:11,lineHeight:16,color:"#fff4ec",marginTop:6,maxWidth:220},promoButton:{alignSelf:"flex-start",backgroundColor:"#fff",paddingHorizontal:12,paddingVertical:9,borderRadius:5,marginTop:12},promoButtonText:{color:"#d85d16",fontSize:11,fontWeight:"900"},promoMark:{width:86,height:86,borderRadius:43,backgroundColor:"#ff9a58",borderWidth:1,borderColor:"#ffc09a",alignItems:"center",justifyContent:"center"},promoMarkTop:{fontSize:28,fontWeight:"900",color:"#fff"},promoMarkBottom:{fontSize:9,fontWeight:"900",color:"#fff",letterSpacing:2},shortcutRow:{flexDirection:"row",justifyContent:"space-around",backgroundColor:"#fff",marginTop:10,paddingVertical:12,borderBottomWidth:1,borderColor:"#eceef0"},shortcut:{alignItems:"center",flex:1},shortcutIcon:{width:42,height:42,borderRadius:22,backgroundColor:"#fff1e8",alignItems:"center",justifyContent:"center"},shortcutGlyph:{fontSize:21,color:"#ed6b1b",fontWeight:"800"},shortcutLabel:{fontSize:10,color:"#3c424a",fontWeight:"700",marginTop:6},sectionHint:{fontSize:10,color:"#858b94",marginTop:3},featuredRow:{paddingHorizontal:12,gap:10},featuredCard:{width:142,backgroundColor:"#fff",borderRadius:7,padding:8,borderWidth:1,borderColor:"#eceef0"},featuredImage:{width:"100%",height:118,backgroundColor:"#f0f1f2",borderRadius:5},featuredName:{fontSize:11,color:"#343a42",fontWeight:"700",lineHeight:15,marginTop:7,minHeight:30},featuredPrice:{fontSize:14,color:"#222831",fontWeight:"900",marginTop:5},featuredSeller:{fontSize:9,color:"#23865a",fontWeight:"700",marginTop:3},
 });
