@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import {marketText,MarketLanguage} from "../lib/i18n";
-import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking } from "react-native";
+import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking, Alert } from "react-native";
 
 type Section = "hub" | "news" | "jobs" | "stocks" | "football";
 const orange = "#ef7b25";
@@ -40,6 +40,11 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
   const filteredNews = useMemo(()=>newsRows.filter(x=>(newsCategory==="All"||x.category===newsCategory)&&(!search||x.title.toLowerCase().includes(search.toLowerCase()))),[newsRows,newsCategory,search]);
   const filteredJobs = useMemo(()=>jobRows.filter(x=>(jobType==="All"||x.type===jobType)&&(!search||[x.title,x.company,x.location,x.category].join(" ").toLowerCase().includes(search.toLowerCase()))),[jobRows,jobType,search]);
   const go = (next:Section) => { setSearch(""); setSection(next); };
+  const openExternal = async (url?:string) => {
+    if(!url)return;
+    try{await Linking.openURL(url);}
+    catch{Alert.alert("Unable to open link","Check your internet connection or try opening this link again.");}
+  };
   const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":"Explore Malawi Market");
   const pill = (label:string, active:boolean, action:()=>void) => <Pressable key={label} onPress={action} style={[s.pill,active&&s.pillActive]}><Text style={[s.pillText,active&&{color:"#fff"}]}>{label}</Text></Pressable>;
   const notice = (text:string) => <View style={s.notice}><Text style={s.noticeText}>DATA STATUS · {text}</Text></View>;
@@ -60,14 +65,14 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
       {notice(liveFlags.news?"Verified articles loaded from Malawi Market content feed.":"No verified articles are published yet. Sync Malawi24 RSS or add sourced articles in Admin.")}
       <TextInput value={search} onChangeText={setSearch} placeholder="Search verified headlines" style={s.search}/>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:10}}>{categories.map(c=>pill(c,newsCategory===c,()=>setNewsCategory(c)))}</ScrollView>
-      {filteredNews.map((item,i)=><Pressable key={i} style={s.article} onPress={()=>item.sourceUrl?void Linking.openURL(item.sourceUrl):null}><Text style={s.category}>{item.category.toUpperCase()} · {item.age.toUpperCase()}</Text><Text style={s.cardTitle}>{item.title}</Text><Text style={s.body}>{item.summary}</Text><Text style={s.meta}>{item.source} · Open original article</Text></Pressable>)}
+      {filteredNews.map((item,i)=><Pressable key={i} disabled={!item.sourceUrl} style={s.article} onPress={()=>void openExternal(item.sourceUrl)}><Text style={s.category}>{item.category.toUpperCase()} · {item.age.toUpperCase()}</Text><Text style={s.cardTitle}>{item.title}</Text><Text style={s.body}>{item.summary}</Text><Text style={s.meta}>{item.source} · Open original article</Text></Pressable>)}
       {!filteredNews.length&&<Text style={s.empty}>No verified articles match this view yet.</Text>}
     </> : null}
     {section==="jobs" ? <>
       {notice(liveFlags.jobs?"Published job listings from Malawi Market content feed.":"No verified job listings are published yet. Employers and administrators can submit sourced vacancies.")}
       <TextInput value={search} onChangeText={setSearch} placeholder="Search role, company or location" style={s.search}/>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:10}}>{jobTypes.map(c=>pill(c,jobType===c,()=>setJobType(c)))}</ScrollView>
-      {filteredJobs.map((item,i)=><Pressable key={i} style={s.article} onPress={()=>item.applicationUrl?void Linking.openURL(item.applicationUrl):null}><View style={s.row}><Text style={s.category}>{item.category.toUpperCase()}</Text><Text style={s.type}>{item.type}</Text></View><Text style={s.cardTitle}>{item.title}</Text><Text style={s.body}>{item.company}</Text><Text style={s.meta}>⌖ {item.location}   ·   {item.salary}</Text>{item.applicationUrl?<Text style={s.soon}>OPEN APPLICATION</Text>:null}</Pressable>)}
+      {filteredJobs.map((item,i)=><Pressable key={i} disabled={!item.applicationUrl} style={s.article} onPress={()=>void openExternal(item.applicationUrl)}><View style={s.row}><Text style={s.category}>{item.category.toUpperCase()}</Text><Text style={s.type}>{item.type}</Text></View><Text style={s.cardTitle}>{item.title}</Text><Text style={s.body}>{item.company}</Text><Text style={s.meta}>⌖ {item.location}   ·   {item.salary}</Text>{item.applicationUrl?<Text style={s.soon}>OPEN APPLICATION</Text>:null}</Pressable>)}
       {!filteredJobs.length&&<Text style={s.empty}>No verified vacancies match your search yet.</Text>}
     </> : null}
     {section==="stocks" ? <>
@@ -79,7 +84,7 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
     {section==="football" ? <>
       {notice(liveFlags.football?"Fixtures loaded from Malawi Market football data feed.":"No verified fixtures are published yet. Add fixtures from an authoritative competition source.")}
       <View style={s.marketSummary}><Text style={s.summaryLabel}>FOOTBALL CENTRE</Text><Text style={s.summaryValue}>Malawi football</Text><Text style={s.meta}>Fixtures · Results · Competitions</Text></View>
-      {fixtureRows.map((item,i)=><Pressable key={i} style={s.fixture} onPress={()=>item.sourceUrl?void Linking.openURL(item.sourceUrl):null}><Text style={s.category}>{item.league.toUpperCase()}</Text><View style={s.fixtureTeams}><Text style={s.team}>{item.home}</Text><Text style={s.score}>{item.score}</Text><Text style={s.team}>{item.away}</Text></View><Text style={s.meta}>{item.time} · {item.status||"scheduled"}</Text><Text style={s.meta}>{item.sourceName||"Source not recorded"}</Text></Pressable>)}
+      {fixtureRows.map((item,i)=><Pressable key={i} disabled={!item.sourceUrl} style={s.fixture} onPress={()=>void openExternal(item.sourceUrl)}><Text style={s.category}>{item.league.toUpperCase()}</Text><View style={s.fixtureTeams}><Text style={s.team}>{item.home}</Text><Text style={s.score}>{item.score}</Text><Text style={s.team}>{item.away}</Text></View><Text style={s.meta}>{item.time} · {item.status||"scheduled"}</Text><Text style={s.meta}>{item.sourceName||"Source not recorded"}</Text></Pressable>)}
       {!fixtureRows.length?<Text style={s.empty}>No verified fixtures are available yet.</Text>:null}
       {standings.length?<><Text style={s.subheading}>League standings</Text>{standings.map((team,i)=><View key={team.id} style={s.stockRow}><Text style={s.stockSymbol}>{team.position}.</Text><View style={{flex:1,marginLeft:10}}><Text style={s.menuTitle}>{team.team_name}</Text><Text style={s.meta}>{team.competition} · {team.season} · P {team.played} · W {team.won} · D {team.drawn} · L {team.lost}</Text><Text style={s.meta}>{team.source_name||"Source not recorded"}</Text></View><Text style={s.stockPrice}>{team.points} pts</Text></View>)}</>:<View style={s.coming}><Text style={s.comingText}>League standings</Text><Text style={s.soon}>AWAITING VERIFIED DATA SOURCE</Text></View> }
     </> : null}
