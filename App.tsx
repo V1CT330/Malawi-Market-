@@ -111,8 +111,8 @@ export default function App() {
   const addToCart = (id: string) => setCart(current => [...current, id]);
   const toggleSaved = (id: string) =>
     setSaved(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
-  const cartProducts = cart.map(id => products.find(p => p.id === id)).filter((p): p is Product => Boolean(p));
-  const cartTotal = cartProducts.reduce((sum, p) => sum + Number(p.price_mwk), 0);
+  const cartProducts = Array.from(new Set(cart)).map(id => ({ product: products.find(p => p.id === id), quantity: cart.filter(x => x === id).length })).filter((x): x is { product: Product; quantity: number } => Boolean(x.product));
+  const cartTotal = cartProducts.reduce((sum, item) => sum + Number(item.product.price_mwk) * item.quantity, 0);
   const savedProducts = products.filter(p => saved.includes(p.id));
 
   const header = <>
@@ -213,10 +213,16 @@ export default function App() {
     : tab === "Cart" ? <ScrollView contentContainerStyle={s.page}>
       <Text style={s.pageTitle}>Your cart</Text>
       {cartProducts.length === 0 ? <Text style={s.empty}>Your cart is empty. Explore products and add something you like.</Text> :
-        <>{cartProducts.map((p,index) => <View key={index} style={s.cartRow}>
+        <>{cartProducts.map(({product:p,quantity},index) => <View key={p.id} style={s.cartRow}>
           {productImage(p) ? <Image source={{uri:productImage(p)}} style={s.cartImage}/> : <View style={[s.cartImage,s.imagePlaceholder]}/>}
-          <View style={{flex:1}}><Text style={s.productName}>{p.title}</Text><Text style={s.price}>{money(p.price_mwk)}</Text></View>
-          <Pressable onPress={() => setCart(v => { const copy=[...v]; copy.splice(index,1); return copy; })}><Text style={{color:"#c44",padding:8}}>Remove</Text></Pressable>
+          <View style={{flex:1}}><Text style={s.productName}>{p.title}</Text><Text style={s.price}>{money(p.price_mwk)}</Text><Text style={s.seller}>Quantity: {quantity}</Text>
+            <View style={{flexDirection:"row",alignItems:"center",gap:12,marginTop:7}}>
+              <Pressable onPress={()=>setCart(v=>{const i=v.indexOf(p.id);if(i<0)return v;const copy=[...v];copy.splice(i,1);return copy;})} style={s.qtyButton}><Text style={s.qtyText}>−</Text></Pressable>
+              <Text style={s.qtyText}>{quantity}</Text>
+              <Pressable onPress={()=>addToCart(p.id)} style={s.qtyButton}><Text style={s.qtyText}>+</Text></Pressable>
+            </View>
+          </View>
+          <Pressable onPress={() => setCart(v => v.filter(id=>id!==p.id))}><Text style={{color:"#c44",padding:8}}>Remove</Text></Pressable>
         </View>)}
         <Text style={s.total}>Subtotal: {money(cartTotal)}</Text>
         <Text style={s.detailDescription}>Checkout and payment will be enabled after account and payment integration.</Text>
