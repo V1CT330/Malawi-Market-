@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { DEMO_PRODUCTS, DEMO_CATEGORY_NAMES } from "./src/data/demo";
 import {
-  SafeAreaView, ScrollView, View, Text, TextInput, Image, Pressable,
+  SafeAreaView, ScrollView, View, Text, TextInput, Image, Pressable, Linking,
   StatusBar, StyleSheet, FlatList, ActivityIndicator, RefreshControl
 } from "react-native";
 import { supabase } from "./src/lib/supabase";
@@ -77,6 +77,28 @@ export default function App() {
   };
 
   useEffect(() => { void loadCatalogue(); }, []);
+  useEffect(() => {
+    const handleAuthUrl = async (url: string | null) => {
+      if (!url || !url.startsWith("mw.wealthgrid.malawimarket://auth/reset-password")) return;
+      try {
+        const parsed = new URL(url);
+        const code = parsed.searchParams.get("code");
+        if (code) await supabase.auth.exchangeCodeForSession(code);
+        else {
+          const params = new URLSearchParams(url.split("#")[1] || "");
+          const access_token = params.get("access_token");
+          const refresh_token = params.get("refresh_token");
+          if (access_token && refresh_token) await supabase.auth.setSession({ access_token, refresh_token });
+        }
+        setTab("Account");
+      } catch (error) {
+        console.warn("Password recovery link could not be processed", error);
+      }
+    };
+    void Linking.getInitialURL().then(handleAuthUrl);
+    const subscription = Linking.addEventListener("url", event => { void handleAuthUrl(event.url); });
+    return () => subscription.remove();
+  }, []);
   useEffect(() => {
     let active = true;
     Promise.all([AsyncStorage.getItem("@malawi-market/cart"), AsyncStorage.getItem("@malawi-market/wishlist")]).then(([c, w]) => {
