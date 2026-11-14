@@ -178,7 +178,7 @@ export default function App() {
         <Text style={s.price}>{money(item.price_mwk)}</Text>
         {item.compare_at_price_mwk ? <Text style={s.oldPrice}>{money(item.compare_at_price_mwk)}</Text> : null}
         <Text numberOfLines={1} style={s.seller}>{item.seller?.name ?? "Malawi Market seller"}{item.seller?.is_verified ? "  ✓" : ""}</Text>
-        <Pressable style={s.addButton} onPress={() => addToCart(item.id)}><Text style={s.addText}>Add to cart</Text></Pressable>
+        <Pressable disabled={item.stock_quantity<=0} style={[s.addButton,item.stock_quantity<=0&&{opacity:0.45}]} onPress={() => addToCart(item.id)}><Text style={s.addText}>{item.stock_quantity>0?"Add to cart":"Out of stock"}</Text></Pressable>
       </View>
     </Pressable>;
   };
@@ -213,7 +213,7 @@ export default function App() {
         {selected.demo ? <Text style={s.demoDetail}>DEMO LISTING — product, seller and price are illustrative only.</Text> : null}
         <Text style={s.detailDescription}>{selected.description || "No product description has been provided."}</Text>
         <ProductReviews productId={selected.id} />
-        <Pressable style={s.primaryButton} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>Add to cart</Text></Pressable>
+        <Pressable disabled={selected.stock_quantity<=0} style={[s.primaryButton,selected.stock_quantity<=0&&{opacity:0.45}]} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>{selected.stock_quantity>0?"Add to cart":"Out of stock"}</Text></Pressable>
         <Pressable style={s.reportButton} onPress={() => {
           Alert.alert("Report this listing","Send a report to the Malawi Market moderation team?",[
             {text:"Cancel",style:"cancel"},
@@ -228,7 +228,7 @@ export default function App() {
       </View>
     </ScrollView>
     : tab === "Home" || tab === "Search" ? <ScrollView contentContainerStyle={{paddingBottom:100}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadCatalogue(true)} />}>
-      {products.some(p => p.demo) ? <View style={s.demoNotice}><Text style={s.demoNoticeText}>DEMO CATALOGUE · Sample listings for preview only. No real seller offers or transactions.</Text></View> : null}
+      
       <View style={s.hero}>
         <Text style={s.heroKicker}>DISCOVER MORE. SHOP BETTER.</Text>
         <Text style={s.heroTitle}>Your marketplace,{"\n"}right here in Malawi.</Text>
@@ -276,7 +276,7 @@ export default function App() {
     : tab === "Wishlist" ? <ScrollView contentContainerStyle={s.page}>
       <Text style={s.pageTitle}>Wishlist</Text>
       {savedProducts.length ? <FlatList data={savedProducts} renderItem={productCard} keyExtractor={p=>p.id} numColumns={2} scrollEnabled={false} columnWrapperStyle={s.productRow}/> :
-        <Text style={s.empty}>Products you save will appear here during this session.</Text>}
+        <Text style={s.empty}>Products you save will appear here.</Text>}
     </ScrollView>
     : tab === "Explore" ? <ExploreScreens /> : <AccountScreens />}
     {nav}
