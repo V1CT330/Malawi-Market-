@@ -3,6 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Switch, Alert } from "react-native";
 import { supabase } from "../lib/supabase";
 import { AuthScreen } from "./AuthScreen";
+import { SellerPortal } from "./SellerPortal";
 
 const KEY_DRAFTS="@malawi-market/seller-drafts";
 const KEY_PROFILE="@malawi-market/profile";
@@ -39,16 +40,7 @@ export function AccountScreens(){
   <View style={s.note}><Text style={s.noteText}>Account sign-in is connected. Seller publishing and payment-backed checkout still require seller approval and payment integration.</Text></View>
  </>}
  {screen==="auth"&&<AuthScreen onBack={back} onDone={()=>setScreen("menu")}/>}
- {screen==="seller"&&<>{header("Seller Centre")}<View style={s.note}><Text style={s.noteText}>LOCAL DRAFTS ONLY · These listings are not published and are not visible to shoppers.</Text></View>
-  <Text style={s.label}>Product title</Text><TextInput value={title} onChangeText={setTitle} placeholder="e.g. Samsung Galaxy A15" style={s.input}/>
-  <Text style={s.label}>Price (MWK)</Text><TextInput value={price} onChangeText={setPrice} keyboardType="numeric" placeholder="e.g. 250000" style={s.input}/>
-  <Text style={s.label}>Category</Text><TextInput value={category} onChangeText={setCategory} placeholder="Category" style={s.input}/>
-  <Text style={s.label}>Description</Text><TextInput value={description} onChangeText={setDescription} multiline style={[s.input,{height:90,textAlignVertical:"top"}]} placeholder="Describe the product, condition and details"/>
-  <Pressable style={s.primary} onPress={()=>{if(!title.trim()||!price.trim()||!Number.isFinite(Number(price))||Number(price)<=0){Alert.alert("Missing details","Enter a product title and a valid price.");return;}const next=[{id:"draft-"+Date.now(),title:title.trim(),price,category:category.trim()||"Other",description:description.trim(),createdAt:new Date().toISOString()},...drafts];void persistDrafts(next);setTitle("");setPrice("");setDescription("");Alert.alert("Draft saved","Your product draft is saved on this device.");}}><Text style={s.primaryText}>Save product draft</Text></Pressable>
-  <Text style={s.section}>Saved drafts ({drafts.length})</Text>
-  {drafts.map(d=><View key={d.id} style={s.card}><Text style={s.menuTitle}>{d.title}</Text><Text style={s.price}>{money(Number(d.price)||0)} · {d.category}</Text><Text style={s.meta}>{d.description||"No description"}</Text><Pressable onPress={()=>Alert.alert("Delete draft?","This removes the saved draft from this device.",[{text:"Cancel"},{text:"Delete",style:"destructive",onPress:()=>void persistDrafts(drafts.filter(x=>x.id!==d.id))}])}><Text style={s.delete}>Delete draft</Text></Pressable></View>)}
-  {!drafts.length&&<Text style={s.empty}>No drafts saved yet.</Text>}
- </>}
+ {screen==="seller"&&<SellerPortal/>}
  {screen==="orders"&&<>{header("Order history")}<View style={s.note}><Text style={s.noteText}>No real orders can be placed until sign-in and checkout are connected. This page will show confirmed purchases here.</Text></View>
   {orders.length?orders.map((o,i)=><View key={i} style={s.card}><Text style={s.menuTitle}>Order {o.id}</Text><Text style={s.meta}>{o.date} · {o.status}</Text><Text style={s.price}>{money(o.total)}</Text></View>):<View style={s.emptyCard}><Text style={s.emptyIcon}>▤</Text><Text style={s.menuTitle}>No orders yet</Text><Text style={s.meta}>Your purchases and delivery updates will appear here.</Text></View>}
  </>}
