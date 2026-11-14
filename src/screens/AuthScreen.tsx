@@ -3,8 +3,9 @@ import {View,Text,TextInput,Pressable,StyleSheet,Alert,ActivityIndicator} from "
 import {supabase} from "../lib/supabase";
 
 type Mode="signin"|"signup"|"recover"|"reset";
-export function AuthScreen({onDone,onBack}:{onDone:()=>void;onBack:()=>void}){
- const [mode,setMode]=useState<Mode>("signin");const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [confirm,setConfirm]=useState("");const [busy,setBusy]=useState(false);
+export function AuthScreen({onDone,onBack,initialMode="signin"}:{onDone:()=>void;onBack:()=>void;initialMode?:Mode}){
+ const [mode,setMode]=useState<Mode>(initialMode);const [email,setEmail]=useState("");const [password,setPassword]=useState("");const [confirm,setConfirm]=useState("");const [busy,setBusy]=useState(false);
+ useEffect(()=>{if(initialMode==="reset")setMode("reset");},[initialMode]);
  useEffect(()=>{const {data:{subscription}}=supabase.auth.onAuthStateChange(event=>{if(event==="PASSWORD_RECOVERY")setMode("reset");});return()=>subscription.unsubscribe();},[]);
  const submit=async()=>{
   const clean=email.trim().toLowerCase();
