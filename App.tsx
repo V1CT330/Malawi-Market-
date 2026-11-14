@@ -6,6 +6,7 @@ import {
   StatusBar, StyleSheet, FlatList, ActivityIndicator, RefreshControl
 } from "react-native";
 import { supabase } from "./src/lib/supabase";
+import { ExploreScreens } from "./src/screens/ExploreScreens";
 
 type Category = { id: string; name: string; slug: string; icon?: string | null };
 type Product = {
@@ -140,7 +141,7 @@ export default function App() {
   };
 
   const nav = <View style={s.bottomNav}>
-    {[[ "Home","⌂" ],[ "Search","⌕" ],[ "Wishlist","♡" ],[ "Cart","🛒" ],[ "Account","♙" ]].map(([name,icon]) =>
+    {[[ "Home","⌂" ],[ "Search","⌕" ],[ "Explore","▦" ],[ "Wishlist","♡" ],[ "Cart","🛒" ],[ "Account","♙" ]].map(([name,icon]) =>
       <Pressable key={name} onPress={() => { setSelected(null); setTab(name); }} style={s.navItem}>
         <Text style={[s.navIcon,{color:tab===name?"#ef7b25":"#777"}]}>{icon}</Text>
         <Text style={[s.navLabel,{color:tab===name?"#ef7b25":"#777"}]}>{name}</Text>
@@ -208,7 +209,7 @@ export default function App() {
       {savedProducts.length ? <FlatList data={savedProducts} renderItem={productCard} keyExtractor={p=>p.id} numColumns={2} scrollEnabled={false} columnWrapperStyle={s.productRow}/> :
         <Text style={s.empty}>Products you save will appear here during this session.</Text>}
     </ScrollView>
-    : <View style={s.page}><Text style={s.pageTitle}>Your account</Text><Text style={s.empty}>Account creation, sign-in and seller tools are intentionally deferred to a later phase.</Text></View>}
+    : tab === "Explore" ? <ExploreScreens /> : <View style={s.page}><Text style={s.pageTitle}>Your account</Text><Text style={s.empty}>Account creation, sign-in and seller tools are intentionally deferred to a later phase.</Text></View>}
     {nav}
   </SafeAreaView>;
 }
