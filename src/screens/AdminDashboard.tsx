@@ -39,6 +39,15 @@ export function AdminDashboard(){
   setBusy(true);const {error}=await supabase.from("market_sellers").update({status,is_verified:status==="active"}).eq("id",id);
   if(error)Alert.alert("Seller update failed",error.message);else await load();setBusy(false);
  };
+ const updateUserStatus=async(userId:string,suspended:boolean)=>{
+  setBusy(true);const {error}=await supabase.from("profiles").update({suspended}).eq("id",userId);
+  if(error)Alert.alert("User update failed",error.message);else await load();setBusy(false);
+ };
+ const updateReport=async(reportId:string,status:"reviewing"|"resolved"|"dismissed")=>{
+  const {data:{user}}=await supabase.auth.getUser();if(!user)return;
+  setBusy(true);const {error}=await supabase.from("market_reports").update({status,reviewed_by:user.id,reviewed_at:new Date().toISOString()}).eq("id",reportId);
+  if(error)Alert.alert("Report update failed",error.message);else await load();setBusy(false);
+ };
  const updateProduct=async(id:string,status:"published"|"archived")=>{
   setBusy(true);const {error}=await supabase.from("market_products").update({status,published_at:status==="published"?new Date().toISOString():null}).eq("id",id);
   if(error)Alert.alert("Listing update failed",error.message);else await load();setBusy(false);
