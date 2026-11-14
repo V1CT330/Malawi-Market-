@@ -14,7 +14,7 @@ const initialProfile:Profile={displayName:"Guest shopper",phone:"",location:"",l
 const money=(n:number)=>"MK "+n.toLocaleString("en-US");
 
 export function AccountScreens(){
- const [screen,setScreen]=useState<"menu"|"seller"|"orders"|"profile"|"settings"|"auth">("menu");
+ const [screen,setScreen]=useState<"menu"|"seller"|"orders"|"profile"|"settings"|"auth"|"drafts">("menu");
  const [drafts,setDrafts]=useState<Draft[]>([]);
  const [profile,setProfile]=useState<Profile>(initialProfile);
  const [title,setTitle]=useState(""); const [price,setPrice]=useState(""); const [category,setCategory]=useState("Electronics"); const [description,setDescription]=useState("");
@@ -23,6 +23,7 @@ export function AccountScreens(){
  const [accountEmail,setAccountEmail]=useState("");
  useEffect(()=>{ void supabase.auth.getSession().then(({data})=>setAccountEmail(data.session?.user.email??"")); const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>setAccountEmail(session?.user.email??"")); return ()=>subscription.unsubscribe(); },[]);
  useEffect(()=>{AsyncStorage.multiGet([KEY_DRAFTS,KEY_PROFILE,KEY_ORDERS]).then(rows=>{const map=Object.fromEntries(rows);if(map[KEY_DRAFTS])setDrafts(JSON.parse(map[KEY_DRAFTS]));if(map[KEY_PROFILE])setProfile({...initialProfile,...JSON.parse(map[KEY_PROFILE])});if(map[KEY_ORDERS])setOrders(JSON.parse(map[KEY_ORDERS]));}).catch(()=>{});},[]);
+ useEffect(()=>{let active=true;const load=async()=>{if(!accountEmail)return;const {data:{user}}=await supabase.auth.getUser();if(!user)return;const {data}=await supabase.from("market_orders").select("id,status,total_mwk,created_at").eq("buyer_user_id",user.id).order("created_at",{ascending:false});if(active&&data)setOrders(data);};void load();return()=>{active=false;};},[accountEmail]);
  const persistDrafts=async(next:Draft[])=>{setDrafts(next);await AsyncStorage.setItem(KEY_DRAFTS,JSON.stringify(next));};
  const persistProfile=async(next:Profile)=>{setProfile(next);await AsyncStorage.setItem(KEY_PROFILE,JSON.stringify(next));};
  const back=()=>setScreen("menu");
@@ -32,7 +33,8 @@ export function AccountScreens(){
  {screen==="menu"&&<><Text style={s.title}>Your account</Text><Text style={s.subtitle}>Manage your marketplace activity on this device.</Text>
   <View style={s.profileCard}><Text style={s.avatar}>👤</Text><View style={{flex:1}}><Text style={s.menuTitle}>{profile.displayName||"Guest shopper"}</Text><Text style={s.meta}>{profile.phone||"No phone number added"} · {profile.location||"Location not set"}</Text></View><Text style={s.demo}>LOCAL</Text></View>
   {row("♙",accountEmail?"Signed in":"Sign in / Register",accountEmail||"Unlock buyer and seller account features",()=>setScreen("auth"))}
-  {row("▣","Seller Centre","Create and save product listing drafts",()=>setScreen("seller"))}
+  {row("▣","Seller Centre","Apply, manage listings and publish products",()=>setScreen("seller"))}
+  {row("▤","Saved drafts","Previously saved drafts on this device",()=>setScreen("drafts"))}
   {row("▤","Orders","View order history and delivery status",()=>setScreen("orders"))}
   {row("♙","Profile","Edit your local profile details",()=>setScreen("profile"))}
   {row("⚙","Settings","Notifications, language and app preferences",()=>setScreen("settings"))}
@@ -41,8 +43,9 @@ export function AccountScreens(){
  </>}
  {screen==="auth"&&<AuthScreen onBack={back} onDone={()=>setScreen("menu")}/>}
  {screen==="seller"&&<SellerPortal/>}
+ {screen==="drafts"&&<>{header("Saved local drafts")}{drafts.length?drafts.map(d=><View key={d.id} style={s.card}><Text style={s.menuTitle}>{d.title}</Text><Text style={s.price}>{money(Number(d.price)||0)} · {d.category}</Text><Text style={s.meta}>{d.description||"No description"}</Text><Pressable onPress={()=>Alert.alert("Delete draft?","Remove this saved draft from this device?",[{text:"Cancel"},{text:"Delete",style:"destructive",onPress:()=>void persistDrafts(drafts.filter(x=>x.id!==d.id))}])}><Text style={s.delete}>Delete draft</Text></Pressable></View>):<Text style={s.empty}>No saved drafts on this device.</Text>}</>}
  {screen==="orders"&&<>{header("Order history")}<View style={s.note}><Text style={s.noteText}>No real orders can be placed until sign-in and checkout are connected. This page will show confirmed purchases here.</Text></View>
-  {orders.length?orders.map((o,i)=><View key={i} style={s.card}><Text style={s.menuTitle}>Order {o.id}</Text><Text style={s.meta}>{o.date} · {o.status}</Text><Text style={s.price}>{money(o.total)}</Text></View>):<View style={s.emptyCard}><Text style={s.emptyIcon}>▤</Text><Text style={s.menuTitle}>No orders yet</Text><Text style={s.meta}>Your purchases and delivery updates will appear here.</Text></View>}
+  {orders.length?orders.map((o,i)=><View key={i} style={s.card}><Text style={s.menuTitle}>Order {o.id}</Text><Text style={s.meta}>{o.created_at?new Date(o.created_at).toLocaleString():o.date} · {o.status}</Text><Text style={s.price}>{money(Number(o.total_mwk??o.total??0))}</Text></View>):<View style={s.emptyCard}><Text style={s.emptyIcon}>▤</Text><Text style={s.menuTitle}>No orders yet</Text><Text style={s.meta}>Your purchases and delivery updates will appear here.</Text></View>}
  </>}
  {screen==="profile"&&<>{header("Profile")}<Text style={s.label}>Display name</Text><TextInput value={profile.displayName} onChangeText={v=>void persistProfile({...profile,displayName:v})} style={s.input} placeholder="Your name"/>
   <Text style={s.label}>Phone number</Text><TextInput value={profile.phone} onChangeText={v=>void persistProfile({...profile,phone:v})} style={s.input} keyboardType="phone-pad" placeholder="+265"/>
