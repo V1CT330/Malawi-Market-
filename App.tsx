@@ -9,6 +9,7 @@ import { ExploreScreens } from "./src/screens/ExploreScreens";
 import { AccountScreens } from "./src/screens/AccountScreens";
 import { ProductReviews } from "./src/components/ProductReviews";
 import { CheckoutScreen } from "./src/screens/CheckoutScreen";
+import { marketText, MarketLanguage } from "./src/lib/i18n";
 
 type Category = { id: string; name: string; slug: string; icon?: string | null };
 type Product = {
@@ -34,6 +35,7 @@ const productImage = (p: Product) =>
 
 export default function App() {
   const [tab, setTab] = useState("Home");
+  const [language, setLanguage] = useState<MarketLanguage>("English");
   const [checkout, setCheckout] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
@@ -76,6 +78,15 @@ export default function App() {
   };
 
   useEffect(() => { void loadCatalogue(); }, []);
+  useEffect(() => {
+    void AsyncStorage.getItem("@malawi-market/profile").then(raw => {
+      if (!raw) return;
+      try {
+        const saved = JSON.parse(raw);
+        if (["English","Chichewa","Tumbuka"].includes(saved.language)) setLanguage(saved.language);
+      } catch {}
+    });
+  }, []);
   useEffect(() => {
     const handleAuthUrl = async (url: string | null) => {
       if (!url || !url.startsWith("mw.wealthgrid.malawimarket://auth/reset-password")) return;
@@ -187,14 +198,14 @@ export default function App() {
     {[[ "Home","⌂" ],[ "Search","⌕" ],[ "Explore","▦" ],[ "Wishlist","♡" ],[ "Cart","🛒" ],[ "Account","♙" ]].map(([name,icon]) =>
       <Pressable key={name} onPress={() => { setSelected(null); setTab(name); }} style={s.navItem}>
         <Text style={[s.navIcon,{color:tab===name?"#ef7b25":"#777"}]}>{icon}</Text>
-        <Text style={[s.navLabel,{color:tab===name?"#ef7b25":"#777"}]}>{name}</Text>
+        <Text style={[s.navLabel,{color:tab===name?"#ef7b25":"#777"}]}>{marketText(language,name)}</Text>
       </Pressable>)}
   </View>;
 
   const emptyCatalogue = <View style={s.emptyBox}>
-    <Text style={s.emptyTitle}>{loadError ? "Catalogue unavailable" : "No products listed yet"}</Text>
+    <Text style={s.emptyTitle}>{loadError ? "Catalogue unavailable" : marketText(language,"No products listed yet")}</Text>
     <Text style={s.empty}>{loadError ? loadError : "Products published by Malawi Market sellers will appear here. We are not displaying sample or fake listings."}</Text>
-    <Pressable style={s.outlineButton} onPress={() => void loadCatalogue(true)}><Text style={s.outlineText}>Refresh catalogue</Text></Pressable>
+    <Pressable style={s.outlineButton} onPress={() => void loadCatalogue(true)}><Text style={s.outlineText}>{marketText(language,"Refresh catalogue")}</Text></Pressable>
   </View>;
 
   return <SafeAreaView style={s.safe}>
