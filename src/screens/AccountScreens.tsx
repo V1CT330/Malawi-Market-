@@ -7,7 +7,6 @@ import { SellerPortal } from "./SellerPortal";
 
 const KEY_DRAFTS="@malawi-market/seller-drafts";
 const KEY_PROFILE="@malawi-market/profile";
-const KEY_ORDERS="@malawi-market/orders";
 type Draft={id:string;title:string;price:string;category:string;description:string;createdAt:string};
 type Profile={displayName:string;phone:string;location:string;language:string;notifications:boolean};
 const initialProfile:Profile={displayName:"Guest shopper",phone:"",location:"",language:"English",notifications:true};
@@ -22,7 +21,7 @@ export function AccountScreens(){
  const [sort,setSort]=useState("newest");
  const [accountEmail,setAccountEmail]=useState("");
  useEffect(()=>{ void supabase.auth.getSession().then(({data})=>setAccountEmail(data.session?.user.email??"")); const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>setAccountEmail(session?.user.email??"")); return ()=>subscription.unsubscribe(); },[]);
- useEffect(()=>{AsyncStorage.multiGet([KEY_DRAFTS,KEY_PROFILE,KEY_ORDERS]).then(rows=>{const map=Object.fromEntries(rows);if(map[KEY_DRAFTS])setDrafts(JSON.parse(map[KEY_DRAFTS]));if(map[KEY_PROFILE])setProfile({...initialProfile,...JSON.parse(map[KEY_PROFILE])});if(map[KEY_ORDERS])setOrders(JSON.parse(map[KEY_ORDERS]));}).catch(()=>{});},[]);
+ useEffect(()=>{AsyncStorage.multiGet([KEY_DRAFTS,KEY_PROFILE]).then(rows=>{const map=Object.fromEntries(rows);if(map[KEY_DRAFTS])setDrafts(JSON.parse(map[KEY_DRAFTS]));if(map[KEY_PROFILE])setProfile({...initialProfile,...JSON.parse(map[KEY_PROFILE])});}).catch(()=>{});},[]);
  useEffect(()=>{let active=true;const load=async()=>{if(!accountEmail)return;const {data:{user}}=await supabase.auth.getUser();if(!user)return;const {data}=await supabase.from("market_orders").select("id,status,payment_status,total_mwk,created_at,payment_reference,market_order_items(product_title,quantity,unit_price_mwk,fulfillment_status)").eq("buyer_user_id",user.id).order("created_at",{ascending:false});if(active&&data)setOrders(data);};void load();return()=>{active=false;};},[accountEmail]);
  const persistDrafts=async(next:Draft[])=>{setDrafts(next);await AsyncStorage.setItem(KEY_DRAFTS,JSON.stringify(next));};
  const persistProfile=async(next:Profile)=>{setProfile(next);await AsyncStorage.setItem(KEY_PROFILE,JSON.stringify(next));};
