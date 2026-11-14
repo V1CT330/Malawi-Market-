@@ -46,7 +46,7 @@ export function AccountScreens(){
     supabase.rpc("has_role",{_user_id:user.id,_role:"admin"})
    ]);
    if(!active)return;
-   if(p.data)setProfile(v=>({...v,displayName:p.data.display_name??"",phone:p.data.phone??"",location:p.data.location??"",avatarUrl:p.data.avatar_url??""}));
+   const profileData=p.data;if(profileData)setProfile(v=>({...v,displayName:profileData.display_name??"",phone:profileData.phone??"",location:profileData.location??"",avatarUrl:profileData.avatar_url??""}));
    if(o.data)setOrders(o.data);if(n.data)setNotifications(n.data);setIsAdmin(a.data===true);setLoadingProfile(false);
   };
   void load();
