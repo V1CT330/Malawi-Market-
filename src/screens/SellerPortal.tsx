@@ -11,7 +11,7 @@ const slugify=(v:string)=>v.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").repl
 
 export function SellerPortal(){
  const [seller,setSeller]=useState<Seller|null>(null);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);
- const [name,setName]=useState("");const [location,setLocation]=useState("");const [description,setDescription]=useState("");const [whatsapp,setWhatsapp]=useState("");
+ const [name,setName]=useState("");const [location,setLocation]=useState("");const [storeDescription,setStoreDescription]=useState("");const [productDescription,setProductDescription]=useState("");const [whatsapp,setWhatsapp]=useState("");
  const [title,setTitle]=useState("");const [price,setPrice]=useState("");const [category,setCategory]=useState("");const [condition,setCondition]=useState("new");const [quantity,setQuantity]=useState("1");const [imageUrl,setImageUrl]=useState("");const [pickedImage,setPickedImage]=useState<{uri:string;mimeType:string;fileSize?:number}|null>(null);
  const [editingId,setEditingId]=useState<string|null>(null);const [categories,setCategories]=useState<Category[]>([]);const [myProducts,setMyProducts]=useState<Listing[]>([]);const [orderItems,setOrderItems]=useState<any[]>([]);
  const load=async()=>{
@@ -23,7 +23,7 @@ export function SellerPortal(){
     const {data:profile,error}=await supabase.from("market_sellers").select("id,name,status,description,location,whatsapp_url").eq("auth_user_id",user.id).maybeSingle();
     if(error)throw error;setSeller(profile as Seller|null);
     if(profile){
-     setName(profile.name??"");setLocation(profile.location??"");setDescription(profile.description??"");setWhatsapp(profile.whatsapp_url??"");
+     setName(profile.name??"");setLocation(profile.location??"");setStoreDescription(profile.description??"");setWhatsapp(profile.whatsapp_url??"");
      const [{data:products,error:productError},{data:orders,error:orderError}]=await Promise.all([
       supabase.from("market_products").select("id,title,description,price_mwk,status,stock_quantity,category_id,condition,location,images:market_product_images(id,image_url,is_primary)").eq("seller_id",profile.id).order("created_at",{ascending:false}),
       supabase.from("market_order_items").select("id,product_title,unit_price_mwk,quantity,fulfillment_status,order:market_orders(id,status,payment_status,delivery_name,delivery_phone,delivery_address,created_at)").eq("seller_id",profile.id).order("created_at",{ascending:false})
@@ -44,15 +44,15 @@ export function SellerPortal(){
   if(!["image/jpeg","image/png","image/webp"].includes(asset.mimeType??"image/jpeg")){Alert.alert("Unsupported image","Choose a JPEG, PNG or WebP image.");return;}
   setPickedImage({uri:asset.uri,mimeType:asset.mimeType??"image/jpeg",fileSize:asset.fileSize});setImageUrl("");
  };
- const clearForm=()=>{setEditingId(null);setTitle("");setPrice("");setQuantity("1");setImageUrl("");setPickedImage(null);setDescription("");setCategory("");setCondition("new");};
+ const clearForm=()=>{setEditingId(null);setTitle("");setPrice("");setQuantity("1");setImageUrl("");setPickedImage(null);setProductDescription("");setCategory("");setCondition("new");};
  const startEdit=(item:Listing)=>{
-  setEditingId(item.id);setTitle(item.title);setPrice(String(item.price_mwk));setQuantity(String(item.stock_quantity));setDescription(item.description??"");setCategory(item.category_id);setCondition(item.condition);setImageUrl(item.images?.find(x=>x.is_primary)?.image_url??item.images?.[0]?.image_url??"");setPickedImage(null);
+  setEditingId(item.id);setTitle(item.title);setPrice(String(item.price_mwk));setQuantity(String(item.stock_quantity));setProductDescription(item.description??"");setCategory(item.category_id);setCondition(item.condition);setImageUrl(item.images?.find(x=>x.is_primary)?.image_url??item.images?.[0]?.image_url??"");setPickedImage(null);
  };
  const apply=async()=>{
   const {data:{user}}=await supabase.auth.getUser();if(!user){Alert.alert("Sign in required","Sign in before applying for a seller account.");return;}
   if(name.trim().length<2||location.trim().length<2){Alert.alert("Missing details","Enter your store name and location.");return;}
   setBusy(true);
-  try{const slug=slugify(name)+"-"+user.id.slice(0,6);const {error}=await supabase.from("market_sellers").insert({auth_user_id:user.id,name:name.trim(),slug,location:location.trim(),description:description.trim(),status:"pending"});if(error)throw error;Alert.alert("Application submitted","Your seller profile is awaiting administrator approval.");await load();}
+  try{const slug=slugify(name)+"-"+user.id.slice(0,6);const {error}=await supabase.from("market_sellers").insert({auth_user_id:user.id,name:name.trim(),slug,location:location.trim(),description:storeDescription.trim(),status:"pending"});if(error)throw error;Alert.alert("Application submitted","Your seller profile is awaiting administrator approval.");await load();}
   catch(e:any){Alert.alert("Application failed",e?.message||"Please try again.");}finally{setBusy(false);}
  };
  const saveListing=async()=>{
@@ -65,7 +65,7 @@ export function SellerPortal(){
   try{
    const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Sign in again to continue.");
    let productId=editingId;
-   const values={category_id:cat.id,title:title.trim(),slug:slugify(title)+"-"+Date.now().toString(36),description:description.trim(),price_mwk:amount,condition,stock_quantity:stock,location:location.trim(),...(editingId?{}:{seller_id:seller.id,status:"published",published_at:new Date().toISOString()})};
+   const values={category_id:cat.id,title:title.trim(),slug:slugify(title)+"-"+Date.now().toString(36),description:productDescription.trim(),price_mwk:amount,condition,stock_quantity:stock,location:location.trim(),...(editingId?{}:{seller_id:seller.id,status:"published",published_at:new Date().toISOString()})};
    if(editingId){const {error}=await supabase.from("market_products").update(values).eq("id",editingId).eq("seller_id",seller.id);if(error)throw error;}
    else{const {data,error}=await supabase.from("market_products").insert(values).select("id").single();if(error)throw error;productId=data.id;}
    let finalImageUrl=imageUrl.trim();
@@ -88,19 +88,19 @@ export function SellerPortal(){
  };
  const updateSeller=async()=>{
   if(!seller)return;if(name.trim().length<2||location.trim().length<2){Alert.alert("Check store details","Store name and location are required.");return;}
-  setBusy(true);try{const {error}=await supabase.from("market_sellers").update({name:name.trim(),slug:slugify(name)+"-"+seller.id.slice(0,6),description:description.trim(),location:location.trim(),whatsapp_url:whatsapp.trim()||null}).eq("id",seller.id);if(error)throw error;Alert.alert("Store updated","Your seller profile was updated.");await load();}catch(e:any){Alert.alert("Update failed",e?.message||"Could not update store.");}finally{setBusy(false);}
+  setBusy(true);try{const {error}=await supabase.from("market_sellers").update({name:name.trim(),slug:slugify(name)+"-"+seller.id.slice(0,6),description:storeDescription.trim(),location:location.trim(),whatsapp_url:whatsapp.trim()||null}).eq("id",seller.id);if(error)throw error;Alert.alert("Store updated","Your seller profile was updated.");await load();}catch(e:any){Alert.alert("Update failed",e?.message||"Could not update store.");}finally{setBusy(false);}
  };
  const setFulfilment=async(item:any,status:"shipped"|"delivered")=>{
   const {error}=await supabase.rpc("update_market_order_item_status",{p_item_id:item.id,p_status:status,p_seller_note:null});if(error)Alert.alert("Update failed",error.message);else await load();
  };
  if(loading)return <View style={s.center}><ActivityIndicator color="#ef7b25"/><Text style={s.meta}>Loading seller account…</Text></View>;
- if(!seller)return <ScrollView contentContainerStyle={s.wrap}><Text style={s.title}>Become a seller</Text><Text style={s.meta}>Create your store profile. Publishing unlocks after approval.</Text><Text style={s.label}>Store name</Text><TextInput value={name} onChangeText={setName} style={s.input} placeholder="Your business or shop name"/><Text style={s.label}>City / District</Text><TextInput value={location} onChangeText={setLocation} style={s.input} placeholder="e.g. Lilongwe"/><Text style={s.label}>About your store</Text><TextInput value={description} onChangeText={setDescription} style={[s.input,{height:90,textAlignVertical:"top"}]} multiline/><Pressable disabled={busy} style={s.button} onPress={()=>void apply()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>Submit seller application</Text>}</Pressable></ScrollView>;
+ if(!seller)return <ScrollView contentContainerStyle={s.wrap}><Text style={s.title}>Become a seller</Text><Text style={s.meta}>Create your store profile. Publishing unlocks after approval.</Text><Text style={s.label}>Store name</Text><TextInput value={name} onChangeText={setName} style={s.input} placeholder="Your business or shop name"/><Text style={s.label}>City / District</Text><TextInput value={location} onChangeText={setLocation} style={s.input} placeholder="e.g. Lilongwe"/><Text style={s.label}>About your store</Text><TextInput value={storeDescription} onChangeText={setStoreDescription} style={[s.input,{height:90,textAlignVertical:"top"}]} multiline/><Pressable disabled={busy} style={s.button} onPress={()=>void apply()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>Submit seller application</Text>}</Pressable></ScrollView>;
  if(seller.status==="pending")return <View style={s.wrap}><Text style={s.title}>Application pending</Text><Text style={s.meta}>Store: {seller.name}</Text><View style={s.notice}><Text style={s.noticeText}>Your application awaits administrator approval. Product publishing is locked.</Text></View></View>;
  if(seller.status!=="active")return <View style={s.wrap}><Text style={s.title}>Seller account unavailable</Text><Text style={s.meta}>Contact Malawi Market support.</Text></View>;
  return <ScrollView contentContainerStyle={s.wrap}>
   <Text style={s.title}>Seller Centre</Text><Text style={s.meta}>{seller.name} · Approved seller</Text>
   <View style={s.stats}><View style={s.stat}><Text style={s.statValue}>{myProducts.length}</Text><Text style={s.statLabel}>Listings</Text></View><View style={s.stat}><Text style={s.statValue}>{paidItems.length}</Text><Text style={s.statLabel}>Paid items</Text></View><View style={s.stat}><Text style={s.statValue}>{money(revenue)}</Text><Text style={s.statLabel}>Gross sales</Text></View></View>
-  <Text style={s.section}>Store profile</Text><Text style={s.label}>Store name</Text><TextInput value={name} onChangeText={setName} style={s.input}/><Text style={s.label}>Location</Text><TextInput value={location} onChangeText={setLocation} style={s.input}/><Text style={s.label}>Description</Text><TextInput value={description} onChangeText={setDescription} style={[s.input,{height:70,textAlignVertical:"top"}]} multiline/><Text style={s.label}>WhatsApp contact URL (optional)</Text><TextInput value={whatsapp} onChangeText={setWhatsapp} style={s.input} autoCapitalize="none" placeholder="https://wa.me/265..."/><Pressable disabled={busy} style={s.secondary} onPress={()=>void updateSeller()}><Text style={s.secondaryText}>Save store profile</Text></Pressable>
+  <Text style={s.section}>Store profile</Text><Text style={s.label}>Store name</Text><TextInput value={name} onChangeText={setName} style={s.input}/><Text style={s.label}>Location</Text><TextInput value={location} onChangeText={setLocation} style={s.input}/><Text style={s.label}>Description</Text><TextInput value={storeDescription} onChangeText={setStoreDescription} style={[s.input,{height:70,textAlignVertical:"top"}]} multiline/><Text style={s.label}>WhatsApp contact URL (optional)</Text><TextInput value={whatsapp} onChangeText={setWhatsapp} style={s.input} autoCapitalize="none" placeholder="https://wa.me/265..."/><Pressable disabled={busy} style={s.secondary} onPress={()=>void updateSeller()}><Text style={s.secondaryText}>Save store profile</Text></Pressable>
   <Text style={s.section}>{editingId?"Edit listing":"Publish a product"}</Text>
   <Text style={s.label}>Product title</Text><TextInput value={title} onChangeText={setTitle} style={s.input} placeholder="Product name"/>
   <Text style={s.label}>Price (MWK)</Text><TextInput value={price} onChangeText={setPrice} keyboardType="numeric" style={s.input} placeholder="e.g. 250000"/>
@@ -109,7 +109,7 @@ export function SellerPortal(){
   <Text style={s.label}>Stock quantity</Text><TextInput value={quantity} onChangeText={setQuantity} keyboardType="numeric" style={s.input}/>
   <Text style={s.label}>Product location</Text><TextInput value={location} onChangeText={setLocation} style={s.input}/>
   <Text style={s.label}>Product photo</Text>{pickedImage?<Image source={{uri:pickedImage.uri}} style={s.preview}/>:imageUrl?<Image source={{uri:imageUrl}} style={s.preview}/>:null}<Pressable style={s.secondary} onPress={()=>void pickImage()}><Text style={s.secondaryText}>{pickedImage?"Choose a different photo":"Select photo from device"}</Text></Pressable><TextInput value={imageUrl} onChangeText={v=>{setImageUrl(v);setPickedImage(null);}} autoCapitalize="none" style={s.input} placeholder="Or paste an HTTPS image URL"/>
-  <Text style={s.label}>Description</Text><TextInput value={description} onChangeText={setDescription} multiline style={[s.input,{height:90,textAlignVertical:"top"}]} placeholder="Describe your product"/>
+  <Text style={s.label}>Description</Text><TextInput value={productDescription} onChangeText={setProductDescription} multiline style={[s.input,{height:90,textAlignVertical:"top"}]} placeholder="Describe your product"/>
   <Text style={s.small}>Photos are stored in the Malawi Market media bucket. Maximum image size: 5 MB.</Text>
   <Pressable disabled={busy} style={s.button} onPress={()=>void saveListing()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>{editingId?"Save listing changes":"Publish product"}</Text>}</Pressable>{editingId?<Pressable style={s.secondary} onPress={clearForm}><Text style={s.secondaryText}>Cancel editing</Text></Pressable>:null}
   <Text style={s.section}>Your listings ({myProducts.length})</Text>
