@@ -160,12 +160,20 @@ async function receiveWebhook(req: Request) {
       await admin.from("market_orders").update({ status: "review_required", payment_status: "review_required", updated_at: new Date().toISOString() }).eq("id", order.id);
       return json({ acknowledged: true, review_required: true });
     }
+    const paidAt = new Date().toISOString();
+    const { data: paidOrder, error: paidOrderError } = await admin.from("market_orders").update({
+      status: "processing", payment_status: "paid", paid_at: paidAt, updated_at: paidAt,
+    }).eq("id", order.id).eq("status", "pending_payment").eq("payment_status", "pending").select("id").maybeSingle();
+    if (paidOrderError || !paidOrder) {
+      await admin.from("market_payment_attempts").update({
+        status: "review_required", provider_transaction_reference: transactionReference, provider_response_code: String(payload.responseCode ?? ""), updated_at: paidAt,
+      }).eq("id", attempt.id);
+      await admin.from("market_orders").update({ status: "review_required", payment_status: "review_required", updated_at: paidAt }).eq("id", order.id);
+      return json({ acknowledged: true, review_required: true });
+    }
     await admin.from("market_payment_attempts").update({
-      status: "paid", provider_transaction_reference: transactionReference, provider_response_code: String(payload.responseCode ?? ""), paid_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      status: "paid", provider_transaction_reference: transactionReference, provider_response_code: String(payload.responseCode ?? ""), paid_at: paidAt, updated_at: paidAt,
     }).eq("id", attempt.id);
-    await admin.from("market_orders").update({
-      status: "processing", payment_status: "paid", paid_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-    }).eq("id", order.id).eq("status", "pending_payment");
     await admin.from("market_order_items").update({ fulfillment_status: "processing" }).eq("order_id", order.id).eq("fulfillment_status", "awaiting_payment");
   } else if (event === "payrequest.reversed") {
     await admin.from("market_payment_attempts").update({
