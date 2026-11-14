@@ -163,7 +163,7 @@ export default function App() {
   const header = <>
     <View style={s.marketHeader}>
       <View style={s.marketHeaderTop}>
-        <View style={s.brandLockup}><Image source={{uri:"https://raw.githubusercontent.com/V1CT330/malawi-market-place/main/public/icon-192.png"}} style={s.brandLogo} resizeMode="contain" /><View><Text style={s.marketEyebrow}>WELCOME TO</Text><Text style={s.brand}><Text style={{color:"#f36f21"}}>Malawi</Text> Market</Text></View></View>
+        <View style={s.brandLockup}><Image source={require("./assets/logo.png")} style={s.brandLogo} resizeMode="contain" /><View><Text style={s.marketEyebrow}>WELCOME TO</Text><Text style={s.brand}><Text style={{color:"#f36f21"}}>Malawi</Text> Market</Text></View></View>
         <Pressable style={s.headerAction} onPress={() => { setSelected(null); setTab("Cart"); }}>
           <Text style={{fontSize:23}}>🛒</Text>{cart.length > 0 ? <Text style={s.cartCount}>{cart.length}</Text> : null}
         </Pressable>
