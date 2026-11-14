@@ -2,7 +2,7 @@ name: Build Malawi Market APK
 on:
   workflow_dispatch:
   push:
-    branches: [Filorux-Blockchain]
+    branches: [main]
 permissions:
   contents: read
 concurrency:
