@@ -4,16 +4,17 @@ import {supabase} from "../lib/supabase";
 
 type Seller={id:string;name:string;status:"pending"|"active"|"suspended"};
 type Category={id:string;name:string;slug:string};
+type Listing={id:string;title:string;price_mwk:number;status:string;stock_quantity:number};
 export function SellerPortal(){
  const [seller,setSeller]=useState<Seller|null>(null); const [loading,setLoading]=useState(true); const [busy,setBusy]=useState(false);
  const [name,setName]=useState(""); const [location,setLocation]=useState(""); const [description,setDescription]=useState("");
  const [title,setTitle]=useState(""); const [price,setPrice]=useState(""); const [category,setCategory]=useState(""); const [condition,setCondition]=useState("new"); const [quantity,setQuantity]=useState("1"); const [imageUrl,setImageUrl]=useState("");
- const [categories,setCategories]=useState<Category[]>([]);
+ const [categories,setCategories]=useState<Category[]>([]); const [myProducts,setMyProducts]=useState<Listing[]>([]);
  const load=async()=>{
   setLoading(true);
   const [{data:{user}},{data:cats}] = await Promise.all([supabase.auth.getUser(),supabase.from("market_categories").select("id,name,slug").eq("is_active",true).order("sort_order")]);
   setCategories((cats??[]) as Category[]);
-  if(user){const {data}=await supabase.from("market_sellers").select("id,name,status").eq("auth_user_id",user.id).maybeSingle();setSeller(data as Seller|null);}
+  if(user){const {data}=await supabase.from("market_sellers").select("id,name,status").eq("auth_user_id",user.id).maybeSingle();setSeller(data as Seller|null);if(data){const {data:items}=await supabase.from("market_products").select("id,title,price_mwk,status,stock_quantity").eq("seller_id",data.id).order("created_at",{ascending:false});setMyProducts((items??[]) as Listing[]);}}
   setLoading(false);
  };
  useEffect(()=>{void load();},[]);
@@ -43,7 +44,7 @@ export function SellerPortal(){
    if(error)throw error;
    if(imageUrl.trim()){const {error:imageError}=await supabase.from("market_product_images").insert({product_id:product.id,image_url:imageUrl.trim(),is_primary:true,sort_order:0});if(imageError)throw imageError;}
    Alert.alert("Product published","Your listing has been submitted to the marketplace.");
-   setTitle("");setPrice("");setQuantity("1");setImageUrl("");setDescription("");
+   setTitle("");setPrice("");setQuantity("1");setImageUrl("");setDescription("");await load();
   }catch(e:any){Alert.alert("Could not publish",e?.message||"Please try again.");}
   finally{setBusy(false);}
  };
@@ -69,4 +70,4 @@ export function SellerPortal(){
   <Pressable disabled={busy} style={s.button} onPress={()=>void publish()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>Publish product</Text>}</Pressable>
  </ScrollView>;
 }
-const s=StyleSheet.create({wrap:{padding:16,paddingBottom:110,backgroundColor:"#f7f8fa"},center:{padding:30,alignItems:"center"},title:{fontSize:24,fontWeight:"900",color:"#172b4d",marginTop:8,marginBottom:7},meta:{fontSize:11,color:"#788293",lineHeight:17},label:{fontSize:11,fontWeight:"800",color:"#4e5b6e",marginTop:15,marginBottom:6},input:{backgroundColor:"#fff",borderWidth:1,borderColor:"#e2e6ec",borderRadius:9,padding:12,fontSize:13,color:"#172b4d"},button:{backgroundColor:"#ef7b25",padding:14,borderRadius:9,alignItems:"center",marginTop:18,minHeight:46,justifyContent:"center"},buttonText:{color:"#fff",fontWeight:"900"},notice:{backgroundColor:"#fff1e5",padding:12,borderRadius:9,marginTop:14},noticeText:{fontSize:10,color:"#854d22",fontWeight:"700",lineHeight:16},pills:{flexDirection:"row",flexWrap:"wrap",gap:7},pill:{backgroundColor:"#fff",borderWidth:1,borderColor:"#dfe4ea",borderRadius:18,paddingVertical:8,paddingHorizontal:11},pillActive:{backgroundColor:"#172b4d",borderColor:"#172b4d"},pillText:{fontSize:10,color:"#536073",fontWeight:"700"}});
+const s=StyleSheet.create({wrap:{padding:16,paddingBottom:110,backgroundColor:"#f7f8fa"},center:{padding:30,alignItems:"center"},title:{fontSize:24,fontWeight:"900",color:"#172b4d",marginTop:8,marginBottom:7},meta:{fontSize:11,color:"#788293",lineHeight:17},label:{fontSize:11,fontWeight:"800",color:"#4e5b6e",marginTop:15,marginBottom:6},input:{backgroundColor:"#fff",borderWidth:1,borderColor:"#e2e6ec",borderRadius:9,padding:12,fontSize:13,color:"#172b4d"},button:{backgroundColor:"#ef7b25",padding:14,borderRadius:9,alignItems:"center",marginTop:18,minHeight:46,justifyContent:"center"},buttonText:{color:"#fff",fontWeight:"900"},notice:{backgroundColor:"#fff1e5",padding:12,borderRadius:9,marginTop:14},noticeText:{fontSize:10,color:"#854d22",fontWeight:"700",lineHeight:16},listing:{backgroundColor:"#fff",borderWidth:1,borderColor:"#e6eaf0",borderRadius:10,padding:12,marginTop:8,flexDirection:"row",alignItems:"center",gap:10},listingTitle:{fontSize:12,fontWeight:"800",color:"#172b4d"},action:{fontSize:10,fontWeight:"900",color:"#ef7b25"},pills:{flexDirection:"row",flexWrap:"wrap",gap:7},pill:{backgroundColor:"#fff",borderWidth:1,borderColor:"#dfe4ea",borderRadius:18,paddingVertical:8,paddingHorizontal:11},pillActive:{backgroundColor:"#172b4d",borderColor:"#172b4d"},pillText:{fontSize:10,color:"#536073",fontWeight:"700"}});
