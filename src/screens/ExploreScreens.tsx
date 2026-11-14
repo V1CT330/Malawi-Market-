@@ -23,7 +23,7 @@ const stocks = [
   { symbol:"FDHB", name:"FDH Bank", sector:"Banking", price:"Illustrative", change:"+1.1%" },
   { symbol:"AIRTEL", name:"Airtel Malawi", sector:"Telecommunications", price:"Illustrative", change:"+0.5%" },
 ];
-const fixtures = [
+const fixtures: {league:string;home:string;away:string;time:string;score:string;status?:string}[] = [
   { league:"TNM Super League · Demo fixture", home:"Nyasa Big Bullets", away:"Silver Strikers", time:"To be confirmed", score:"— : —" },
   { league:"TNM Super League · Demo fixture", home:"Mighty Wanderers", away:"Civil Service United", time:"To be confirmed", score:"— : —" },
   { league:"National Team · Demo fixture", home:"Malawi", away:"Mozambique", time:"To be confirmed", score:"— : —" },
