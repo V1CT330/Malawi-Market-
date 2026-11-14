@@ -23,6 +23,11 @@
         }
       ]
     ],
-    "owner": "Ndelemani"
+    "owner": "Ndelemani",
+    "extra": {
+      "eas": {
+        "projectId": "2c8d3be6-6fc3-4f4d-907a-1214c606fe08"
+      }
+    }
   }
 }
