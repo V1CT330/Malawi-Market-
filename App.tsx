@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   SafeAreaView, ScrollView, View, Text, TextInput, Image, Pressable, Linking, Alert,
@@ -43,6 +43,7 @@ export default function App() {
   const [sortBy, setSortBy] = useState("relevance");
   const [conditionFilter, setConditionFilter] = useState("all");
   const [cart, setCart] = useState<string[]>([]);
+  const cartRef = useRef<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -56,26 +57,30 @@ export default function App() {
     if (refresh) setRefreshing(true);
     else setLoading(true);
     setLoadError("");
-    const [categoryResult, productResult] = await Promise.all([
-      supabase.from("market_categories").select("id,name,slug,icon").eq("is_active", true).order("sort_order"),
-      supabase.from("market_products")
-        .select("id,title,description,price_mwk,compare_at_price_mwk,condition,stock_quantity,location,is_featured,category:market_categories(name,slug),seller:market_sellers(name,slug,location,is_verified),images:market_product_images(image_url,sort_order,is_primary)")
-        .eq("status", "published")
-        .order("is_featured", { ascending: false })
-        .order("published_at", { ascending: false }),
-    ]);
-    const liveProducts = ((productResult.data ?? []) as unknown as RawProduct[]).map(p => ({
-      ...p,
-      category: Array.isArray(p.category) ? (p.category[0] ?? null) : (p.category ?? null),
-      seller: Array.isArray(p.seller) ? (p.seller[0] ?? null) : (p.seller ?? null),
-    })) as Product[];
-    const liveCategories = (categoryResult.data ?? []) as Category[];
-    setCategories(liveCategories);
-    setProducts(liveProducts);
-    if (productResult.error) setLoadError(productResult.error.message);
-    else if (categoryResult.error) setLoadError(categoryResult.error.message);
-    setLoading(false);
-    setRefreshing(false);
+    try {
+      const [categoryResult, productResult] = await Promise.all([
+        supabase.from("market_categories").select("id,name,slug,icon").eq("is_active", true).order("sort_order"),
+        supabase.from("market_products")
+          .select("id,title,description,price_mwk,compare_at_price_mwk,condition,stock_quantity,location,is_featured,category:market_categories(name,slug),seller:market_sellers(name,slug,location,is_verified),images:market_product_images(image_url,sort_order,is_primary)")
+          .eq("status", "published")
+          .order("is_featured", { ascending: false })
+          .order("published_at", { ascending: false }),
+      ]);
+      const liveProducts = ((productResult.data ?? []) as unknown as RawProduct[]).map(p => ({
+        ...p,
+        category: Array.isArray(p.category) ? (p.category[0] ?? null) : (p.category ?? null),
+        seller: Array.isArray(p.seller) ? (p.seller[0] ?? null) : (p.seller ?? null),
+      })) as Product[];
+      setCategories((categoryResult.data ?? []) as Category[]);
+      setProducts(liveProducts);
+      if (productResult.error) setLoadError(productResult.error.message);
+      else if (categoryResult.error) setLoadError(categoryResult.error.message);
+    } catch (error:any) {
+      setLoadError(error?.message || "The catalogue could not be loaded. Check your connection and try again.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   };
 
   useEffect(() => { void loadCatalogue(); }, []);
@@ -115,12 +120,13 @@ export default function App() {
     let active = true;
     Promise.all([AsyncStorage.getItem("@malawi-market/cart"), AsyncStorage.getItem("@malawi-market/wishlist")]).then(([c, w]) => {
       if (!active) return;
-      try { if (c) setCart(JSON.parse(c)); } catch {}
+      try { if (c) { const restoredCart=JSON.parse(c); if(Array.isArray(restoredCart)){setCart(restoredCart);cartRef.current=restoredCart;} } } catch {}
       try { if (w) setSaved(JSON.parse(w)); } catch {}
       setStorageReady(true);
     }).catch(() => setStorageReady(true));
     return () => { active = false; };
   }, []);
+  useEffect(() => { cartRef.current = cart; }, [cart]);
   useEffect(() => {
     if (!storageReady) return;
     void AsyncStorage.multiSet([["@malawi-market/cart", JSON.stringify(cart)], ["@malawi-market/wishlist", JSON.stringify(saved)]]);
@@ -147,12 +153,15 @@ export default function App() {
   const addToCart = (id: string) => {
     const product = products.find(p => p.id === id);
     if (!product || product.demo) return;
-    const inCart = cart.filter(x => x === id).length;
+    const currentCart = cartRef.current;
+    const inCart = currentCart.filter(x => x === id).length;
     if (Number(product.stock_quantity) <= inCart) {
       Alert.alert("Stock limit reached", "There are no more units of this product available to add.");
       return;
     }
-    setCart(current => [...current, id]);
+    const nextCart = [...currentCart, id];
+    cartRef.current = nextCart;
+    setCart(nextCart);
   };
   const toggleSaved = (id: string) =>
     setSaved(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
@@ -215,7 +224,7 @@ export default function App() {
   return <SafeAreaView style={s.safe}>
     <StatusBar backgroundColor="#fff" barStyle="dark-content" />
     {header}
-    {checkout ? <CheckoutScreen items={cartProducts.map(({product,quantity})=>({id:product.id,title:product.title,price_mwk:product.price_mwk,quantity,demo:product.demo}))} onBack={()=>setCheckout(false)} onOrderCreated={()=>setCart([])} />
+    {checkout ? <CheckoutScreen items={cartProducts.map(({product,quantity})=>({id:product.id,title:product.title,price_mwk:product.price_mwk,quantity,demo:product.demo}))} onBack={()=>setCheckout(false)} onComplete={()=>{cartRef.current=[];setCart([]);setCheckout(false);setTab("Home");}} onOrderCreated={()=>{cartRef.current=[];setCart([]);}} />
     : selected ? <ScrollView contentContainerStyle={{paddingBottom:100}}>
       <Pressable onPress={() => setSelected(null)} style={s.back}><Text style={s.backText}>‹  {marketText(language,"Back to shopping")}</Text></Pressable>
       {productImage(selected) ? <Image source={{uri:productImage(selected)}} style={s.detailImage} resizeMode="contain" /> :

@@ -11,7 +11,7 @@ function makeUuid() {
   return hex.slice(0,8)+"-"+hex.slice(8,12)+"-4"+hex.slice(13,16)+"-a"+hex.slice(17,20)+"-"+hex.slice(20,32);
 }
 
-export function CheckoutScreen({ items, onBack, onOrderCreated }: { items: CheckoutItem[]; onBack:()=>void; onOrderCreated:()=>void }) {
+export function CheckoutScreen({ items, onBack, onComplete, onOrderCreated }: { items: CheckoutItem[]; onBack:()=>void; onComplete:()=>void; onOrderCreated:()=>void }) {
   const [name,setName]=useState("");
   const [phone,setPhone]=useState("");
   const [address,setAddress]=useState("");
@@ -70,7 +70,7 @@ export function CheckoutScreen({ items, onBack, onOrderCreated }: { items: Check
       <Text style={s.label}>Payment reference</Text><Text selectable style={s.body}>{payment.reference}</Text>
       <Text style={s.label}>TAN expiry</Text><Text style={s.body}>{new Date(payment.expires_at).toLocaleString()}</Text>
       <View style={s.notice}><Text style={s.noticeText}>Open your supported bank or mobile-money channel, choose the OneKhusa payment/request-to-pay option and use this TAN with the exact amount. Do not send money to a personal number. If the TAN expires, retry payment from your order details.</Text></View>
-      <Pressable style={s.button} onPress={onBack}><Text style={s.buttonText}>Return to marketplace</Text></Pressable>
+      <Pressable style={s.button} onPress={onComplete}><Text style={s.buttonText}>Return to marketplace</Text></Pressable>
     </> : <>
       <Text style={s.sub}>Delivery details</Text>
       <Text style={s.label}>Recipient full name</Text><TextInput value={name} onChangeText={setName} style={s.input} placeholder="Name receiving the order"/>
