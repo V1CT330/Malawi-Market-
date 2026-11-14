@@ -36,6 +36,8 @@ export default function App() {
   const [tab, setTab] = useState("Home");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
+  const [sortBy, setSortBy] = useState("relevance");
+  const [conditionFilter, setConditionFilter] = useState("all");
   const [cart, setCart] = useState<string[]>([]);
   const [saved, setSaved] = useState<string[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -88,16 +90,23 @@ export default function App() {
     void AsyncStorage.multiSet([["@malawi-market/cart", JSON.stringify(cart)], ["@malawi-market/wishlist", JSON.stringify(saved)]]);
   }, [cart, saved, storageReady]);
 
-  const filtered = useMemo(() => products.filter(p => {
-    const matchesCategory = category === "all" || p.category?.slug === category;
-    const searchText = query.trim().toLowerCase();
-    const matchesQuery = !searchText ||
-      p.title.toLowerCase().includes(searchText) ||
-      (p.description ?? "").toLowerCase().includes(searchText) ||
-      (p.seller?.name ?? "").toLowerCase().includes(searchText) ||
-      (p.category?.name ?? "").toLowerCase().includes(searchText);
-    return matchesCategory && matchesQuery;
-  }), [products, category, query]);
+  const filtered = useMemo(() => {
+    const rows = products.filter(p => {
+      const matchesCategory = category === "all" || p.category?.slug === category;
+      const searchText = query.trim().toLowerCase();
+      const matchesQuery = !searchText || p.title.toLowerCase().includes(searchText) ||
+        (p.description ?? "").toLowerCase().includes(searchText) ||
+        (p.seller?.name ?? "").toLowerCase().includes(searchText) ||
+        (p.category?.name ?? "").toLowerCase().includes(searchText) ||
+        (p.location ?? "").toLowerCase().includes(searchText);
+      const matchesCondition = conditionFilter === "all" || p.condition.toLowerCase() === conditionFilter;
+      return matchesCategory && matchesQuery && matchesCondition;
+    });
+    if (sortBy === "price-low") return rows.sort((a,b) => a.price_mwk-b.price_mwk);
+    if (sortBy === "price-high") return rows.sort((a,b) => b.price_mwk-a.price_mwk);
+    if (sortBy === "name") return rows.sort((a,b) => a.title.localeCompare(b.title));
+    return rows.sort((a,b) => Number(b.is_featured)-Number(a.is_featured));
+  }, [products, category, query, conditionFilter, sortBy]);
 
   const addToCart = (id: string) => setCart(current => [...current, id]);
   const toggleSaved = (id: string) =>
@@ -189,7 +198,13 @@ export default function App() {
             <Text style={[s.categoryText,category===c.slug&&{color:"#fff"}]}>{c.name}</Text>
           </Pressable>)}
       </ScrollView>
-      <View style={s.sectionHead}><Text style={s.sectionTitle}>{query ? "Search results" : "Latest products"}</Text><Text style={s.viewAll}>{filtered.length} items</Text></View>
+      <View style={s.sectionHead}><Text style={s.sectionTitle}>{tab === "Search" ? "Find products" : query ? "Search results" : "Latest products"}</Text><Text style={s.viewAll}>{filtered.length} items</Text></View>
+      {tab === "Search" ? <View style={s.filterPanel}>
+        <Text style={s.filterHeading}>Sort by</Text>
+        <View style={s.filterRow}>{[["relevance","Featured"],["price-low","Price ↑"],["price-high","Price ↓"],["name","Name"]].map(([v,label])=><Pressable key={v} onPress={()=>setSortBy(v)} style={[s.filterPill,sortBy===v&&s.filterActive]}><Text style={[s.filterText,sortBy===v&&{color:"#fff"}]}>{label}</Text></Pressable>)}</View>
+        <Text style={s.filterHeading}>Condition</Text>
+        <View style={s.filterRow}>{[["all","Any"],["new","New"],["used","Used"],["refurbished","Refurbished"]].map(([v,label])=><Pressable key={v} onPress={()=>setConditionFilter(v)} style={[s.filterPill,conditionFilter===v&&s.filterActive]}><Text style={[s.filterText,conditionFilter===v&&{color:"#fff"}]}>{label}</Text></Pressable>)}</View>
+      </View> : null}
       {loading ? <View style={s.loading}><ActivityIndicator size="large" color="#ef7b25"/><Text style={s.loadingText}>Loading marketplace…</Text></View>
         : filtered.length ? <FlatList data={filtered} renderItem={productCard} keyExtractor={p=>p.id} numColumns={2} scrollEnabled={false} columnWrapperStyle={s.productRow} contentContainerStyle={{paddingHorizontal:14}} />
         : emptyCatalogue}
@@ -229,7 +244,7 @@ const s = StyleSheet.create({
  cardInfo:{padding:10},productName:{fontSize:12,fontWeight:"700",color:"#202b3c",lineHeight:17,minHeight:34},price:{fontSize:14,fontWeight:"900",color:"#172b4d",marginTop:7},oldPrice:{fontSize:10,color:"#9299a4",textDecorationLine:"line-through"},seller:{fontSize:9,color:"#7a8492",marginTop:6},addButton:{backgroundColor:"#fff4eb",borderRadius:7,alignItems:"center",paddingVertical:8,marginTop:9},addText:{color:"#df6c19",fontWeight:"800",fontSize:11},
  bottomNav:{position:"absolute",bottom:0,left:0,right:0,height:62,borderTopWidth:1,borderTopColor:"#eceef1",backgroundColor:"#fff",flexDirection:"row",justifyContent:"space-around",alignItems:"center"},navItem:{alignItems:"center",justifyContent:"center",flex:1},navIcon:{fontSize:21},navLabel:{fontSize:9,fontWeight:"700",marginTop:2},
  demoNotice:{marginHorizontal:14,marginTop:8,padding:10,borderRadius:8,backgroundColor:"#fff4e9"},demoNoticeText:{fontSize:10,color:"#8b4c18",fontWeight:"700",lineHeight:15},demoDetail:{fontSize:11,color:"#9a5b20",fontWeight:"800",marginTop:10},trust:{margin:15,padding:18,backgroundColor:"#f4f6f9",borderRadius:12},trustTitle:{fontWeight:"900",fontSize:15,color:"#172b4d"},trustText:{fontSize:12,color:"#667085",marginTop:5,lineHeight:18},
- page:{padding:18,paddingBottom:100},pageTitle:{fontSize:25,fontWeight:"900",color:"#172b4d",marginBottom:16},empty:{color:"#777",fontSize:13,lineHeight:20,paddingVertical:25,textAlign:"center"},emptyBox:{marginHorizontal:16,marginTop:22,padding:20,backgroundColor:"#f6f7f9",borderRadius:13,alignItems:"center"},emptyTitle:{fontSize:16,fontWeight:"900",color:"#172b4d"},outlineButton:{marginTop:12,borderWidth:1,borderColor:"#ef7b25",paddingHorizontal:14,paddingVertical:9,borderRadius:8},outlineText:{fontSize:12,color:"#df6c19",fontWeight:"800"},loading:{padding:35,alignItems:"center",gap:10},loadingText:{fontSize:12,color:"#777"},
+ filterPanel:{marginHorizontal:14,marginTop:4,padding:12,backgroundColor:"#f7f8fa",borderRadius:10},filterHeading:{fontSize:10,fontWeight:"900",color:"#536073",marginTop:4,marginBottom:7},filterRow:{flexDirection:"row",flexWrap:"wrap",gap:6,marginBottom:9},filterPill:{borderWidth:1,borderColor:"#dfe4ea",borderRadius:16,paddingHorizontal:10,paddingVertical:7,backgroundColor:"#fff"},filterActive:{backgroundColor:"#172b4d",borderColor:"#172b4d"},filterText:{fontSize:10,color:"#536073",fontWeight:"700"},page:{padding:18,paddingBottom:100},pageTitle:{fontSize:25,fontWeight:"900",color:"#172b4d",marginBottom:16},empty:{color:"#777",fontSize:13,lineHeight:20,paddingVertical:25,textAlign:"center"},emptyBox:{marginHorizontal:16,marginTop:22,padding:20,backgroundColor:"#f6f7f9",borderRadius:13,alignItems:"center"},emptyTitle:{fontSize:16,fontWeight:"900",color:"#172b4d"},outlineButton:{marginTop:12,borderWidth:1,borderColor:"#ef7b25",paddingHorizontal:14,paddingVertical:9,borderRadius:8},outlineText:{fontSize:12,color:"#df6c19",fontWeight:"800"},loading:{padding:35,alignItems:"center",gap:10},loadingText:{fontSize:12,color:"#777"},
  cartRow:{flexDirection:"row",alignItems:"center",gap:10,borderBottomWidth:1,borderColor:"#eee",paddingVertical:12},cartImage:{width:65,height:65,borderRadius:9,backgroundColor:"#f2f3f5"},total:{fontSize:17,fontWeight:"900",color:"#172b4d",marginTop:20,textAlign:"right"},
  back:{padding:16},backText:{color:"#ef7b25",fontWeight:"800"},detailImage:{width:"100%",height:300,backgroundColor:"#f4f4f4"},detailTitle:{fontSize:22,fontWeight:"900",color:"#172b4d"},priceLarge:{fontSize:24,fontWeight:"900",color:"#ef7b25",marginTop:12},detailMeta:{fontSize:11,color:"#7a8492",marginTop:9},detailDescription:{fontSize:13,color:"#667085",lineHeight:20,marginTop:18},primaryButton:{backgroundColor:"#ef7b25",padding:15,borderRadius:10,alignItems:"center",marginTop:20},primaryText:{color:"#fff",fontWeight:"900"}
 });
