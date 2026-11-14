@@ -25,7 +25,7 @@ export function ExploreScreens() {
   const [standings,setStandings] = useState<any[]>([]);
   useEffect(()=>{ let active=true; Promise.all([
     supabase.from("market_news_articles").select("id,title,summary,category,source_name,source_url,published_at").eq("is_published",true).order("published_at",{ascending:false}).limit(40),
-    supabase.from("market_job_listings").select("id,title,company_name,location,job_type,category,description,salary_range").eq("is_published",true).order("created_at",{ascending:false}).limit(40),
+    supabase.from("market_job_listings").select("id,title,company_name,location,job_type,category,description,salary_range,application_url").eq("is_published",true).order("created_at",{ascending:false}).limit(40),
     supabase.from("market_stock_quotes").select("id,symbol,company_name,price,change_percent,currency,quote_time,source_name").order("quote_time",{ascending:false}).limit(50),
     supabase.from("market_football_fixtures").select("id,competition,home_team,away_team,home_score,away_score,kickoff_at,status,source_name").eq("is_published",true).order("kickoff_at",{ascending:true}).limit(40),
     supabase.from("market_football_standings").select("id,competition,season,team_name,played,won,drawn,lost,goals_for,goals_against,points,position").order("position",{ascending:true}).limit(100)
