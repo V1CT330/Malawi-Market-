@@ -29,7 +29,7 @@ export function AccountScreens(){
  const unread=notifications.filter(x=>!x.read_at).length;
  useEffect(()=>{
   void supabase.auth.getSession().then(({data})=>setAccountEmail(data.session?.user.email??""));
-  const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>setAccountEmail(session?.user.email??""));
+  const {data:{subscription}}=supabase.auth.onAuthStateChange((event,session)=>{setAccountEmail(session?.user.email??"");if(event==="PASSWORD_RECOVERY")setScreen("auth");});
   return()=>subscription.unsubscribe();
  },[]);
  useEffect(()=>{void AsyncStorage.getItem(KEY_DRAFTS).then(v=>{if(v)setDrafts(JSON.parse(v));}).catch(()=>{});},[]);
