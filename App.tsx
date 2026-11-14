@@ -7,6 +7,8 @@ import {
 } from "react-native";
 import { supabase } from "./src/lib/supabase";
 import { ExploreScreens } from "./src/screens/ExploreScreens";
+import { AccountScreens } from "./src/screens/AccountScreens";
+import { ProductReviews } from "./src/components/ProductReviews";
 
 type Category = { id: string; name: string; slug: string; icon?: string | null };
 type Product = {
@@ -168,6 +170,7 @@ export default function App() {
         <Text style={s.detailMeta}>{selected.category?.name ?? "Marketplace"} · {selected.condition} · {selected.stock_quantity} available{selected.location ? " · "+selected.location : ""}</Text>
         {selected.demo ? <Text style={s.demoDetail}>DEMO LISTING — product, seller and price are illustrative only.</Text> : null}
         <Text style={s.detailDescription}>{selected.description || "No product description has been provided."}</Text>
+        <ProductReviews productId={selected.id} />
         <Pressable style={s.primaryButton} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>Add to cart</Text></Pressable>
       </View>
     </ScrollView>
@@ -209,7 +212,7 @@ export default function App() {
       {savedProducts.length ? <FlatList data={savedProducts} renderItem={productCard} keyExtractor={p=>p.id} numColumns={2} scrollEnabled={false} columnWrapperStyle={s.productRow}/> :
         <Text style={s.empty}>Products you save will appear here during this session.</Text>}
     </ScrollView>
-    : tab === "Explore" ? <ExploreScreens /> : <View style={s.page}><Text style={s.pageTitle}>Your account</Text><Text style={s.empty}>Account creation, sign-in and seller tools are intentionally deferred to a later phase.</Text></View>}
+    : tab === "Explore" ? <ExploreScreens /> : <AccountScreens />}
     {nav}
   </SafeAreaView>;
 }
