@@ -14,6 +14,14 @@
         "backgroundColor": "#ffffff"
       }
     },
-    "plugins": []
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Malawi Market to select product and profile photos.",
+          "microphonePermission": false
+        }
+      ]
+    ]
   }
 }
