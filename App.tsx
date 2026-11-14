@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { DEMO_PRODUCTS, DEMO_CATEGORY_NAMES } from "./src/data/demo";
 import {
-  SafeAreaView, ScrollView, View, Text, TextInput, Image, Pressable, Linking,
+  SafeAreaView, ScrollView, View, Text, TextInput, Image, Pressable, Linking, Alert,
   StatusBar, StyleSheet, FlatList, ActivityIndicator, RefreshControl
 } from "react-native";
 import { supabase } from "./src/lib/supabase";
@@ -68,8 +67,8 @@ export default function App() {
       seller: Array.isArray(p.seller) ? (p.seller[0] ?? null) : (p.seller ?? null),
     })) as Product[];
     const liveCategories = (categoryResult.data ?? []) as Category[];
-    setCategories(liveCategories.length ? liveCategories : DEMO_CATEGORY_NAMES.map((name, i) => ({ id: "demo-category-" + i, name, slug: name.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") })));
-    setProducts(liveProducts.length ? liveProducts : DEMO_PRODUCTS as Product[]);
+    setCategories(liveCategories);
+    setProducts(liveProducts);
     if (productResult.error) setLoadError(productResult.error.message);
     else if (categoryResult.error) setLoadError(categoryResult.error.message);
     setLoading(false);
@@ -132,7 +131,16 @@ export default function App() {
     return rows.sort((a,b) => Number(b.is_featured)-Number(a.is_featured));
   }, [products, category, query, conditionFilter, sortBy]);
 
-  const addToCart = (id: string) => setCart(current => [...current, id]);
+  const addToCart = (id: string) => {
+    const product = products.find(p => p.id === id);
+    if (!product || product.demo) return;
+    const inCart = cart.filter(x => x === id).length;
+    if (Number(product.stock_quantity) <= inCart) {
+      Alert.alert("Stock limit reached", "There are no more units of this product available to add.");
+      return;
+    }
+    setCart(current => [...current, id]);
+  };
   const toggleSaved = (id: string) =>
     setSaved(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
   const cartProducts = Array.from(new Set(cart)).map(id => ({ product: products.find(p => p.id === id), quantity: cart.filter(x => x === id).length })).filter((x): x is { product: Product; quantity: number } => Boolean(x.product));
