@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "Malawi Market",
+    "slug": "malawi-market",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "mw.wealthgrid.malawimarket",
+    "newArchEnabled": true,
+    "android": {
+      "package": "mw.wealthgrid.malawimarket",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "plugins": []
+  }
+}
