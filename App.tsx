@@ -184,7 +184,7 @@ export default function App() {
         {image ? <Image source={{uri:image}} style={s.productImage} resizeMode="cover" /> :
           <View style={[s.productImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No image</Text></View>}
         {item.demo ? <Text style={[s.badge,{backgroundColor:"#65758b"}]}>DEMO</Text> : item.is_featured ? <Text style={s.badge}>FEATURED</Text> : null}
-        <Pressable style={s.heart} onPress={() => toggleSaved(item.id)}>
+        <Pressable style={s.heart} onPress={(event) => {event.stopPropagation();toggleSaved(item.id);}}>
           <Text style={{fontSize:19,color:saved.includes(item.id)?"#e34d59":"#444"}}>{saved.includes(item.id)?"♥":"♡"}</Text>
         </Pressable>
       </View>
@@ -193,7 +193,7 @@ export default function App() {
         <Text style={s.price}>{money(item.price_mwk)}</Text>
         {item.compare_at_price_mwk ? <Text style={s.oldPrice}>{money(item.compare_at_price_mwk)}</Text> : null}
         <Text numberOfLines={1} style={s.seller}>{item.seller?.name ?? "Malawi Market seller"}{item.seller?.is_verified ? "  ✓" : ""}</Text>
-        <Pressable disabled={item.stock_quantity<=0} style={[s.addButton,item.stock_quantity<=0&&{opacity:0.45}]} onPress={() => addToCart(item.id)}><Text style={s.addText}>{marketText(language,item.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
+        <Pressable disabled={item.stock_quantity<=0} style={[s.addButton,item.stock_quantity<=0&&{opacity:0.45}]} onPress={(event) => {event.stopPropagation();addToCart(item.id);}}><Text style={s.addText}>{marketText(language,item.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
       </View>
     </Pressable>;
   };
