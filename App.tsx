@@ -58,6 +58,7 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [storageReady, setStorageReady] = useState(false);
+  const [splashVisible, setSplashVisible] = useState(true);
 
   const loadCatalogue = async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -90,6 +91,10 @@ export default function App() {
   };
 
   useEffect(() => { void loadCatalogue(); }, []);
+  useEffect(() => {
+    const splashTimer = setTimeout(() => setSplashVisible(false), 950);
+    return () => clearTimeout(splashTimer);
+  }, []);
   useEffect(() => {
     void AsyncStorage.getItem("@malawi-market/profile").then(raw => {
       if (!raw) return;
@@ -213,7 +218,7 @@ export default function App() {
     </Pressable>;
   };
 
-  const nav = <View style={[s.bottomNav,{bottom:0,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8}]}>
+  const nav = <View style={[s.bottomNav,{bottom:8,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8}]}>
     {[[ "Home","⌂" ],[ "Search","⌕" ],[ "Explore","▦" ],[ "Wishlist","♡" ],[ "Cart","🛒" ],[ "Account","♙" ]].map(([name,icon]) =>
       <Pressable key={name} onPress={() => { setSelected(null); setTab(name); }} style={s.navItem}>
         <Text style={[s.navIcon,{fontSize:isCompact?20:23,color:tab===name?"#ef7b25":"#777"}]}>{icon}</Text>
@@ -227,7 +232,7 @@ export default function App() {
     <Pressable style={s.outlineButton} onPress={() => void loadCatalogue(true)}><Text style={s.outlineText}>{marketText(language,"Refresh catalogue")}</Text></Pressable>
   </View>;
 
-  return <SafeAreaView style={[s.safe,{paddingTop:Platform.OS==="android"?(StatusBar.currentHeight ?? 0):0,paddingBottom:Platform.OS==="android"?(StatusBar.currentHeight ?? 0):0}]}>
+  return <SafeAreaView style={[s.safe,{paddingTop:Platform.OS==="android"?(StatusBar.currentHeight ?? 0):0}]}>
     <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
     <View style={{width:"100%",maxWidth:contentMaxWidth,alignSelf:"center",flex:1,overflow:"hidden"}}>
     {header}
@@ -329,6 +334,12 @@ export default function App() {
     </ScrollView>
     : tab === "Explore" ? <ExploreScreens language={language} /> : <AccountScreens language={language} onLanguageChange={setLanguage} passwordRecovery={passwordRecovery} onPasswordRecoveryComplete={()=>setPasswordRecovery(false)} />}
     {nav}
+    {splashVisible ? <View style={s.splashOverlay}>
+      <Image source={require("./assets/logo.png")} style={s.splashLogo} resizeMode="contain" />
+      <Text style={s.splashBrand}><Text style={{color:"#f0782b"}}>Malawi</Text> Market</Text>
+      <Text style={s.splashCaption}>A better way to shop local.</Text>
+      <ActivityIndicator size="small" color="#ef7b25" style={{marginTop:22}} />
+    </View> : null}
     </View>
   </SafeAreaView>;
 }
@@ -350,5 +361,6 @@ const s = StyleSheet.create({
  cartRow:{flexDirection:"row",alignItems:"center",gap:10,borderBottomWidth:1,borderColor:"#eee",paddingVertical:12},cartImage:{width:72,height:72,borderRadius:9,backgroundColor:"#f2f3f5"},qtyButton:{width:32,height:32,borderRadius:8,backgroundColor:"#fff1e5",alignItems:"center",justifyContent:"center"},qtyText:{fontSize:14,fontWeight:"900",color:"#172b4d"},total:{fontSize:18,fontWeight:"900",color:"#172b4d",marginTop:20,textAlign:"right"},
  back:{padding:16},backText:{color:"#ef7b25",fontWeight:"900"},detailImage:{width:"100%",height:320,backgroundColor:"#f4f4f4"},detailTitle:{fontSize:24,fontWeight:"900",color:"#172b4d"},priceLarge:{fontSize:27,fontWeight:"900",color:"#ef7b25",marginTop:12},detailMeta:{fontSize:12,color:"#7a8492",marginTop:9},detailDescription:{fontSize:14,color:"#667085",lineHeight:22,marginTop:18},primaryButton:{backgroundColor:"#ef7b25",padding:17,borderRadius:10,alignItems:"center",marginTop:20,minHeight:52,justifyContent:"center"},primaryText:{color:"#fff",fontWeight:"900",fontSize:14},reportButton:{alignItems:"center",padding:14,marginTop:8},reportText:{color:"#a33",fontWeight:"800",fontSize:12},
  marketHeader:{backgroundColor:"#fff",paddingHorizontal:18,paddingTop:10,paddingBottom:12,borderBottomWidth:0},marketHeaderTop:{height:52,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},marketEyebrow:{fontSize:9,fontWeight:"900",letterSpacing:1.5,color:"#8792a3",marginBottom:2},headerAction:{width:46,height:46,borderRadius:16,backgroundColor:"#f3f5f8",alignItems:"center",justifyContent:"center"},searchGlyph:{fontSize:22,color:"#666",width:22,textAlign:"center"},searchAction:{backgroundColor:"#ef7628",paddingHorizontal:16,paddingVertical:11,borderRadius:11},searchActionText:{color:"#fff",fontSize:13,fontWeight:"900"},locationLine:{flexDirection:"row",justifyContent:"space-between",marginTop:10,paddingHorizontal:2},locationText:{fontSize:10,color:"#8490a0",fontWeight:"700"},promoBanner:{marginHorizontal:16,marginTop:14,minHeight:190,borderRadius:17,backgroundColor:"#142844",padding:22,flexDirection:"row",overflow:"hidden",justifyContent:"space-between",alignItems:"center",elevation:2,shadowColor:"#10213a",shadowOpacity:0.10,shadowRadius:10,shadowOffset:{width:0,height:4}},promoCopy:{flex:1,paddingRight:3,zIndex:2},heroOrbLarge:{position:"absolute",width:230,height:230,borderRadius:115,right:-65,top:-95,backgroundColor:"#1e3a5d",borderWidth:1,borderColor:"#345274"},heroOrbSmall:{position:"absolute",width:145,height:145,borderRadius:73,right:12,bottom:-92,backgroundColor:"#1b3454",borderWidth:1,borderColor:"#345274"},promoKicker:{fontSize:9,color:"#ffb77f",fontWeight:"900",letterSpacing:1.7},promoTitle:{fontSize:28,lineHeight:33,fontWeight:"900",color:"#fff",marginTop:10,maxWidth:280,letterSpacing:-.8},promoSub:{fontSize:13,lineHeight:20,color:"#d6e0ed",marginTop:8,maxWidth:270},promoButton:{alignSelf:"flex-start",backgroundColor:"#f0782b",paddingHorizontal:15,paddingVertical:12,borderRadius:11,marginTop:16,elevation:2},promoButtonText:{color:"#fff",fontSize:12,fontWeight:"900",letterSpacing:.1},shortcutRow:{flexDirection:"row",justifyContent:"space-around",backgroundColor:"#fff",marginTop:14,paddingVertical:15,borderRadius:15,marginHorizontal:16,borderWidth:1,borderColor:"#edf0f3",elevation:0,shadowColor:"#182b45",shadowOpacity:0,shadowRadius:0,shadowOffset:{width:0,height:0}},shortcut:{alignItems:"center",flex:1},shortcutIcon:{width:45,height:45,borderRadius:14,backgroundColor:"#fff2e9",alignItems:"center",justifyContent:"center"},shortcutGlyph:{fontSize:23,color:"#ed6b1b",fontWeight:"800"},shortcutLabel:{fontSize:11,color:"#3c424a",fontWeight:"700",marginTop:6},sectionHint:{fontSize:11,color:"#858b94",marginTop:3},featuredRow:{paddingHorizontal:12,gap:10},featuredCard:{width:158,backgroundColor:"#fff",borderRadius:15,padding:9,borderWidth:0,borderColor:"transparent",elevation:3,shadowColor:"#172b4d",shadowOpacity:0.06,shadowRadius:10,shadowOffset:{width:0,height:4}},featuredImage:{width:"100%",height:138,backgroundColor:"#eef1f5",borderRadius:10},featuredName:{fontSize:12,color:"#343a42",fontWeight:"700",lineHeight:16,marginTop:8,minHeight:32},featuredPrice:{fontSize:15,color:"#222831",fontWeight:"900",marginTop:5},featuredSeller:{fontSize:9,color:"#23865a",fontWeight:"700",marginTop:3},
+ splashOverlay:{...StyleSheet.absoluteFillObject,backgroundColor:"#ffffff",alignItems:"center",justifyContent:"center",zIndex:50},splashLogo:{width:104,height:104,marginBottom:18},splashBrand:{fontSize:29,fontWeight:"900",letterSpacing:-1.1,color:"#172b4d"},splashCaption:{fontSize:12,color:"#7b8796",fontWeight:"600",marginTop:7,letterSpacing:.2},
  brandLockup:{flexDirection:"row",alignItems:"center",gap:9},brandLogo:{width:49,height:49,borderRadius:12},
 });

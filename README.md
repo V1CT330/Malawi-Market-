@@ -16,6 +16,8 @@ Malawi Market is a native Android marketplace app built with **Expo, React Nativ
 
 ## Main app areas
 
+The app uses a responsive native layout, a branded startup splash, and Android system-bar spacing so the storefront and bottom navigation remain usable across phone sizes.
+
 The app is organised around these areas:
 
 - **Marketplace:** home storefront, product discovery, search, product details, and category browsing.
@@ -83,7 +85,7 @@ The repository includes **Build Malawi Market APK** at [`.github/workflows/build
 
 The workflow installs Node.js 22 and Java 17, installs Android SDK packages, runs `npm run typecheck`, generates the Android project with Expo Prebuild, and builds a debug APK with Gradle. The artifact is retained for 14 days.
 
-**Important:** automatic push builds are currently configured for the `Filorux-Blockchain` branch. Builds from `main` can be started manually through Actions.
+**Important:** automatic APK builds run on pushes to `main`. You can also start a build manually from GitHub Actions.
 
 ## Backend
 
