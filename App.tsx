@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DEMO_PRODUCTS, DEMO_CATEGORY_NAMES } from "./src/data/demo";
 import {
   SafeAreaView, ScrollView, View, Text, TextInput, Image, Pressable,
   StatusBar, StyleSheet, FlatList, ActivityIndicator, RefreshControl
@@ -19,7 +21,9 @@ type Product = {
   category?: { name: string; slug: string } | null;
   seller?: { name: string; slug: string; location?: string | null; is_verified: boolean } | null;
   images?: { image_url: string; sort_order: number; is_primary: boolean }[];
+  demo?: boolean;
 };
+type RawProduct = Omit<Product, "category" | "seller"> & { category?: Product["category"] | Product["category"][]; seller?: Product["seller"] | Product["seller"][] };
 const money = (n: number) => "MK " + Number(n || 0).toLocaleString("en-US");
 const productImage = (p: Product) =>
   p.images?.find(x => x.is_primary)?.image_url ??
@@ -37,6 +41,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
+  const [storageReady, setStorageReady] = useState(false);
 
   const loadCatalogue = async (refresh = false) => {
     if (refresh) setRefreshing(true);
@@ -50,17 +55,35 @@ export default function App() {
         .order("is_featured", { ascending: false })
         .order("published_at", { ascending: false }),
     ]);
-    if (categoryResult.error || productResult.error) {
-      setLoadError(categoryResult.error?.message ?? productResult.error?.message ?? "Could not load the catalogue.");
-    } else {
-      setCategories((categoryResult.data ?? []) as Category[]);
-      setProducts((productResult.data ?? []) as Product[]);
-    }
+    const liveProducts = ((productResult.data ?? []) as unknown as RawProduct[]).map(p => ({
+      ...p,
+      category: Array.isArray(p.category) ? (p.category[0] ?? null) : (p.category ?? null),
+      seller: Array.isArray(p.seller) ? (p.seller[0] ?? null) : (p.seller ?? null),
+    })) as Product[];
+    const liveCategories = (categoryResult.data ?? []) as Category[];
+    setCategories(liveCategories.length ? liveCategories : DEMO_CATEGORY_NAMES.map((name, i) => ({ id: "demo-category-" + i, name, slug: name.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") })));
+    setProducts(liveProducts.length ? liveProducts : DEMO_PRODUCTS as Product[]);
+    if (productResult.error) setLoadError(productResult.error.message);
+    else if (categoryResult.error) setLoadError(categoryResult.error.message);
     setLoading(false);
     setRefreshing(false);
   };
 
   useEffect(() => { void loadCatalogue(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([AsyncStorage.getItem("@malawi-market/cart"), AsyncStorage.getItem("@malawi-market/wishlist")]).then(([c, w]) => {
+      if (!active) return;
+      try { if (c) setCart(JSON.parse(c)); } catch {}
+      try { if (w) setSaved(JSON.parse(w)); } catch {}
+      setStorageReady(true);
+    }).catch(() => setStorageReady(true));
+    return () => { active = false; };
+  }, []);
+  useEffect(() => {
+    if (!storageReady) return;
+    void AsyncStorage.multiSet([["@malawi-market/cart", JSON.stringify(cart)], ["@malawi-market/wishlist", JSON.stringify(saved)]]);
+  }, [cart, saved, storageReady]);
 
   const filtered = useMemo(() => products.filter(p => {
     const matchesCategory = category === "all" || p.category?.slug === category;
@@ -101,7 +124,7 @@ export default function App() {
       <View style={s.imageWrap}>
         {image ? <Image source={{uri:image}} style={s.productImage} resizeMode="cover" /> :
           <View style={[s.productImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No image</Text></View>}
-        {item.is_featured ? <Text style={s.badge}>FEATURED</Text> : null}
+        {item.demo ? <Text style={[s.badge,{backgroundColor:"#65758b"}]}>DEMO</Text> : item.is_featured ? <Text style={s.badge}>FEATURED</Text> : null}
         <Pressable style={s.heart} onPress={() => toggleSaved(item.id)}>
           <Text style={{fontSize:19,color:saved.includes(item.id)?"#e34d59":"#444"}}>{saved.includes(item.id)?"♥":"♡"}</Text>
         </Pressable>
@@ -142,11 +165,13 @@ export default function App() {
         <Text style={s.priceLarge}>{money(selected.price_mwk)}</Text>
         <Text style={s.seller}>{selected.seller?.name ?? "Malawi Market seller"}{selected.seller?.is_verified ? " · Verified seller" : ""}</Text>
         <Text style={s.detailMeta}>{selected.category?.name ?? "Marketplace"} · {selected.condition} · {selected.stock_quantity} available{selected.location ? " · "+selected.location : ""}</Text>
+        {selected.demo ? <Text style={s.demoDetail}>DEMO LISTING — product, seller and price are illustrative only.</Text> : null}
         <Text style={s.detailDescription}>{selected.description || "No product description has been provided."}</Text>
         <Pressable style={s.primaryButton} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>Add to cart</Text></Pressable>
       </View>
     </ScrollView>
     : tab === "Home" || tab === "Search" ? <ScrollView contentContainerStyle={{paddingBottom:100}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadCatalogue(true)} />}>
+      {products.some(p => p.demo) ? <View style={s.demoNotice}><Text style={s.demoNoticeText}>DEMO CATALOGUE · Sample listings for preview only. No real seller offers or transactions.</Text></View> : null}
       <View style={s.hero}>
         <Text style={s.heroKicker}>DISCOVER MORE. SHOP BETTER.</Text>
         <Text style={s.heroTitle}>Your marketplace,{"\n"}right here in Malawi.</Text>
@@ -199,7 +224,7 @@ const s = StyleSheet.create({
  productRow:{gap:11,marginBottom:12},card:{flex:1,backgroundColor:"#fff",borderWidth:1,borderColor:"#eceef1",borderRadius:13,overflow:"hidden"},imageWrap:{position:"relative"},productImage:{width:"100%",height:142,backgroundColor:"#f2f3f5"},imagePlaceholder:{alignItems:"center",justifyContent:"center"},placeholderText:{fontSize:11,color:"#8a93a2"},badge:{position:"absolute",left:8,top:8,backgroundColor:"#ef7b25",color:"#fff",fontSize:9,fontWeight:"900",paddingHorizontal:7,paddingVertical:4,borderRadius:5,overflow:"hidden"},heart:{position:"absolute",right:7,top:6,backgroundColor:"#fff",width:29,height:29,borderRadius:15,alignItems:"center",justifyContent:"center"},
  cardInfo:{padding:10},productName:{fontSize:12,fontWeight:"700",color:"#202b3c",lineHeight:17,minHeight:34},price:{fontSize:14,fontWeight:"900",color:"#172b4d",marginTop:7},oldPrice:{fontSize:10,color:"#9299a4",textDecorationLine:"line-through"},seller:{fontSize:9,color:"#7a8492",marginTop:6},addButton:{backgroundColor:"#fff4eb",borderRadius:7,alignItems:"center",paddingVertical:8,marginTop:9},addText:{color:"#df6c19",fontWeight:"800",fontSize:11},
  bottomNav:{position:"absolute",bottom:0,left:0,right:0,height:62,borderTopWidth:1,borderTopColor:"#eceef1",backgroundColor:"#fff",flexDirection:"row",justifyContent:"space-around",alignItems:"center"},navItem:{alignItems:"center",justifyContent:"center",flex:1},navIcon:{fontSize:21},navLabel:{fontSize:9,fontWeight:"700",marginTop:2},
- trust:{margin:15,padding:18,backgroundColor:"#f4f6f9",borderRadius:12},trustTitle:{fontWeight:"900",fontSize:15,color:"#172b4d"},trustText:{fontSize:12,color:"#667085",marginTop:5,lineHeight:18},
+ demoNotice:{marginHorizontal:14,marginTop:8,padding:10,borderRadius:8,backgroundColor:"#fff4e9"},demoNoticeText:{fontSize:10,color:"#8b4c18",fontWeight:"700",lineHeight:15},demoDetail:{fontSize:11,color:"#9a5b20",fontWeight:"800",marginTop:10},trust:{margin:15,padding:18,backgroundColor:"#f4f6f9",borderRadius:12},trustTitle:{fontWeight:"900",fontSize:15,color:"#172b4d"},trustText:{fontSize:12,color:"#667085",marginTop:5,lineHeight:18},
  page:{padding:18,paddingBottom:100},pageTitle:{fontSize:25,fontWeight:"900",color:"#172b4d",marginBottom:16},empty:{color:"#777",fontSize:13,lineHeight:20,paddingVertical:25,textAlign:"center"},emptyBox:{marginHorizontal:16,marginTop:22,padding:20,backgroundColor:"#f6f7f9",borderRadius:13,alignItems:"center"},emptyTitle:{fontSize:16,fontWeight:"900",color:"#172b4d"},outlineButton:{marginTop:12,borderWidth:1,borderColor:"#ef7b25",paddingHorizontal:14,paddingVertical:9,borderRadius:8},outlineText:{fontSize:12,color:"#df6c19",fontWeight:"800"},loading:{padding:35,alignItems:"center",gap:10},loadingText:{fontSize:12,color:"#777"},
  cartRow:{flexDirection:"row",alignItems:"center",gap:10,borderBottomWidth:1,borderColor:"#eee",paddingVertical:12},cartImage:{width:65,height:65,borderRadius:9,backgroundColor:"#f2f3f5"},total:{fontSize:17,fontWeight:"900",color:"#172b4d",marginTop:20,textAlign:"right"},
  back:{padding:16},backText:{color:"#ef7b25",fontWeight:"800"},detailImage:{width:"100%",height:300,backgroundColor:"#f4f4f4"},detailTitle:{fontSize:22,fontWeight:"900",color:"#172b4d"},priceLarge:{fontSize:24,fontWeight:"900",color:"#ef7b25",marginTop:12},detailMeta:{fontSize:11,color:"#7a8492",marginTop:9},detailDescription:{fontSize:13,color:"#667085",lineHeight:20,marginTop:18},primaryButton:{backgroundColor:"#ef7b25",padding:15,borderRadius:10,alignItems:"center",marginTop:20},primaryText:{color:"#fff",fontWeight:"900"}
