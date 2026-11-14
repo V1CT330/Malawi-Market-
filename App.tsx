@@ -9,6 +9,7 @@ import { supabase } from "./src/lib/supabase";
 import { ExploreScreens } from "./src/screens/ExploreScreens";
 import { AccountScreens } from "./src/screens/AccountScreens";
 import { ProductReviews } from "./src/components/ProductReviews";
+import { CheckoutScreen } from "./src/screens/CheckoutScreen";
 
 type Category = { id: string; name: string; slug: string; icon?: string | null };
 type Product = {
@@ -34,6 +35,7 @@ const productImage = (p: Product) =>
 
 export default function App() {
   const [tab, setTab] = useState("Home");
+  const [checkout, setCheckout] = useState(false);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("all");
   const [sortBy, setSortBy] = useState("relevance");
@@ -168,7 +170,8 @@ export default function App() {
   return <SafeAreaView style={s.safe}>
     <StatusBar backgroundColor="#fff" barStyle="dark-content" />
     {header}
-    {selected ? <ScrollView contentContainerStyle={{paddingBottom:100}}>
+    {checkout ? <CheckoutScreen items={cartProducts.map(({product,quantity})=>({id:product.id,title:product.title,price_mwk:product.price_mwk,quantity,demo:product.demo}))} onBack={()=>setCheckout(false)} onOrderCreated={()=>setCart([])} />
+    : selected ? <ScrollView contentContainerStyle={{paddingBottom:100}}>
       <Pressable onPress={() => setSelected(null)} style={s.back}><Text style={s.backText}>‹  Back to shopping</Text></Pressable>
       {productImage(selected) ? <Image source={{uri:productImage(selected)}} style={s.detailImage} resizeMode="contain" /> :
         <View style={[s.detailImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No product image</Text></View>}
@@ -225,7 +228,8 @@ export default function App() {
           <Pressable onPress={() => setCart(v => v.filter(id=>id!==p.id))}><Text style={{color:"#c44",padding:8}}>Remove</Text></Pressable>
         </View>)}
         <Text style={s.total}>Subtotal: {money(cartTotal)}</Text>
-        <Text style={s.detailDescription}>Checkout and payment will be enabled after account and payment integration.</Text>
+        <Pressable style={s.primaryButton} onPress={()=>setCheckout(true)}><Text style={s.primaryText}>Proceed to secure checkout</Text></Pressable>
+        <Text style={s.detailDescription}>Checkout uses OneKhusa. Payment is only confirmed after a verified provider notification.</Text>
         </>}
     </ScrollView>
     : tab === "Wishlist" ? <ScrollView contentContainerStyle={s.page}>
