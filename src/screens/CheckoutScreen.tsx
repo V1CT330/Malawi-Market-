@@ -36,7 +36,7 @@ export function CheckoutScreen({ items, onBack, onOrderCreated }: { items: Check
   };
   const submit=async()=>{
     if(items.length===0||items.some(x=>x.demo)){setError("Demo products cannot be purchased. Remove them and use a published seller listing.");return;}
-    if(!name.trim()||phone.trim().replace(/\\D/g,"").length<7||address.trim().length<5){setError("Enter your full name, valid phone number and delivery address.");return;}
+    if(!name.trim()||phone.trim().replace(/[^0-9]/g,"").length<7||address.trim().length<5){setError("Enter your full name, valid phone number and delivery address.");return;}
     setBusy(true);setError("");
     try {
       const {data:{user}}=await supabase.auth.getUser();
