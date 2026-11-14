@@ -38,7 +38,7 @@ export function AccountScreens(){
   const load=async()=>{
    if(!accountEmail){setIsAdmin(false);setOrders([]);setNotifications([]);const raw=await AsyncStorage.getItem(KEY_PROFILE);if(active&&raw)try{setProfile({...initialProfile,...JSON.parse(raw)});}catch{}return;}
    setLoadingProfile(true);
-   const {data:{user}}=await supabase.auth.getUser();if(!user)return;
+   const {data:{user}}=await supabase.auth.getUser();if(!user){setLoadingProfile(false);return;}
    const [p,o,n,a]=await Promise.all([
     supabase.from("profiles").select("display_name,phone,location,avatar_url").eq("id",user.id).maybeSingle(),
     supabase.from("market_orders").select("id,status,payment_status,total_mwk,created_at,payment_reference,market_order_items(product_title,quantity,unit_price_mwk,fulfillment_status),market_payment_attempts(timed_account_number,expires_at,status,provider_reference)").eq("buyer_user_id",user.id).order("created_at",{ascending:false}),
@@ -80,7 +80,7 @@ export function AccountScreens(){
   if(result.canceled||!result.assets[0])return;const asset=result.assets[0];
   if(asset.fileSize&&asset.fileSize>5*1024*1024){Alert.alert("Image too large","Choose an image under 5 MB.");return;}
   setSaving(true);
-  try{const response=await fetch(asset.uri);if(!response.ok)throw new Error("Could not read selected image.");const bytes=await response.arrayBuffer();const path=user.id+"/profile/avatar-"+Date.now()+".jpg";const {error}=await supabase.storage.from("market-media").upload(path,bytes,{contentType:"image/jpeg",upsert:false});if(error)throw error;const url=supabase.storage.from("market-media").getPublicUrl(path).data.publicUrl;setProfile(v=>({...v,avatarUrl:url}));}
+  try{const response=await fetch(asset.uri);if(!response.ok)throw new Error("Could not read selected image.");const bytes=await response.arrayBuffer();const mime=asset.mimeType==="image/png"?"image/png":asset.mimeType==="image/webp"?"image/webp":"image/jpeg";const ext=mime==="image/png"?"png":mime==="image/webp"?"webp":"jpg";const path=user.id+"/profile/avatar-"+Date.now()+"."+ext;const {error}=await supabase.storage.from("market-media").upload(path,bytes,{contentType:mime,upsert:false});if(error)throw error;const url=supabase.storage.from("market-media").getPublicUrl(path).data.publicUrl;setProfile(v=>({...v,avatarUrl:url}));}
   catch(e:any){Alert.alert("Upload failed",e?.message||"Could not upload profile photo.");}
   finally{setSaving(false);}
  };
