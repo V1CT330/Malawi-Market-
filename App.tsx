@@ -179,6 +179,12 @@ export default function App() {
   const cartProducts = Array.from(new Set(cart)).map(id => ({ product: products.find(p => p.id === id), quantity: cart.filter(x => x === id).length })).filter((x): x is { product: Product; quantity: number } => Boolean(x.product));
   const cartTotal = cartProducts.reduce((sum, item) => sum + Number(item.product.price_mwk) * item.quantity, 0);
   const savedProducts = products.filter(p => saved.includes(p.id));
+  const shortcuts: [string, string, () => void][] = [
+    ["▦", "All categories", () => { setCategory("all"); setTab("Search"); }],
+    ["✦", "Featured", () => { setSortBy("relevance"); setTab("Search"); }],
+    ["♡", "Wishlist", () => setTab("Wishlist")],
+    ["▣", "My cart", () => setTab("Cart")],
+  ];
 
   const header = <>
     <View style={s.marketHeader}>
@@ -275,7 +281,7 @@ export default function App() {
           </View>
         </View>
         <View style={s.shortcutRow}>
-          {[["▦","All categories",()=>{setCategory("all");setTab("Search");}],["✦","Featured",()=>{setSortBy("relevance");setTab("Search");}],["♡","Wishlist",()=>setTab("Wishlist")],["▣","My cart",()=>setTab("Cart")]].map(([icon,label,action])=><Pressable key={String(label)} style={s.shortcut} onPress={action as ()=>void}><View style={s.shortcutIcon}><Text style={s.shortcutGlyph}>{icon}</Text></View><Text style={s.shortcutLabel}>{label}</Text></Pressable>)}
+          {shortcuts.map(([icon,label,action])=><Pressable key={label} style={s.shortcut} onPress={action}><View style={s.shortcutIcon}><Text style={s.shortcutGlyph}>{icon}</Text></View><Text style={s.shortcutLabel}>{label}</Text></Pressable>)}
         </View>
       </> : null}
       <View style={s.sectionHead}><Text style={s.sectionTitle}>Shop by category</Text><Pressable onPress={()=>setTab("Search")}><Text style={s.viewAll}>See all  ›</Text></Pressable></View>

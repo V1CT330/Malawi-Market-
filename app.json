@@ -7,12 +7,6 @@
     "userInterfaceStyle": "light",
     "scheme": "mw.wealthgrid.malawimarket",
     "newArchEnabled": true,
-    "androidNavigationBar": {
-      "backgroundColor": "#ffffff",
-      "barStyle": "dark-content",
-      "translucent": false,
-      "enforceContrast": false
-    },
     "android": {
       "package": "mw.wealthgrid.malawimarket",
       "versionCode": 1,
