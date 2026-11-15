@@ -1,8 +1,9 @@
 import React,{useEffect,useRef,useState} from "react";
 import {ScrollView,View,Text,TextInput,Pressable,StyleSheet,ActivityIndicator,Alert} from "react-native";
 import {supabase} from "../lib/supabase";
+import {AdminKycReview} from "../components/KycVerification";
 
-type Tab="overview"|"sellers"|"products"|"orders"|"users"|"reports"|"content";
+type Tab="overview"|"sellers"|"kyc"|"products"|"orders"|"users"|"reports"|"content";
 const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 export function AdminDashboard(){
  const [allowed,setAllowed]=useState(false);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [syncing,setSyncing]=useState(false);const actionLock=useRef(false);const [tab,setTab]=useState<Tab>("overview");
@@ -37,18 +38,34 @@ export function AdminDashboard(){
  useEffect(()=>{void load();},[]);
  const updateSeller=async(id:string,status:"active"|"suspended")=>{
   if(actionLock.current)return;actionLock.current=true;setBusy(true);
-  try{const {error}=await supabase.from("market_sellers").update({status,is_verified:status==="active"}).eq("id",id);if(error)throw error;await load();}
-  catch(e:any){Alert.alert("Seller update failed",e?.message||"Please try again.");}
+  try{
+   const seller=sellers.find(x=>x.id===id);if(!seller)throw new Error("Seller record is no longer available. Refresh and try again.");
+   if(status==="active"){
+    const {data:verification,error:kycError}=await supabase.from("kyc_submissions").select("status").eq("user_id",seller.auth_user_id).order("created_at",{ascending:false}).limit(1).maybeSingle();
+    if(kycError)throw kycError;
+    if(verification?.status!=="approved"){Alert.alert("KYC approval required","This seller cannot be approved or reactivated until their latest identity verification is approved.");return;}
+   }
+   const {error}=await supabase.from("market_sellers").update({status,is_verified:status==="active"}).eq("id",id);if(error)throw error;await load();
+  }catch(e:any){Alert.alert("Seller update failed",e?.message||"Please try again.");}
   finally{actionLock.current=false;setBusy(false);}
  };
  const updateUserStatus=async(userId:string,suspended:boolean)=>{
   if(actionLock.current)return;actionLock.current=true;setBusy(true);
   try{
    const {error}=await supabase.from("profiles").update({suspended}).eq("id",userId);if(error)throw error;
-   const sellerResult=suspended
-    ? await supabase.from("market_sellers").update({status:"suspended",is_verified:false}).eq("auth_user_id",userId).eq("status","active")
-    : await supabase.from("market_sellers").update({status:"active",is_verified:true}).eq("auth_user_id",userId).eq("status","suspended");
-   if(sellerResult.error)Alert.alert("Seller access warning",sellerResult.error.message);
+   if(suspended){
+    const sellerResult=await supabase.from("market_sellers").update({status:"suspended",is_verified:false}).eq("auth_user_id",userId).eq("status","active");
+    if(sellerResult.error)Alert.alert("Seller access warning",sellerResult.error.message);
+   }else{
+    const {data:verification,error:kycError}=await supabase.from("kyc_submissions").select("status").eq("user_id",userId).order("created_at",{ascending:false}).limit(1).maybeSingle();
+    if(kycError)throw kycError;
+    if(verification?.status==="approved"){
+     const sellerResult=await supabase.from("market_sellers").update({status:"active",is_verified:true}).eq("auth_user_id",userId).eq("status","suspended");
+     if(sellerResult.error)Alert.alert("Seller access warning",sellerResult.error.message);
+    }else{
+     Alert.alert("Seller remains suspended","The user account is active again, but seller access stays suspended until identity verification is approved.");
+    }
+   }
    await load();
   }catch(e:any){Alert.alert("User update failed",e?.message||"Please try again.");}
   finally{actionLock.current=false;setBusy(false);}
@@ -106,10 +123,11 @@ export function AdminDashboard(){
  const pill=(v:Tab,label:string)=><Pressable key={v} onPress={()=>setTab(v)} style={[s.pill,tab===v&&s.pillActive]}><Text style={[s.pillText,tab===v&&{color:"#fff"}]}>{label}</Text></Pressable>;
  return <ScrollView contentContainerStyle={s.wrap}>
   <Text style={s.title}>Marketplace administration</Text><Text style={s.meta}>Wealth Grid · Malawi Market</Text>
-  <View style={s.pills}>{pill("overview","Overview")}{pill("sellers","Sellers")}{pill("products","Listings")}{pill("orders","Orders")}{pill("users","Users")}{pill("reports","Reports")}{pill("content","Content")}</View>
+  <View style={s.pills}>{pill("overview","Overview")}{pill("sellers","Sellers")}{pill("kyc","KYC Review")}{pill("products","Listings")}{pill("orders","Orders")}{pill("users","Users")}{pill("reports","Reports")}{pill("content","Content")}</View>
   {tab==="overview"?<><View style={s.stats}>{[["Sellers",stats.sellers],["Pending",stats.pending],["Listings",stats.products],["Orders",stats.orders],["Paid",stats.paid]].map(x=><View key={String(x[0])} style={s.stat}><Text style={s.statValue}>{x[1]}</Text><Text style={s.statLabel}>{x[0]}</Text></View>)}</View><View style={s.revenue}><Text style={s.revenueLabel}>Recorded paid order value</Text><Text style={s.revenueValue}>{money(stats.revenue)}</Text><Text style={s.meta}>This is order value, not seller settlement or platform revenue.</Text></View><Text style={s.section}>Needs attention</Text><Text style={s.meta}>{stats.pending} seller applications pending review.</Text><Text style={s.meta}>{products.filter(x=>x.status==="draft").length} draft listings and {products.filter(x=>x.status==="archived").length} archived listings.</Text></>:null}
   {tab==="sellers"?<><Text style={s.section}>Seller applications and accounts</Text>{sellers.map(x=><View key={x.id} style={s.card}><Text style={s.cardTitle}>{x.name}</Text><Text style={s.meta}>{x.location||"Location not set"} · {x.status.toUpperCase()} · {x.is_verified?"Verified":"Not verified"}</Text><Text style={s.meta}>Submitted {new Date(x.created_at).toLocaleDateString()}</Text><View style={s.actions}>{x.status!=="active"?<Pressable disabled={busy} onPress={()=>void updateSeller(x.id,"active")}><Text style={s.action}>Approve seller</Text></Pressable>:null}{x.status!=="suspended"?<Pressable disabled={busy} onPress={()=>Alert.alert("Suspend seller?","This blocks the seller from publishing and their active products remain hidden by the public listing policy.",[{text:"Cancel",style:"cancel"},{text:"Suspend",style:"destructive",onPress:()=>void updateSeller(x.id,"suspended")}])}><Text style={s.danger}>Suspend</Text></Pressable>:<Pressable disabled={busy} onPress={()=>void updateSeller(x.id,"active")}><Text style={s.action}>Reactivate</Text></Pressable>}</View></View>)}</>:null}
   {!sellers.length?<Text style={s.meta}>No seller applications or accounts to display yet.</Text>:null}
+  {tab==="kyc"?<AdminKycReview/>:null}
   {tab==="products"?<><Text style={s.section}>Product moderation</Text>{products.map(x=><View key={x.id} style={s.card}><Text style={s.cardTitle}>{x.title}</Text><Text style={s.meta}>{x.seller?.name||"Seller"} · {money(x.price_mwk)} · Stock {x.stock_quantity} · {x.status.toUpperCase()}</Text><View style={s.actions}><Pressable disabled={busy} onPress={()=>void updateProduct(x.id,x.status==="published"?"archived":"published")}><Text style={s.action}>{x.status==="published"?"Archive listing":"Publish listing"}</Text></Pressable></View></View>)}</>:null}
   {!products.length?<Text style={s.meta}>No product listings to moderate yet.</Text>:null}
   {tab==="users"?<><Text style={s.section}>Marketplace users ({users.length})</Text>{users.map(x=><View key={x.id} style={s.card}><Text style={s.cardTitle}>{x.display_name||"Unnamed user"}</Text><Text style={s.meta}>{x.phone||"No phone"} · {x.location||"Location not set"}</Text><Text style={s.meta}>Account {String(x.id).slice(0,8)} · {x.suspended?"SUSPENDED":"ACTIVE"}</Text><View style={s.actions}><Pressable disabled={busy} onPress={()=>Alert.alert(x.suspended?"Reactivate account?":"Suspend account?","This affects marketplace publishing and purchasing access.",[{text:"Cancel",style:"cancel"},{text:x.suspended?"Reactivate":"Suspend",style:x.suspended?"default":"destructive",onPress:()=>void updateUserStatus(x.id,!x.suspended)}])}><Text style={x.suspended?s.action:s.danger}>{x.suspended?"Reactivate account":"Suspend account"}</Text></Pressable></View></View>)}</>:null}
