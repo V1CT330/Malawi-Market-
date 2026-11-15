@@ -124,13 +124,13 @@ export function AdminKycReview(){
 }
 
 const k=StyleSheet.create({
- card:{backgroundColor:"#fff",padding:15,borderRadius:14,borderWidth:1,borderColor:"#edf0f3",marginTop:12,gap:7},
- heading:{fontSize:16,fontWeight:"900",color:"#252a31"},meta:{fontSize:11,color:"#778293",lineHeight:17},label:{fontSize:11,fontWeight:"800",color:"#4e5b6e",marginTop:8,marginBottom:5},
- input:{backgroundColor:"#fff",borderWidth:1,borderColor:"#e4e9f0",borderRadius:10,padding:12,fontSize:13,color:"#252a31"},
- types:{flexDirection:"row",flexWrap:"wrap",gap:7},type:{paddingHorizontal:11,paddingVertical:9,borderRadius:18,borderWidth:1,borderColor:"#dfe4ea"},typeActive:{backgroundColor:"#f36f21",borderColor:"#f36f21"},typeText:{fontSize:10,fontWeight:"800",color:"#536073"},
+ card:{backgroundColor:"#fff",padding:15,borderRadius:14,borderWidth:1,borderColor:"#d9dde3",marginTop:12,gap:7},
+ heading:{fontSize:16,fontWeight:"900",color:"#252a31"},meta:{fontSize:11,color:"#4b5563",lineHeight:17},label:{fontSize:11,fontWeight:"800",color:"#414b59",marginTop:8,marginBottom:5},
+ input:{backgroundColor:"#fff",borderWidth:1,borderColor:"#cbd1d9",borderRadius:10,padding:12,fontSize:13,color:"#252a31"},
+ types:{flexDirection:"row",flexWrap:"wrap",gap:7},type:{paddingHorizontal:11,paddingVertical:9,borderRadius:18,borderWidth:1,borderColor:"#cbd1d9"},typeActive:{backgroundColor:"#f36f21",borderColor:"#f36f21"},typeText:{fontSize:10,fontWeight:"800",color:"#414b59"},
  upload:{padding:12,borderRadius:10,backgroundColor:"#fff5ed",alignItems:"center",marginTop:8},uploadText:{fontSize:11,fontWeight:"900",color:"#df6c19"},
- preview:{width:"100%",height:150,resizeMode:"contain",backgroundColor:"#f6f7f9",borderRadius:9},
+ preview:{width:"100%",height:150,resizeMode:"contain",backgroundColor:"#eef0f3",borderRadius:9},
  submit:{backgroundColor:"#ef7628",padding:14,borderRadius:10,alignItems:"center",marginTop:8},submitText:{fontSize:12,fontWeight:"900",color:"#fff"},
- statusBox:{backgroundColor:"#f6f7f9",padding:11,borderRadius:9,marginTop:9},statusTitle:{fontSize:11,fontWeight:"900",color:"#252a31"},success:{fontSize:12,color:"#16734a",fontWeight:"800",marginTop:8},notice:{fontSize:11,color:"#85501f",backgroundColor:"#fff4e8",padding:10,borderRadius:9,marginTop:8,lineHeight:16},
+ statusBox:{backgroundColor:"#eef0f3",padding:11,borderRadius:9,marginTop:9},statusTitle:{fontSize:11,fontWeight:"900",color:"#252a31"},success:{fontSize:12,color:"#16734a",fontWeight:"800",marginTop:8},notice:{fontSize:11,color:"#85501f",backgroundColor:"#fff4e8",padding:10,borderRadius:9,marginTop:8,lineHeight:16},
  reviewWrap:{marginTop:12},reviewHead:{flexDirection:"row",alignItems:"center",gap:8},refresh:{backgroundColor:"#fff5ed",padding:10,borderRadius:9},images:{flexDirection:"row",gap:10,marginVertical:8},imageCell:{flex:1},reviewImage:{width:"100%",height:170,resizeMode:"contain",backgroundColor:"#f4f6f9",borderRadius:8},actions:{flexDirection:"row",gap:10,marginTop:8},approve:{flex:1,backgroundColor:"#218653",padding:12,borderRadius:9,alignItems:"center"},reject:{padding:12,borderRadius:9,borderWidth:1,borderColor:"#c33",alignItems:"center"},rejectText:{color:"#b42318",fontSize:12,fontWeight:"900"}
 });
