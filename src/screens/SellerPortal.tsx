@@ -2,6 +2,7 @@ import React,{useEffect,useMemo,useRef,useState} from "react";
 import {ScrollView,View,Text,TextInput,Pressable,StyleSheet,Alert,ActivityIndicator,Image} from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import {supabase} from "../lib/supabase";
+import {SellerKycVerification} from "../components/KycVerification";
 
 type Seller={id:string;name:string;status:"pending"|"active"|"suspended";description?:string|null;location?:string|null;whatsapp_url?:string|null};
 type Category={id:string;name:string;slug:string};
@@ -10,7 +11,7 @@ const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 const slugify=(v:string)=>v.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 export function SellerPortal(){
- const [seller,setSeller]=useState<Seller|null>(null);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const actionLock=useRef(false);
+ const [seller,setSeller]=useState<Seller|null>(null);const [kycStatus,setKycStatus]=useState<"none"|"pending"|"approved"|"rejected">("none");const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const actionLock=useRef(false);
  const [name,setName]=useState("");const [location,setLocation]=useState("");const [storeDescription,setStoreDescription]=useState("");const [productDescription,setProductDescription]=useState("");const [whatsapp,setWhatsapp]=useState("");
  const [title,setTitle]=useState("");const [price,setPrice]=useState("");const [category,setCategory]=useState("");const [condition,setCondition]=useState("new");const [quantity,setQuantity]=useState("1");const [imageUrl,setImageUrl]=useState("");const [pickedImage,setPickedImage]=useState<{uri:string;mimeType:string;fileSize?:number}|null>(null);
  const [editingId,setEditingId]=useState<string|null>(null);const [categories,setCategories]=useState<Category[]>([]);const [myProducts,setMyProducts]=useState<Listing[]>([]);const [orderItems,setOrderItems]=useState<any[]>([]);
@@ -50,6 +51,7 @@ export function SellerPortal(){
  };
  const apply=async()=>{
   if(actionLock.current)return;
+  if(kycStatus!=="approved"){Alert.alert("Identity verification required","Complete identity verification and wait for approval before applying to sell.");return;}
   if(name.trim().length<2||location.trim().length<2){Alert.alert("Missing details","Enter your store name and location.");return;}
   actionLock.current=true;setBusy(true);
   try{
@@ -67,6 +69,7 @@ export function SellerPortal(){
   if(actionLock.current)return;
   const amount=Number(price),stock=Number(quantity),cat=categories.find(x=>x.id===category);
   if(!seller||seller.status!=="active")return;
+  if(kycStatus!=="approved"){Alert.alert("Identity verification required","Your KYC must be approved before publishing or editing products.");return;}
   if(title.trim().length<3||!Number.isSafeInteger(amount)||amount<=0||!Number.isInteger(stock)||stock<0||!cat){Alert.alert("Check listing","Enter a title, valid whole-number price, stock quantity and category.");return;}
   if(imageUrl.trim()&&!/^https:\/\//i.test(imageUrl.trim())){Alert.alert("Invalid image URL","Use HTTPS or choose a photo from your device.");return;}
   actionLock.current=true;setBusy(true);
@@ -107,11 +110,11 @@ export function SellerPortal(){
   finally{actionLock.current=false;setBusy(false);}
  };
  if(loading)return <View style={s.center}><ActivityIndicator color="#ef7b25"/><Text style={s.meta}>Loading seller account…</Text></View>;
- if(!seller)return <ScrollView contentContainerStyle={s.wrap}><Text style={s.title}>Become a seller</Text><Text style={s.meta}>Create your store profile. Publishing unlocks after approval.</Text><Text style={s.label}>Store name</Text><TextInput value={name} onChangeText={setName} style={s.input} placeholder="Your business or shop name"/><Text style={s.label}>City / District</Text><TextInput value={location} onChangeText={setLocation} style={s.input} placeholder="e.g. Lilongwe"/><Text style={s.label}>About your store</Text><TextInput value={storeDescription} onChangeText={setStoreDescription} style={[s.input,{height:90,textAlignVertical:"top"}]} multiline/><Pressable disabled={busy} style={s.button} onPress={()=>void apply()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>Submit seller application</Text>}</Pressable></ScrollView>;
- if(seller.status==="pending")return <View style={s.wrap}><Text style={s.title}>Application pending</Text><Text style={s.meta}>Store: {seller.name}</Text><View style={s.notice}><Text style={s.noticeText}>Your application awaits administrator approval. Product publishing is locked.</Text></View></View>;
+ if(!seller)return <ScrollView contentContainerStyle={s.wrap}><Text style={s.title}>Become a seller</Text><Text style={s.meta}>One account for shopping and selling. Verify your identity first; seller access is a separate approval step.</Text><SellerKycVerification onStatusChange={setKycStatus}/>{kycStatus==="approved"?<><Text style={s.section}>Create your store</Text><Text style={s.label}>Store name</Text><TextInput value={name} onChangeText={setName} style={s.input} placeholder="Your business or shop name"/><Text style={s.label}>City / District</Text><TextInput value={location} onChangeText={setLocation} style={s.input} placeholder="e.g. Lilongwe"/><Text style={s.label}>About your store</Text><TextInput value={storeDescription} onChangeText={setStoreDescription} style={[s.input,{height:90,textAlignVertical:"top"}]} multiline/><Pressable disabled={busy} style={s.button} onPress={()=>void apply()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>Submit seller application</Text>}</Pressable></>:<View style={s.notice}><Text style={s.noticeText}>The seller application form unlocks after identity verification is approved.</Text></View>}</ScrollView>;
+ if(seller.status==="pending")return <ScrollView contentContainerStyle={s.wrap}><Text style={s.title}>Application pending</Text><Text style={s.meta}>Store: {seller.name}</Text><SellerKycVerification onStatusChange={setKycStatus}/><View style={s.notice}><Text style={s.noticeText}>Your seller application awaits administrator approval. Identity approval and seller approval are separate checks.</Text></View></ScrollView>;
  if(seller.status!=="active")return <View style={s.wrap}><Text style={s.title}>Seller account unavailable</Text><Text style={s.meta}>Contact Malawi Market support.</Text></View>;
  return <ScrollView contentContainerStyle={s.wrap}>
-  <Text style={s.title}>Seller Centre</Text><Text style={s.meta}>{seller.name} · Approved seller</Text>
+  <Text style={s.title}>Seller Centre</Text><Text style={s.meta}>{seller.name} · Approved seller</Text><SellerKycVerification onStatusChange={setKycStatus}/>{kycStatus!=="approved"?<View style={s.notice}><Text style={s.noticeText}>Product publishing and listing edits are locked until your identity verification is approved.</Text></View>:null>
   <View style={s.stats}><View style={s.stat}><Text style={s.statValue}>{myProducts.length}</Text><Text style={s.statLabel}>Listings</Text></View><View style={s.stat}><Text style={s.statValue}>{paidItems.length}</Text><Text style={s.statLabel}>Paid items</Text></View><View style={s.stat}><Text style={s.statValue}>{money(revenue)}</Text><Text style={s.statLabel}>Gross sales</Text></View></View>
   <Text style={s.section}>Store profile</Text><Text style={s.label}>Store name</Text><TextInput value={name} onChangeText={setName} style={s.input}/><Text style={s.label}>Location</Text><TextInput value={location} onChangeText={setLocation} style={s.input}/><Text style={s.label}>Description</Text><TextInput value={storeDescription} onChangeText={setStoreDescription} style={[s.input,{height:70,textAlignVertical:"top"}]} multiline/><Text style={s.label}>WhatsApp contact URL (optional)</Text><TextInput value={whatsapp} onChangeText={setWhatsapp} style={s.input} autoCapitalize="none" placeholder="https://wa.me/265..."/><Pressable disabled={busy} style={s.secondary} onPress={()=>void updateSeller()}><Text style={s.secondaryText}>Save store profile</Text></Pressable>
   <Text style={s.section}>{editingId?"Edit listing":"Publish a product"}</Text>
