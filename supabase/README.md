@@ -79,3 +79,14 @@ Database triggers create in-app notifications for:
 - Delivery fee is currently zero in checkout; sellers must disclose any separate delivery arrangement before the buyer pays.
 
 OneKhusa merchant credentials and settlement settings remain unconfigured by design.
+
+## Seller identity verification
+
+- Seller identity checks use the existing `kyc_submissions` table.
+- ID images and selfie photos are stored in the private `kyc-docs` bucket (5 MB per image; JPEG, PNG or WebP).
+- Users can read only their own KYC files; administrators with the `admin` role can review files through short-lived signed URLs.
+- The app collects a legal name, document type and number, an ID image, and a selfie. The selfie is a photo for manual review; automated liveness detection is not implemented.
+- New submissions are forced to `pending` by a database trigger. Users cannot set their own approval status or update an existing submission.
+- Seller application approval and identity approval are separate. Admins must approve KYC before activating a seller.
+- Database policies require the latest KYC submission to be approved before sellers can create or edit product listings. A database trigger also prevents sellers from changing their own seller status or verification flag.
+- KYC documents and ID numbers are sensitive personal data. Review access is restricted; do not expose signed URLs publicly or copy document numbers into logs or support messages.
