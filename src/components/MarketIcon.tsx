@@ -2,7 +2,7 @@ import React from "react";
 import {
   Home, Compass, Search, Heart, UserRound, LayoutGrid, Star, ShoppingBag, QrCode,
   Cpu, Shirt, House, Smartphone, Laptop, Sparkles, Sprout, CarFront, Dumbbell,
-  BookOpen, CookingPot, BriefcaseBusiness, CircleUserRound, Store, Package, Bell,
+  BookOpen, CookingPot, BriefcaseBusiness, Store, Package, Bell,
   Settings, LayoutDashboard, FileText, TrendingUp, Newspaper, Briefcase, CloudSun,
   MapPin, Trophy, CircleHelp
 } from "lucide-react-native";
