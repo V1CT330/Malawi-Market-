@@ -1,15 +1,14 @@
 import * as Location from "expo-location";
+import { supabase } from "./supabase";
 
 export type Coordinates = { latitude: number; longitude: number };
 export type LiveFixture = { league:string; home:string; away:string; time:string; score:string; status:string; sourceName:string };
 
-const FOOTBALL_KEY = process.env.EXPO_PUBLIC_FOOTBALL_API_KEY ?? "";
-const WEATHER_KEY = process.env.EXPO_PUBLIC_WEATHER_API_KEY ?? "";
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "";
 
 export const liveServiceAvailability = {
-  football: Boolean(FOOTBALL_KEY),
-  weather: Boolean(WEATHER_KEY),
+  football: true,
+  weather: true,
   mapbox: Boolean(MAPBOX_TOKEN),
 };
 
@@ -23,20 +22,12 @@ async function readJson(response: Response, provider: string): Promise<any> {
 }
 
 export async function fetchLiveFootballFixtures(): Promise<LiveFixture[]> {
-  if (!FOOTBALL_KEY) return [];
-  const date = new Date().toISOString().slice(0, 10);
-  const url = `https://v3.football.api-sports.io/fixtures?date=${date}&timezone=Africa%2FBlantyre`;
-  const body = await readJson(await fetch(url, { headers: { "x-apisports-key": FOOTBALL_KEY } }), "Football provider");
-  if (body.errors && Object.keys(body.errors).length) throw new Error("Football provider rejected the configured key or request.");
-  return (body.response ?? []).map((item: any) => ({
-    league: item.league?.name || "Football",
-    home: item.teams?.home?.name || "Home",
-    away: item.teams?.away?.name || "Away",
-    time: item.fixture?.date ? new Date(item.fixture.date).toLocaleString() : "Time unavailable",
-    score: item.goals?.home == null || item.goals?.away == null ? "— : —" : `${item.goals.home} : ${item.goals.away}`,
-    status: item.fixture?.status?.long || "Scheduled",
-    sourceName: "API-Football",
-  }));
+  const { data, error } = await supabase.functions.invoke("market-live-services", {
+    body: { action: "football" },
+  });
+  if (error) throw new Error(error.message || "Could not load football fixtures.");
+  if (data?.error) throw new Error(data.error);
+  return Array.isArray(data?.fixtures) ? data.fixtures : [];
 }
 
 export async function requestDeviceCoordinates(): Promise<Coordinates> {
@@ -47,17 +38,12 @@ export async function requestDeviceCoordinates(): Promise<Coordinates> {
 }
 
 export async function fetchWeather(coordinates: Coordinates): Promise<any> {
-  if (!WEATHER_KEY) throw new Error("Weather API key is not configured in this Expo build.");
-  const query = `lat=${coordinates.latitude}&lon=${coordinates.longitude}&appid=${encodeURIComponent(WEATHER_KEY)}&units=metric`;
-  const body = await readJson(await fetch(`https://api.openweathermap.org/data/2.5/weather?${query}`), "Weather provider");
-  return {
-    place: body.name || "Current location",
-    temperature: Math.round(Number(body.main?.temp)),
-    feelsLike: Math.round(Number(body.main?.feels_like)),
-    humidity: Number(body.main?.humidity),
-    description: body.weather?.[0]?.description || "Current conditions",
-    wind: Number(body.wind?.speed || 0),
-  };
+  const { data, error } = await supabase.functions.invoke("market-live-services", {
+    body: { action: "weather", latitude: coordinates.latitude, longitude: coordinates.longitude },
+  });
+  if (error) throw new Error(error.message || "Could not load weather.");
+  if (data?.error) throw new Error(data.error);
+  return data?.weather;
 }
 
 export async function searchMapboxPlaces(query: string): Promise<{name:string;latitude:number;longitude:number}[]> {
