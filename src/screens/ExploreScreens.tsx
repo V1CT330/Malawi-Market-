@@ -50,7 +50,7 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
     try{await Linking.openURL(url);}
     catch{Alert.alert("Unable to open link","Check your internet connection or try opening this link again.");}
   };
-  const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":"Explore Malawi Market");
+  const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":"Malawi Market");
   const pill = (label:string, active:boolean, action:()=>void) => <Pressable key={label} onPress={action} style={[s.pill,active&&s.pillActive]}><Text style={[s.pillText,active&&{color:"#fff"}]}>{label}</Text></Pressable>;
   const notice = (text:string) => <View style={s.notice}><Text style={s.noticeText}>DATA STATUS · {text}</Text></View>;
   return <ScrollView style={s.root} contentContainerStyle={s.content}>
@@ -59,14 +59,15 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
     {loadingData?<View style={s.statusPanel}><Text style={s.statusTitle}>Loading verified information…</Text><Text style={s.statusBody}>Fetching the latest available content.</Text></View>:null}
     {loadError?<View style={s.statusPanel}><Text style={s.statusTitle}>Some information could not be loaded</Text><Text style={s.statusBody}>{loadError}</Text><Pressable onPress={()=>setReloadKey(v=>v+1)} style={s.retry}><Text style={s.retryText}>Try again</Text></Pressable></View>:null}
     {section==="hub" ? <>
-      <Text style={s.subtitle}>News, jobs, stock information and football from verified sources across Malawi.</Text>
+      <Text style={s.subheading}>GENERAL</Text>
+      <Text style={s.subtitle}>Useful information and opportunities from across Malawi.</Text>
       {[
-        ["news","📰","News","Stories and updates by category"],
-        ["jobs","💼","Job vacancies","Explore published opportunities"],
-        ["stocks","📈","Stocks","Market watchlist and company overview"],
-        ["football","⚽","Football","Fixtures, results and league information"],
+        ["stocks","📈","Stock Market","Malawi Stock Exchange information and company quotes"],
+        ["news","📰","News","Stories and updates from verified sources"],
+        ["jobs","💼","Jobs","Published job vacancies and opportunities"],
       ].map(([key,icon,label,desc])=><Pressable key={key} style={s.menuCard} onPress={()=>go(key as Section)}><Text style={s.menuIcon}>{icon}</Text><View style={{flex:1}}><Text style={s.menuTitle}>{marketText(language,label)}</Text><Text style={s.menuDesc}>{desc}</Text></View><Text style={s.arrow}>›</Text></Pressable>)}
-      <View style={s.coming}><Text style={s.comingText}>Orders, seller tools, profiles and notifications are available under Account.</Text></View>
+      <Text style={[s.subheading,{marginTop:24}]}>SPORTS</Text>
+      <Pressable style={s.menuCard} onPress={()=>go("football")}><Text style={s.menuIcon}>⚽</Text><View style={{flex:1}}><Text style={s.menuTitle}>Football</Text><Text style={s.menuDesc}>Fixtures, results and league information</Text></View><Text style={s.arrow}>›</Text></Pressable>
     </> : null}
     {section==="news" ? <>
       {notice(liveFlags.news?"Verified articles loaded from Malawi Market content feed.":"No verified articles are published yet. Sync Malawi24 RSS or add sourced articles in Admin.")}
