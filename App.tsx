@@ -213,7 +213,7 @@ export default function App() {
           <View style={[s.productImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No image</Text></View>}
         {item.demo ? <Text style={[s.badge,{backgroundColor:"#65758b"}]}>DEMO</Text> : item.is_featured ? <Text style={s.badge}>FEATURED</Text> : null}
         <Pressable style={s.heart} onPress={(event) => {event.stopPropagation();toggleSaved(item.id);}}>
-          <Text style={{fontSize:19,color:saved.includes(item.id)?"#e34d59":"#444"}}>{saved.includes(item.id)?"♥":"♡"}</Text>
+          <MarketIcon name="wishlist" size={19} color={saved.includes(item.id)?"#e34d59":"#444"} filled={saved.includes(item.id)} />
         </Pressable>
       </View>
       <View style={s.cardInfo}>
