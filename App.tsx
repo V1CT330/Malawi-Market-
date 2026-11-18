@@ -265,7 +265,6 @@ export default function App() {
   return <SafeAreaView style={[s.safe,{paddingTop:Platform.OS==="android"?(StatusBar.currentHeight ?? 0):0}]}>
     <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
     <View style={{width:"100%",maxWidth:contentMaxWidth,alignSelf:"center",flex:1,overflow:"hidden"}}>
-    {header}
     {checkout ? <CheckoutScreen items={cartProducts.map(({product,quantity})=>({id:product.id,title:product.title,price_mwk:product.price_mwk,quantity,demo:product.demo}))} onBack={()=>setCheckout(false)} onComplete={()=>{updateCart([]);setCheckout(false);setTab("Home");}} onOrderCreated={()=>{updateCart([]);}} />
     : selected ? <ScrollView contentContainerStyle={{paddingBottom:120,paddingHorizontal:isTablet?18:0}}>
       <Pressable onPress={() => setSelected(null)} style={s.back}><Text style={s.backText}>‹  {marketText(language,"Back to shopping")}</Text></Pressable>
