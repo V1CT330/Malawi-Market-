@@ -19,9 +19,9 @@ const icons = {
   football: Trophy
 };
 
-type Props = { name: string; size?: number; color?: string };
+type Props = { name: string; size?: number; color?: string; filled?: boolean };
 
-export function MarketIcon({ name, size = 22, color = "#e87520" }: Props) {
+export function MarketIcon({ name, size = 22, color = "#e87520", filled = false }: Props) {
   const Icon = icons[name as keyof typeof icons] ?? CircleHelp;
-  return <Icon size={size} color={color} strokeWidth={2.1} />;
+  return <Icon size={size} color={color} fill={filled ? color : "none"} strokeWidth={2.1} />;
 }
