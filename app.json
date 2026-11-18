@@ -22,6 +22,12 @@
           "photosPermission": "Allow Malawi Market to select product and profile photos.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Malawi Market to use your location for local weather and map features."
+        }
       ]
     ],
     "owner": "ndelemanis-team",
