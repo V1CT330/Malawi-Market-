@@ -279,7 +279,7 @@ export default function App() {
         {selected.demo ? <Text style={s.demoDetail}>DEMO LISTING — product, seller and price are illustrative only.</Text> : null}
         <Text style={s.detailDescription}>{selected.description || "No product description has been provided."}</Text>
         <ProductReviews productId={selected.id} />
-        <Pressable style={[s.primaryButton,{backgroundColor:"#202124"}]} onPress={() => { setQrProduct(selected); setTab("QR"); }}><Text style={s.primaryText}>Show product QR code</Text></Pressable>
+        <Pressable style={[s.primaryButton,{backgroundColor:"#202124"}]} onPress={() => { setSelected(null); setQrProduct(selected); setTab("QR"); }}><Text style={s.primaryText}>Show product QR code</Text></Pressable>
         <Pressable disabled={selected.stock_quantity<=0} style={[s.primaryButton,selected.stock_quantity<=0&&{opacity:0.45}]} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>{marketText(language,selected.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
         <Pressable style={s.reportButton} onPress={() => {
           Alert.alert("Report this listing","Send a report to the Malawi Market moderation team?",[
