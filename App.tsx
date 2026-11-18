@@ -5,6 +5,7 @@ import {
   StatusBar, StyleSheet, FlatList, ActivityIndicator, RefreshControl, Platform, useWindowDimensions
 } from "react-native";
 import { supabase } from "./src/lib/supabase";
+import { processAuthCallback } from "./src/lib/auth-callback";
 import { ExploreScreens } from "./src/screens/ExploreScreens";
 import { AccountScreens } from "./src/screens/AccountScreens";
 import { ProductReviews } from "./src/components/ProductReviews";
@@ -115,21 +116,13 @@ export default function App() {
   }, []);
   useEffect(() => {
     const handleAuthUrl = async (url: string | null) => {
-      if (!url || !url.startsWith("mw.wealthgrid.malawimarket://auth/reset-password")) return;
+      if (!url || !url.startsWith("mw.wealthgrid.malawimarket://auth/")) return;
       try {
-        const parsed = new URL(url);
-        const code = parsed.searchParams.get("code");
-        if (code) await supabase.auth.exchangeCodeForSession(code);
-        else {
-          const params = new URLSearchParams(url.split("#")[1] || "");
-          const access_token = params.get("access_token");
-          const refresh_token = params.get("refresh_token");
-          if (access_token && refresh_token) await supabase.auth.setSession({ access_token, refresh_token });
-        }
-        setPasswordRecovery(true);
-        setTab("Account");
+        const result = await processAuthCallback(url);
+        if (result === "recovery") setPasswordRecovery(true);
+        if (result === "recovery" || result === "google") setTab("Account");
       } catch (error) {
-        console.warn("Password recovery link could not be processed", error);
+        console.warn("Authentication callback could not be processed", error);
       }
     };
     void Linking.getInitialURL().then(handleAuthUrl);
