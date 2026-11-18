@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { Image } from "react-native";
+import { fetchLiveFootballFixtures, fetchWeather, requestDeviceCoordinates, searchMapboxPlaces, mapboxStaticImageUrl, liveServiceAvailability, Coordinates } from "../lib/live-services";
 import {marketText,MarketLanguage} from "../lib/i18n";
 import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking, Alert } from "react-native";
 
-type Section = "hub" | "news" | "jobs" | "stocks" | "football";
+type Section = "hub" | "news" | "jobs" | "stocks" | "football" | "weather" | "map";
 const orange = "#ef7b25";
 const navy = "#252a31";
 const news: {category:string;title:string;summary:string;source:string;age:string;sourceUrl?:string}[] = [];
@@ -27,6 +29,15 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
   const [loadingData,setLoadingData] = useState(true);
   const [loadError,setLoadError] = useState("");
   const [reloadKey,setReloadKey] = useState(0);
+  const [weather,setWeather] = useState<any>(null);
+  const [weatherLoading,setWeatherLoading] = useState(false);
+  const [weatherError,setWeatherError] = useState("");
+  const [coordinates,setCoordinates] = useState<Coordinates>({latitude:-13.2543,longitude:34.3015});
+  const [mapQuery,setMapQuery] = useState("");
+  const [mapResults,setMapResults] = useState<{name:string;latitude:number;longitude:number}[]>([]);
+  const [mapError,setMapError] = useState("");
+  const [mapLoading,setMapLoading] = useState(false);
+  const [locationLabel,setLocationLabel] = useState("Malawi overview");
   useEffect(()=>{ let active=true; setLoadingData(true); setLoadError(""); Promise.all([
     supabase.from("market_news_articles").select("id,title,summary,category,source_name,source_url,published_at").eq("is_published",true).order("published_at",{ascending:false}).limit(40),
     supabase.from("market_job_listings").select("id,title,company_name,location,job_type,category,description,salary_range,application_url").eq("is_published",true).order("created_at",{ascending:false}).limit(40),
@@ -42,6 +53,26 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
     if(ft.data?.length){setFixtureRows(ft.data.map(x=>({league:x.competition,home:x.home_team,away:x.away_team,time:new Date(x.kickoff_at).toLocaleString(),score:x.home_score===null||x.away_score===null?"— : —":x.home_score+" : "+x.away_score,status:x.status,sourceName:x.source_name,sourceUrl:x.source_url})));setLiveFlags(v=>({...v,football:true}));}
     if(table.data?.length)setStandings(table.data);
   }).catch((error:any)=>{if(active)setLoadError(error?.message||"Explore data could not be loaded. Check your connection and try again.");}).finally(()=>{if(active)setLoadingData(false);}); return ()=>{active=false;}; },[reloadKey]);
+  useEffect(()=>{let active=true;if(!liveServiceAvailability.football)return;fetchLiveFootballFixtures().then(rows=>{if(active&&rows.length){setFixtureRows(rows);setLiveFlags(v=>({...v,football:true}));}}).catch(error=>{if(active)setLoadError(error?.message||"Football data could not be loaded.");});return()=>{active=false;};},[reloadKey]);
+  const loadCurrentWeather = async () => {
+    setWeatherLoading(true);setWeatherError("");
+    try {const point=await requestDeviceCoordinates();setCoordinates(point);setLocationLabel("Current device location");setWeather(await fetchWeather(point));}
+    catch(error:any){setWeatherError(error?.message||"Weather could not be loaded.");}
+    finally{setWeatherLoading(false);}
+  };
+  const useCurrentMapLocation = async () => {
+    setMapLoading(true);setMapError("");
+    try{const point=await requestDeviceCoordinates();setCoordinates(point);setLocationLabel("Current device location");setMapResults([]);}
+    catch(error:any){setMapError(error?.message||"Could not read device location.");}
+    finally{setMapLoading(false);}
+  };
+  const findMapPlaces = async () => {
+    if(!mapQuery.trim()){setMapError("Enter a town, district or place name.");return;}
+    setMapLoading(true);setMapError("");
+    try{const found=await searchMapboxPlaces(mapQuery.trim());setMapResults(found);if(!found.length)setMapError("No matching Malawi locations found.");}
+    catch(error:any){setMapError(error?.message||"Map search failed.");}
+    finally{setMapLoading(false);}
+  };
   const filteredNews = useMemo(()=>newsRows.filter(x=>(newsCategory==="All"||x.category===newsCategory)&&(!search||x.title.toLowerCase().includes(search.toLowerCase()))),[newsRows,newsCategory,search]);
   const filteredJobs = useMemo(()=>jobRows.filter(x=>(jobType==="All"||x.type===jobType)&&(!search||[x.title,x.company,x.location,x.category].join(" ").toLowerCase().includes(search.toLowerCase()))),[jobRows,jobType,search]);
   const go = (next:Section) => { setSearch(""); setSection(next); };
@@ -50,7 +81,7 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
     try{await Linking.openURL(url);}
     catch{Alert.alert("Unable to open link","Check your internet connection or try opening this link again.");}
   };
-  const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":"Malawi Market");
+  const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":section==="weather"?"Weather":section==="map"?"Map & Location":"Malawi Market");
   const pill = (label:string, active:boolean, action:()=>void) => <Pressable key={label} onPress={action} style={[s.pill,active&&s.pillActive]}><Text style={[s.pillText,active&&{color:"#fff"}]}>{label}</Text></Pressable>;
   const notice = (text:string) => <View style={s.notice}><Text style={s.noticeText}>DATA STATUS · {text}</Text></View>;
   return <ScrollView style={s.root} contentContainerStyle={s.content}>
@@ -66,6 +97,9 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
         ["news","📰","News","Stories and updates from verified sources"],
         ["jobs","💼","Jobs","Published job vacancies and opportunities"],
       ].map(([key,icon,label,desc])=><Pressable key={key} style={s.menuCard} onPress={()=>go(key as Section)}><Text style={s.menuIcon}>{icon}</Text><View style={{flex:1}}><Text style={s.menuTitle}>{marketText(language,label)}</Text><Text style={s.menuDesc}>{desc}</Text></View><Text style={s.arrow}>›</Text></Pressable>)}
+      <Text style={[s.subheading,{marginTop:24}]}>LOCAL SERVICES</Text>
+      <Pressable style={s.menuCard} onPress={()=>go("weather")}><Text style={s.menuIcon}>🌤️</Text><View style={{flex:1}}><Text style={s.menuTitle}>Weather</Text><Text style={s.menuDesc}>Current conditions at your device location</Text></View><Text style={s.arrow}>›</Text></Pressable>
+      <Pressable style={s.menuCard} onPress={()=>go("map")}><Text style={s.menuIcon}>📍</Text><View style={{flex:1}}><Text style={s.menuTitle}>Map & Location</Text><Text style={s.menuDesc}>Find places and view a map of Malawi</Text></View><Text style={s.arrow}>›</Text></Pressable>
       <Text style={[s.subheading,{marginTop:24}]}>SPORTS</Text>
       <Pressable style={s.menuCard} onPress={()=>go("football")}><Text style={s.menuIcon}>⚽</Text><View style={{flex:1}}><Text style={s.menuTitle}>Football</Text><Text style={s.menuDesc}>Fixtures, results and league information</Text></View><Text style={s.arrow}>›</Text></Pressable>
     </> : null}
@@ -96,6 +130,24 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
       {!fixtureRows.length?<Text style={s.empty}>No verified fixtures are available yet.</Text>:null}
       {standings.length?<><Text style={s.subheading}>League standings</Text>{standings.map((team,i)=><View key={team.id} style={s.stockRow}><Text style={s.stockSymbol}>{team.position}.</Text><View style={{flex:1,marginLeft:10}}><Text style={s.menuTitle}>{team.team_name}</Text><Text style={s.meta}>{team.competition} · {team.season} · P {team.played} · W {team.won} · D {team.drawn} · L {team.lost}</Text><Text style={s.meta}>{team.source_name||"Source not recorded"}</Text></View><Text style={s.stockPrice}>{team.points} pts</Text></View>)}</>:<View style={s.coming}><Text style={s.comingText}>League standings</Text><Text style={s.soon}>AWAITING VERIFIED DATA SOURCE</Text></View> }
     </> : null}
+    {section==="weather" ? <>
+      {notice(liveServiceAvailability.weather?"OpenWeather connection configured.":"Weather API key missing from this Expo build.")}
+      <View style={s.marketSummary}><Text style={s.summaryLabel}>LOCAL WEATHER</Text><Text style={s.summaryValue}>{weather?.place||"Weather near you"}</Text><Text style={s.meta}>Uses your device location only after you grant permission.</Text></View>
+      <Pressable style={s.retry} onPress={()=>void loadCurrentWeather()} disabled={weatherLoading}><Text style={s.retryText}>{weatherLoading?"Getting weather…":"Use my current location"}</Text></Pressable>
+      {weatherError?<Text style={s.errorText}>{weatherError}</Text>:null}
+      {weather?<View style={s.weatherCard}><Text style={s.temperature}>{weather.temperature}°C</Text><Text style={s.weatherDescription}>{weather.description}</Text><Text style={s.body}>Feels like {weather.feelsLike}°C</Text><View style={s.weatherStats}><Text style={s.meta}>Humidity {weather.humidity}%</Text><Text style={s.meta}>Wind {weather.wind} m/s</Text></View></View>:<Text style={s.empty}>Tap the button to request location access and retrieve live weather.</Text>}
+    </> : null}
+    {section==="map" ? <>
+      {notice(liveServiceAvailability.mapbox?"Mapbox map and place search configured.":"Mapbox public token missing from this Expo build.")}
+      <TextInput value={mapQuery} onChangeText={setMapQuery} placeholder="Search a town or place in Malawi" style={s.search} onSubmitEditing={()=>void findMapPlaces()}/>
+      <Pressable style={s.retry} onPress={()=>void findMapPlaces()} disabled={mapLoading}><Text style={s.retryText}>{mapLoading?"Searching…":"Search places"}</Text></Pressable>
+      <Pressable style={[s.outlineAction,{marginTop:9}]} onPress={()=>void useCurrentMapLocation()} disabled={mapLoading}><Text style={s.outlineActionText}>Use my current location</Text></Pressable>
+      {mapError?<Text style={s.errorText}>{mapError}</Text>:null}
+      {mapResults.map((place,i)=><Pressable key={i} style={s.article} onPress={()=>{setCoordinates({latitude:place.latitude,longitude:place.longitude});setLocationLabel(place.name);setMapResults([]);}}><Text style={s.cardTitle}>{place.name}</Text><Text style={s.meta}>Tap to view this location</Text></Pressable>)}
+      <Text style={s.meta}>Showing: {locationLabel}</Text>
+      {liveServiceAvailability.mapbox?<Image source={{uri:mapboxStaticImageUrl(coordinates)}} style={s.mapImage} resizeMode="cover"/>:<View style={s.mapPlaceholder}><Text style={s.body}>Add the Mapbox public token to the Expo build to display the map.</Text></View>}
+      <Text style={s.meta}>Map preview by Mapbox · {coordinates.latitude.toFixed(4)}, {coordinates.longitude.toFixed(4)}</Text>
+    </> : null}
   </ScrollView>;
 }
 
@@ -110,5 +162,5 @@ const s=StyleSheet.create({
  pill:{borderRadius:18,borderWidth:1,borderColor:"#cbd1d9",paddingHorizontal:13,paddingVertical:8,backgroundColor:"#fff"},pillActive:{backgroundColor:orange,borderColor:orange},pillText:{fontSize:11,color:"#4f5a6c",fontWeight:"700"},
  article:{backgroundColor:"#ffffff",padding:16,borderRadius:15,borderWidth:1,borderColor:"#d9dde3",marginTop:11,elevation:0},category:{fontSize:9,fontWeight:"900",color:orange,letterSpacing:.7},cardTitle:{fontSize:16,fontWeight:"900",color:navy,marginTop:8,lineHeight:22},body:{fontSize:12,color:"#4b5563",lineHeight:18,marginTop:5},meta:{fontSize:10,color:"#4b5563",marginTop:8},row:{flexDirection:"row",justifyContent:"space-between",alignItems:"center"},type:{fontSize:10,color:navy,backgroundColor:"#edf1f6",paddingHorizontal:8,paddingVertical:5,borderRadius:6},empty:{textAlign:"center",color:"#4b5563",padding:24,fontSize:12},
  marketSummary:{backgroundColor:"#202124",borderRadius:16,padding:18,marginTop:14,marginBottom:9},summaryLabel:{fontSize:9,color:"#ffc18d",fontWeight:"900",letterSpacing:1},summaryValue:{fontSize:19,color:"#fff",fontWeight:"900",marginTop:6},stockRow:{flexDirection:"row",alignItems:"center",backgroundColor:"#fff",padding:14,borderBottomWidth:1,borderColor:"#d9dde3"},stockSymbol:{fontSize:15,fontWeight:"900",color:navy},stockPrice:{fontSize:12,fontWeight:"800",color:navy},
- fixture:{backgroundColor:"#fff",borderWidth:1,borderColor:"#e9edf2",borderRadius:17,padding:16,marginTop:12},fixtureTeams:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:12,marginBottom:8},team:{flex:1,fontSize:11,fontWeight:"800",color:navy},score:{fontSize:13,fontWeight:"900",color:orange,paddingHorizontal:8}
+ errorText:{fontSize:11,color:"#b42318",marginTop:10,lineHeight:16},weatherCard:{backgroundColor:"#fff",borderWidth:1,borderColor:"#d9dde3",borderRadius:16,padding:18,marginTop:14},temperature:{fontSize:48,fontWeight:"900",color:navy},weatherDescription:{fontSize:16,fontWeight:"800",color:navy,textTransform:"capitalize",marginTop:4},weatherStats:{flexDirection:"row",justifyContent:"space-between",marginTop:14},mapImage:{width:"100%",height:230,borderRadius:14,marginTop:14,backgroundColor:"#eef1f4"},mapPlaceholder:{height:180,alignItems:"center",justifyContent:"center",padding:20,backgroundColor:"#f1f3f5",borderRadius:14,marginTop:14},outlineAction:{borderWidth:1,borderColor:orange,borderRadius:9,padding:11,alignSelf:"flex-start"},outlineActionText:{color:orange,fontWeight:"800",fontSize:11},fixture:{backgroundColor:"#fff",borderWidth:1,borderColor:"#e9edf2",borderRadius:17,padding:16,marginTop:12},fixtureTeams:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginTop:12,marginBottom:8},team:{flex:1,fontSize:11,fontWeight:"800",color:navy},score:{fontSize:13,fontWeight:"900",color:orange,paddingHorizontal:8}
 });
