@@ -180,7 +180,7 @@ export default function App() {
   const toggleSaved = (id: string) =>
     setSaved(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
   const handleQrScan = (rawValue: string) => {
-    const match = rawValue.trim().match(/^mw\\.wealthgrid\\.malawimarket:\/\/product\/([A-Za-z0-9-]+)$/i);
+    const match = rawValue.trim().match(/^mw\.wealthgrid\.malawimarket:\/\/product\/([A-Za-z0-9-]+)$/i);
     if (!match) {
       Alert.alert("Unsupported QR code", "This code is not a Malawi Market product QR code.");
       return;
