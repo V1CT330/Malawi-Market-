@@ -2,6 +2,7 @@ import React,{useEffect,useRef,useState} from "react";
 import {View,Text,TextInput,Pressable,StyleSheet,Alert,ActivityIndicator} from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import {supabase} from "../lib/supabase";
+import {processAuthCallback} from "../lib/auth-callback";
 
 type Mode="signin"|"signup"|"recover"|"reset";
 const GOOGLE_REDIRECT_URL="mw.wealthgrid.malawimarket://auth/callback";
@@ -22,15 +23,8 @@ export function AuthScreen({onDone,onBack,initialMode="signin"}:{onDone:()=>void
    if(!data.url)throw new Error("Supabase did not return a Google sign-in URL.");
    const result=await WebBrowser.openAuthSessionAsync(data.url,GOOGLE_REDIRECT_URL);
    if(result.type!=="success")return;
-   const callbackUrl=new URL(result.url);
-   const callbackParams=new URLSearchParams(callbackUrl.search);
-   const hashParams=new URLSearchParams(callbackUrl.hash.replace(/^#/,""));
-   const callbackError=callbackParams.get("error_description")||hashParams.get("error_description")||callbackParams.get("error")||hashParams.get("error");
-   if(callbackError)throw new Error(callbackError.replace(/\+/g," "));
-   const code=callbackParams.get("code");
-   if(!code)throw new Error("Google returned without an authorization code. Close the browser and try again.");
-   const {error:exchangeError}=await supabase.auth.exchangeCodeForSession(code);
-   if(exchangeError)throw exchangeError;
+   const callbackType=await processAuthCallback(result.url);
+   if(callbackType!=="google")throw new Error("Google sign-in did not return a valid app callback.");
    onDone();
   }catch(e:any){
    Alert.alert("Google sign-in failed",e?.message||"Could not complete Google sign-in. Try again.");
