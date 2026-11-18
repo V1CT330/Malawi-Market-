@@ -229,10 +229,17 @@ export default function App() {
   };
 
   const nav = <View style={[s.bottomNav,{bottom:8,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8}]}>
-    {[[ "Home","⌂" ],[ "Search","⌕" ],[ "Explore","▦" ],[ "Wishlist","♡" ],[ "Cart","🛒" ],[ "Account","♙" ]].map(([name,icon]) =>
-      <Pressable key={name} onPress={() => { setSelected(null); setTab(name); }} style={s.navItem}>
-        <Text style={[s.navIcon,{fontSize:isCompact?20:23,color:tab===name?"#ef7b25":"#777"}]}>{icon}</Text>
-        <Text numberOfLines={1} style={[s.navLabel,{fontSize:isCompact?8.5:10,color:tab===name?"#ef7b25":"#777"}]}>{marketText(language,name)}</Text>
+    {[
+      ["Home","Home","⌂"],
+      ["Explore","Malawi Market","▦"],
+      ["Search","Shop","⌕"],
+      ["Wishlist","Wishlist","♡"],
+      ["Cart","Cart","🛒"],
+      ["Account","Account","♙"],
+    ].map(([tabName,label,icon]) =>
+      <Pressable key={tabName} accessibilityRole="button" accessibilityState={{selected:tab===tabName}} onPress={() => { setSelected(null); setTab(tabName); }} style={s.navItem}>
+        <Text style={[s.navIcon,{fontSize:isCompact?20:23,color:tab===tabName?"#ef7b25":"#777"}]}>{icon}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.navLabel,{fontSize:isCompact?8.5:10,color:tab===tabName?"#ef7b25":"#777"}]}>{marketText(language,label)}</Text>
       </Pressable>)}
   </View>;
 
