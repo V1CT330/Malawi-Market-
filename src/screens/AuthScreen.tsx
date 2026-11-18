@@ -39,7 +39,7 @@ export function AuthScreen({onDone,onBack,initialMode="signin"}:{onDone:()=>void
  const submit=async()=>{
   if(submitLock.current)return;
   const clean=email.trim().toLowerCase();
-  if(mode!=="reset"&&!/^\\S+@\\S+\\.\\S+$/.test(clean)){Alert.alert("Check your email","Enter a valid email address.");return;}
+  if(mode!=="reset"&&!/^\S+@\S+\.\S+$/.test(clean)){Alert.alert("Check your email","Enter a valid email address.");return;}
   if(mode==="recover"){
    submitLock.current=true;setBusy(true);try{const {error}=await supabase.auth.resetPasswordForEmail(clean,{redirectTo:"mw.wealthgrid.malawimarket://auth/reset-password"});if(error)throw error;Alert.alert("Recovery email sent","Open the recovery link on this device. The app redirect URL must be allowed in Supabase Auth settings.");setMode("signin");}catch(e:any){Alert.alert("Recovery failed",e?.message||"Could not send recovery email.");}finally{setBusy(false);submitLock.current=false;}return;
   }
