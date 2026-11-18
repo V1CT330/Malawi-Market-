@@ -358,7 +358,7 @@ export default function App() {
         <Text style={s.detailDescription}>Checkout uses OneKhusa. Payment is only confirmed after a verified provider notification.</Text>
         </>}
     </ScrollView>
-    : tab === "QR" ? <QRToolsScreen products={products.filter(item => !item.demo)} initialProduct={qrProduct && !qrProduct.demo ? qrProduct : null} onProductChange={setQrProduct} onScan={handleQrScan} onBack={() => { setTab("Home"); setQrProduct(null); }} />
+    : tab === "QR" ? <QRToolsScreen products={products.filter(item => !item.demo)} initialProduct={qrProduct && !qrProduct.demo ? qrProduct : null} onProductChange={product => setQrProduct(product ? products.find(item => item.id === product.id) ?? null : null)} onScan={handleQrScan} onBack={() => { setTab("Home"); setQrProduct(null); }} />
     : tab === "Wishlist" ? <ScrollView contentContainerStyle={s.page}>
       <Text style={s.pageTitle}>{marketText(language,"Wishlist")}</Text>
       {savedProducts.length ? <FlatList data={savedProducts} renderItem={productCard} keyExtractor={p=>p.id} numColumns={gridColumns} scrollEnabled={false} columnWrapperStyle={[s.productRow,{gap:horizontalGutter}]} contentContainerStyle={{paddingHorizontal:horizontalGutter}}/> :
