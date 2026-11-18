@@ -10,6 +10,7 @@ import { AccountScreens } from "./src/screens/AccountScreens";
 import { ProductReviews } from "./src/components/ProductReviews";
 import { CheckoutScreen } from "./src/screens/CheckoutScreen";
 import { marketText, MarketLanguage } from "./src/lib/i18n";
+import { demoCategories, demoProducts } from "./src/data/demo-products";
 
 type Category = { id: string; name: string; slug: string; icon?: string | null };
 type Product = {
@@ -83,8 +84,11 @@ export default function App() {
         category: Array.isArray(p.category) ? (p.category[0] ?? null) : (p.category ?? null),
         seller: Array.isArray(p.seller) ? (p.seller[0] ?? null) : (p.seller ?? null),
       })) as Product[];
-      setCategories((categoryResult.data ?? []) as Category[]);
-      setProducts(liveProducts);
+      const mergedCategories = new Map<string, Category>();
+      ((categoryResult.data ?? []) as Category[]).forEach(item => mergedCategories.set(item.slug, item));
+      demoCategories.forEach(item => { if (!mergedCategories.has(item.slug)) mergedCategories.set(item.slug, item); });
+      setCategories(Array.from(mergedCategories.values()));
+      setProducts([...liveProducts, ...demoProducts]);
       if (productResult.error) setLoadError(productResult.error.message);
       else if (categoryResult.error) setLoadError(categoryResult.error.message);
     } catch (error:any) {
@@ -168,7 +172,7 @@ export default function App() {
 
   const addToCart = (id: string) => {
     const product = products.find(p => p.id === id);
-    if (!product || product.demo) return;
+    if (!product) return;
     const currentCart = cartRef.current;
     const inCart = currentCart.filter(x => x === id).length;
     if (Number(product.stock_quantity) <= inCart) {
@@ -339,7 +343,7 @@ export default function App() {
           <Pressable onPress={() => updateCart(v => v.filter(id=>id!==p.id))}><Text style={{color:"#c44",padding:8}}>Remove</Text></Pressable>
         </View>)}
         <Text style={s.total}>Subtotal: {money(cartTotal)}</Text>
-        <Pressable style={s.primaryButton} onPress={()=>setCheckout(true)}><Text style={s.primaryText}>{marketText(language,"Proceed to secure checkout")}</Text></Pressable>
+        <Pressable style={s.primaryButton} onPress={()=>{if(cartProducts.some(item=>item.product.demo)){Alert.alert("Demo preview only","Remove demo products from your cart before starting a real checkout.");return;}setCheckout(true);}}><Text style={s.primaryText}>{marketText(language,"Proceed to secure checkout")}</Text></Pressable>
         <Text style={s.detailDescription}>Checkout uses OneKhusa. Payment is only confirmed after a verified provider notification.</Text>
         </>}
     </ScrollView>
