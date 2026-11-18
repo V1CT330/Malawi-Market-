@@ -28,6 +28,13 @@
         {
           "locationWhenInUsePermission": "Allow Malawi Market to use your location for local weather and map features."
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Malawi Market to use your camera to scan product QR codes.",
+          "barcodeScannerEnabled": true
+        }
       ]
     ],
     "owner": "ndelemanis-team",
