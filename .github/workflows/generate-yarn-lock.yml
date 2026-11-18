@@ -2,6 +2,12 @@ name: Generate Yarn Lockfile
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - package.json
+      - .github/workflows/generate-yarn-lock.yml
 
 permissions:
   contents: write
