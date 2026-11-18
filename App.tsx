@@ -10,6 +10,7 @@ import { ExploreScreens } from "./src/screens/ExploreScreens";
 import { AccountScreens } from "./src/screens/AccountScreens";
 import { ProductReviews } from "./src/components/ProductReviews";
 import { CheckoutScreen } from "./src/screens/CheckoutScreen";
+import { QRToolsScreen } from "./src/screens/QRToolsScreen";
 import { marketText, MarketLanguage } from "./src/lib/i18n";
 import { demoCategories, demoProducts } from "./src/data/demo-products";
 
@@ -61,6 +62,7 @@ export default function App() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selected, setSelected] = useState<Product | null>(null);
+  const [qrProduct, setQrProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -177,6 +179,20 @@ export default function App() {
   };
   const toggleSaved = (id: string) =>
     setSaved(current => current.includes(id) ? current.filter(x => x !== id) : [...current, id]);
+  const handleQrScan = (rawValue: string) => {
+    const match = rawValue.trim().match(/^mw\\.wealthgrid\\.malawimarket:\/\/product\/([A-Za-z0-9-]+)$/i);
+    if (!match) {
+      Alert.alert("Unsupported QR code", "This code is not a Malawi Market product QR code.");
+      return;
+    }
+    const product = products.find(item => item.id === match[1] && !item.demo);
+    if (!product) {
+      Alert.alert("Product unavailable", "This product is not currently available in the loaded marketplace catalogue.");
+      return;
+    }
+    setSelected(product);
+    setTab("Home");
+  };
   const cartProducts = Array.from(new Set(cart)).map(id => ({ product: products.find(p => p.id === id), quantity: cart.filter(x => x === id).length })).filter((x): x is { product: Product; quantity: number } => Boolean(x.product));
   const cartTotal = cartProducts.reduce((sum, item) => sum + Number(item.product.price_mwk) * item.quantity, 0);
   const savedProducts = products.filter(p => saved.includes(p.id));
@@ -185,6 +201,7 @@ export default function App() {
     ["✦", "Featured", () => { setSortBy("relevance"); setTab("Search"); }],
     ["♡", "Wishlist", () => setTab("Wishlist")],
     ["▣", "My cart", () => setTab("Cart")],
+    ["▤", "QR codes", () => { setQrProduct(null); setTab("QR"); }],
   ];
 
   const header = <>
@@ -262,6 +279,7 @@ export default function App() {
         {selected.demo ? <Text style={s.demoDetail}>DEMO LISTING — product, seller and price are illustrative only.</Text> : null}
         <Text style={s.detailDescription}>{selected.description || "No product description has been provided."}</Text>
         <ProductReviews productId={selected.id} />
+        <Pressable style={[s.primaryButton,{backgroundColor:"#202124"}]} onPress={() => { setQrProduct(selected); setTab("QR"); }}><Text style={s.primaryText}>Show product QR code</Text></Pressable>
         <Pressable disabled={selected.stock_quantity<=0} style={[s.primaryButton,selected.stock_quantity<=0&&{opacity:0.45}]} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>{marketText(language,selected.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
         <Pressable style={s.reportButton} onPress={() => {
           Alert.alert("Report this listing","Send a report to the Malawi Market moderation team?",[
@@ -340,6 +358,7 @@ export default function App() {
         <Text style={s.detailDescription}>Checkout uses OneKhusa. Payment is only confirmed after a verified provider notification.</Text>
         </>}
     </ScrollView>
+    : tab === "QR" ? <QRToolsScreen products={products.filter(item => !item.demo)} initialProduct={qrProduct && !qrProduct.demo ? qrProduct : null} onProductChange={setQrProduct} onScan={handleQrScan} onBack={() => { setTab("Home"); setQrProduct(null); }} />
     : tab === "Wishlist" ? <ScrollView contentContainerStyle={s.page}>
       <Text style={s.pageTitle}>{marketText(language,"Wishlist")}</Text>
       {savedProducts.length ? <FlatList data={savedProducts} renderItem={productCard} keyExtractor={p=>p.id} numColumns={gridColumns} scrollEnabled={false} columnWrapperStyle={[s.productRow,{gap:horizontalGutter}]} contentContainerStyle={{paddingHorizontal:horizontalGutter}}/> :
