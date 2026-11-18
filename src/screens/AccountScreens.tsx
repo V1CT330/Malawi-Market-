@@ -7,6 +7,7 @@ import {AuthScreen} from "./AuthScreen";
 import {SellerPortal} from "./SellerPortal";
 import {AdminDashboard} from "./AdminDashboard";
 import {marketText,MarketLanguage} from "../lib/i18n";
+import {MarketIcon} from "../components/MarketIcon";
 
 const KEY_DRAFTS="@malawi-market/seller-drafts";
 const KEY_PROFILE="@malawi-market/profile";
@@ -91,18 +92,18 @@ export function AccountScreens({language,onLanguageChange,passwordRecovery,onPas
  const markAllRead=async()=>{const {data:{user}}=await supabase.auth.getUser();if(!user)return;const now=new Date().toISOString();const {error}=await supabase.from("market_notifications").update({read_at:now}).eq("user_id",user.id).is("read_at",null);if(error)Alert.alert("Could not update notifications",error.message);else setNotifications(v=>v.map(x=>({...x,read_at:x.read_at??now})));};
  const back=()=>setScreen("menu");
  const header=(name:string)=><><Pressable onPress={back} style={s.back}><Text style={s.backText}>‹  Account</Text></Pressable><Text style={s.title}>{tr(profile.language,name)}</Text></>;
- const row=(icon:string,name:string,desc:string,action:()=>void)=><Pressable onPress={action} style={s.menuRow}><Text style={s.icon}>{icon}</Text><View style={{flex:1}}><Text style={s.menuTitle}>{tr(profile.language,name)}</Text><Text style={s.meta}>{desc}</Text></View><Text style={s.arrow}>›</Text></Pressable>;
+ const row=(icon:string,name:string,desc:string,action:()=>void)=><Pressable onPress={action} style={s.menuRow}><View style={s.icon}><MarketIcon name={icon} size={21} color="#e87520"/></View><View style={{flex:1}}><Text style={s.menuTitle}>{tr(profile.language,name)}</Text><Text style={s.meta}>{desc}</Text></View><Text style={s.arrow}>›</Text></Pressable>;
  return <ScrollView style={s.root} contentContainerStyle={s.content}>
  {screen==="menu"&&<><Text style={s.title}>{tr(profile.language,"Your account")}</Text><Text style={s.subtitle}>Manage your marketplace activity and personal details.</Text>
-  <View style={s.profileCard}>{profile.avatarUrl?<Image source={{uri:profile.avatarUrl}} style={s.avatarImage}/>:<Text style={s.avatar}>👤</Text>}<View style={{flex:1}}><Text style={s.menuTitle}>{profile.displayName||"Marketplace shopper"}</Text><Text style={s.meta}>{accountEmail||"Not signed in"} · {profile.location||"Location not set"}</Text></View>{isAdmin?<Text style={s.adminTag}>ADMIN</Text>:null}</View>
-  {row("♙",accountEmail?"Signed in":"Sign in / Register",accountEmail||"Unlock buyer and seller account features",()=>setScreen("auth"))}
-  {row("▣","Seller Centre","Apply, manage your store and publish products",()=>setScreen("seller"))}
-  {row("▤","Orders","View purchases and delivery progress",()=>setScreen("orders"))}
-  {row("♧","Notifications",unread?unread+" unread notifications":"Order and account updates",()=>setScreen("notifications"))}
-  {row("♙","Profile","Manage your account details and profile photo",()=>setScreen("profile"))}
-  {row("⚙","Settings","Notifications and language preferences",()=>setScreen("settings"))}
-  {isAdmin?row("▦","Admin dashboard","Moderate sellers, products, orders and content",()=>setScreen("admin")):null}
-  {row("▤","Saved drafts","Local seller drafts on this device",()=>setScreen("drafts"))}
+  <View style={s.profileCard}>{profile.avatarUrl?<Image source={{uri:profile.avatarUrl}} style={s.avatarImage}/>:<View style={s.avatar}><MarketIcon name="account" size={28} color="#e87520"/></View>}<View style={{flex:1}}><Text style={s.menuTitle}>{profile.displayName||"Marketplace shopper"}</Text><Text style={s.meta}>{accountEmail||"Not signed in"} · {profile.location||"Location not set"}</Text></View>{isAdmin?<Text style={s.adminTag}>ADMIN</Text>:null}</View>
+  {row("account",accountEmail?"Signed in":"Sign in / Register",accountEmail||"Unlock buyer and seller account features",()=>setScreen("auth"))}
+  {row("seller","Seller Centre","Apply, manage your store and publish products",()=>setScreen("seller"))}
+  {row("orders","Orders","View purchases and delivery progress",()=>setScreen("orders"))}
+  {row("notifications","Notifications",unread?unread+" unread notifications":"Order and account updates",()=>setScreen("notifications"))}
+  {row("account","Profile","Manage your account details and profile photo",()=>setScreen("profile"))}
+  {row("settings","Settings","Notifications and language preferences",()=>setScreen("settings"))}
+  {isAdmin?row("admin","Admin dashboard","Moderate sellers, products, orders and content",()=>setScreen("admin")):null}
+  {row("orders","Saved drafts","Local seller drafts on this device",()=>setScreen("drafts"))}
   {accountEmail?<Pressable style={s.menuRow} onPress={()=>Alert.alert("Sign out?","You will need to sign in again to access account features.",[{text:"Cancel"},{text:"Sign out",style:"destructive",onPress:()=>void supabase.auth.signOut()}])}><Text style={s.menuTitle}>Sign out of {accountEmail}</Text></Pressable>:null}
  </>}
  {screen==="auth"&&<AuthScreen initialMode={passwordRecovery?"reset":"signin"} onBack={back} onDone={()=>{setScreen("menu");onPasswordRecoveryComplete();}}/>}
