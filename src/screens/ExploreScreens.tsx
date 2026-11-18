@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { Image } from "react-native";
 import { fetchLiveFootballFixtures, fetchWeather, requestDeviceCoordinates, searchMapboxPlaces, mapboxStaticImageUrl, liveServiceAvailability, Coordinates } from "../lib/live-services";
 import {marketText,MarketLanguage} from "../lib/i18n";
+import {MarketIcon} from "../components/MarketIcon";
 import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking, Alert } from "react-native";
 
 type Section = "hub" | "news" | "jobs" | "stocks" | "football" | "weather" | "map";
@@ -93,15 +94,15 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
       <Text style={s.subheading}>GENERAL</Text>
       <Text style={s.subtitle}>Useful information and opportunities from across Malawi.</Text>
       {[
-        ["stocks","📈","Stock Market","Malawi Stock Exchange information and company quotes"],
-        ["news","📰","News","Stories and updates from verified sources"],
-        ["jobs","💼","Jobs","Published job vacancies and opportunities"],
-      ].map(([key,icon,label,desc])=><Pressable key={key} style={s.menuCard} onPress={()=>go(key as Section)}><Text style={s.menuIcon}>{icon}</Text><View style={{flex:1}}><Text style={s.menuTitle}>{marketText(language,label)}</Text><Text style={s.menuDesc}>{desc}</Text></View><Text style={s.arrow}>›</Text></Pressable>)}
+        ["stocks","stocks","Stock Market","Malawi Stock Exchange information and company quotes"],
+        ["news","news","News","Stories and updates from verified sources"],
+        ["jobs","jobs","Jobs","Published job vacancies and opportunities"],
+      ].map(([key,icon,label,desc])=><Pressable key={key} style={s.menuCard} onPress={()=>go(key as Section)}><View style={s.menuIcon}><MarketIcon name={icon} size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>{marketText(language,label)}</Text><Text style={s.menuDesc}>{desc}</Text></View><Text style={s.arrow}>›</Text></Pressable>)}
       <Text style={[s.subheading,{marginTop:24}]}>LOCAL SERVICES</Text>
-      <Pressable style={s.menuCard} onPress={()=>go("weather")}><Text style={s.menuIcon}>🌤️</Text><View style={{flex:1}}><Text style={s.menuTitle}>Weather</Text><Text style={s.menuDesc}>Current conditions at your device location</Text></View><Text style={s.arrow}>›</Text></Pressable>
-      <Pressable style={s.menuCard} onPress={()=>go("map")}><Text style={s.menuIcon}>📍</Text><View style={{flex:1}}><Text style={s.menuTitle}>Map & Location</Text><Text style={s.menuDesc}>Find places and view a map of Malawi</Text></View><Text style={s.arrow}>›</Text></Pressable>
+      <Pressable style={s.menuCard} onPress={()=>go("weather")}><View style={s.menuIcon}><MarketIcon name="weather" size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>Weather</Text><Text style={s.menuDesc}>Current conditions at your device location</Text></View><Text style={s.arrow}>›</Text></Pressable>
+      <Pressable style={s.menuCard} onPress={()=>go("map")}><View style={s.menuIcon}><MarketIcon name="map" size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>Map & Location</Text><Text style={s.menuDesc}>Find places and view a map of Malawi</Text></View><Text style={s.arrow}>›</Text></Pressable>
       <Text style={[s.subheading,{marginTop:24}]}>SPORTS</Text>
-      <Pressable style={s.menuCard} onPress={()=>go("football")}><Text style={s.menuIcon}>⚽</Text><View style={{flex:1}}><Text style={s.menuTitle}>Football</Text><Text style={s.menuDesc}>Fixtures, results and league information</Text></View><Text style={s.arrow}>›</Text></Pressable>
+      <Pressable style={s.menuCard} onPress={()=>go("football")}><View style={s.menuIcon}><MarketIcon name="football" size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>Football</Text><Text style={s.menuDesc}>Fixtures, results and league information</Text></View><Text style={s.arrow}>›</Text></Pressable>
     </> : null}
     {section==="news" ? <>
       {notice(liveFlags.news?"Verified articles loaded from Malawi Market content feed.":"No verified articles are published yet. Sync Malawi24 RSS or add sourced articles in Admin.")}
@@ -154,7 +155,7 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:"#ffffff"},content:{padding:18,paddingBottom:120},back:{paddingVertical:8},backText:{color:orange,fontWeight:"800",fontSize:14},
  title:{fontSize:26,fontWeight:"700",color:"#202124",marginTop:10,letterSpacing:-.6},subtitle:{fontSize:13,color:"#4b5563",lineHeight:20,marginTop:6,marginBottom:16},
- menuCard:{flexDirection:"row",alignItems:"center",backgroundColor:"#ffffff",borderWidth:1,borderColor:"#d9dde3",borderRadius:15,padding:16,marginTop:10,elevation:0},menuIcon:{fontSize:26,marginRight:13},menuTitle:{fontSize:15,fontWeight:"800",color:navy},menuDesc:{fontSize:11,color:"#4b5563",marginTop:4},arrow:{fontSize:26,color:orange,marginLeft:8},
+ menuCard:{flexDirection:"row",alignItems:"center",backgroundColor:"#ffffff",borderWidth:1,borderColor:"#d9dde3",borderRadius:15,padding:16,marginTop:10,elevation:0},menuIcon:{width:42,height:42,borderRadius:12,backgroundColor:"#fff1e5",alignItems:"center",justifyContent:"center",marginRight:13},menuTitle:{fontSize:15,fontWeight:"800",color:navy},menuDesc:{fontSize:11,color:"#4b5563",marginTop:4},arrow:{fontSize:26,color:orange,marginLeft:8},
  subheading:{fontSize:15,fontWeight:"900",color:navy,marginTop:24,marginBottom:8},coming:{backgroundColor:"#fff",borderRadius:10,padding:13,marginTop:7,borderWidth:1,borderColor:"#d9dde3"},comingText:{fontSize:12,fontWeight:"700",color:"#465267"},soon:{fontSize:9,color:"#9a6a3a",fontWeight:"900",marginTop:7,letterSpacing:.5},
  statusPanel:{backgroundColor:"#fff",borderRadius:16,padding:16,marginTop:13,borderWidth:1,borderColor:"#e7ebf0"},statusTitle:{fontSize:13,fontWeight:"900",color:navy},statusBody:{fontSize:11,color:"#4b5563",lineHeight:17,marginTop:5},retry:{alignSelf:"flex-start",backgroundColor:orange,borderRadius:8,paddingHorizontal:13,paddingVertical:9,marginTop:10},retryText:{fontSize:11,color:"#fff",fontWeight:"900"},
  notice:{backgroundColor:"#fff1e5",borderRadius:9,padding:11,marginTop:12},noticeText:{fontSize:10,color:"#8a4c19",fontWeight:"800",lineHeight:15},
