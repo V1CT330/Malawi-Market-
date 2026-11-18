@@ -204,23 +204,6 @@ export default function App() {
     ["▤", "QR codes", () => { setQrProduct(null); setTab("QR"); }],
   ];
 
-  const header = <>
-    <View style={s.marketHeader}>
-      <View style={s.marketHeaderTop}>
-        <View style={s.brandLockup}><Image source={require("./assets/logo.png")} style={s.brandLogo} resizeMode="contain" /><View><Text style={s.marketEyebrow}>WELCOME TO</Text><Text style={s.brand}><Text style={{color:"#f36f21"}}>Malawi</Text> Market</Text></View></View>
-        <Pressable style={s.headerAction} onPress={() => { setSelected(null); setTab("Cart"); }}>
-          <Text style={{fontSize:23}}>🛒</Text>{cart.length > 0 ? <Text style={s.cartCount}>{cart.length}</Text> : null}
-        </Pressable>
-      </View>
-      <View style={s.search}>
-        <Text style={s.searchGlyph}>⌕</Text>
-        <TextInput placeholder="Search products, brands and more" placeholderTextColor="#858b94" value={query} onChangeText={setQuery} style={s.searchInput} returnKeyType="search" onSubmitEditing={() => setTab("Search")} onFocus={() => setTab("Search")} />
-        <Pressable style={s.searchAction} onPress={() => setTab("Search")}><Text style={s.searchActionText}>Search</Text></Pressable>
-      </View>
-      <View style={s.locationLine}><Text style={s.locationText}>⌖  Shopping across Malawi</Text><Text style={s.locationText}>Local sellers · Local deals</Text></View>
-    </View>
-  </>;
-
   const productCard = ({ item }: { item: Product }) => {
     const image = productImage(item);
     return <Pressable style={s.card} onPress={() => setSelected(item)}>
