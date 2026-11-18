@@ -231,11 +231,10 @@ export default function App() {
   const nav = <View style={[s.bottomNav,{bottom:8,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8}]}>
     {[
       ["Home","Home","⌂"],
-      ["Explore","Malawi Market","▦"],
+      ["Explore","Explore","▦"],
       ["Search","Shop","⌕"],
       ["Wishlist","Wishlist","♡"],
-      ["Cart","Cart","🛒"],
-      ["Account","Account","♙"],
+      ["Account","My Account","♙"],
     ].map(([tabName,label,icon]) =>
       <Pressable key={tabName} accessibilityRole="button" accessibilityState={{selected:tab===tabName}} onPress={() => { setSelected(null); setTab(tabName); }} style={s.navItem}>
         <Text style={[s.navIcon,{fontSize:isCompact?20:23,color:tab===tabName?"#ef7b25":"#777"}]}>{icon}</Text>
