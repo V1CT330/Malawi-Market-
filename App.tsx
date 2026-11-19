@@ -12,7 +12,6 @@ import { ProductReviews } from "./src/components/ProductReviews";
 import { CheckoutScreen } from "./src/screens/CheckoutScreen";
 import { QRToolsScreen } from "./src/screens/QRToolsScreen";
 import { marketText, MarketLanguage } from "./src/lib/i18n";
-import { demoCategories, demoProducts } from "./src/data/demo-products";
 import { MarketIcon } from "./src/components/MarketIcon";
 
 type Category = { id: string; name: string; slug: string; icon?: string | null };
@@ -90,9 +89,8 @@ export default function App() {
       })) as Product[];
       const mergedCategories = new Map<string, Category>();
       ((categoryResult.data ?? []) as Category[]).forEach(item => mergedCategories.set(item.slug, item));
-      demoCategories.forEach(item => { if (!mergedCategories.has(item.slug)) mergedCategories.set(item.slug, item); });
       setCategories(Array.from(mergedCategories.values()));
-      setProducts([...liveProducts, ...demoProducts]);
+      setProducts(liveProducts);
       if (productResult.error) setLoadError(productResult.error.message);
       else if (categoryResult.error) setLoadError(categoryResult.error.message);
     } catch (error:any) {
@@ -209,7 +207,7 @@ export default function App() {
     const image = productImage(item);
     return <Pressable style={s.card} onPress={() => setSelected(item)}>
       <View style={s.imageWrap}>
-        {image ? <Image source={{uri:image}} style={s.productImage} resizeMode="contain" /> :
+        {image ? <Image source={{uri:image}} style={s.productImage} resizeMode="cover" /> :
           <View style={[s.productImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No image</Text></View>}
         {item.demo ? <Text style={[s.badge,{backgroundColor:"#65758b"}]}>DEMO</Text> : item.is_featured ? <Text style={s.badge}>FEATURED</Text> : null}
         <Pressable style={s.heart} onPress={(event) => {event.stopPropagation();toggleSaved(item.id);}}>
@@ -226,7 +224,7 @@ export default function App() {
     </Pressable>;
   };
 
-  const nav = <View style={[s.bottomNav,{bottom:8,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8}]}>
+  const nav = <View style={[s.bottomNav,{bottom:Platform.OS==="android"?32:8,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8}]}>
     {[
       ["Home","Home","home"],
       ["Explore","Explore","explore"],
@@ -277,7 +275,7 @@ export default function App() {
         }}><Text style={s.reportText}>Report this listing</Text></Pressable>
       </View>
     </ScrollView>
-    : tab === "Home" || tab === "Search" ? <ScrollView contentContainerStyle={{paddingBottom:100}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadCatalogue(true)} />}>
+    : tab === "Home" || tab === "Search" ? <ScrollView contentContainerStyle={{paddingBottom:132}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadCatalogue(true)} />}>
       
       {tab === "Home" ? <>
         <View style={s.promoBanner}>
@@ -304,7 +302,7 @@ export default function App() {
         <View style={s.sectionHead}><View><Text style={s.sectionTitle}>Featured finds</Text><Text style={s.sectionHint}>Selected products from Malawi Market sellers</Text></View><Text style={s.viewAll}>{products.filter(p=>p.is_featured).length} items</Text></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.featuredRow}>
           {products.filter(p=>p.is_featured).slice(0,8).map(p=><Pressable key={p.id} style={s.featuredCard} onPress={()=>setSelected(p)}>
-            {productImage(p)?<Image source={{uri:productImage(p)}} style={s.featuredImage} resizeMode="contain"/>:<View style={[s.featuredImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No image</Text></View>}
+            {productImage(p)?<Image source={{uri:productImage(p)}} style={s.featuredImage} resizeMode="cover"/>:<View style={[s.featuredImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No image</Text></View>}
             <Text numberOfLines={2} style={s.featuredName}>{p.title}</Text><Text style={s.featuredPrice}>{money(p.price_mwk)}</Text>
             {p.seller?.is_verified?<Text style={s.featuredSeller}>✓ Verified seller</Text>:null}
           </Pressable>)}
