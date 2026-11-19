@@ -250,7 +250,7 @@ export default function App() {
     {checkout ? <CheckoutScreen items={cartProducts.map(({product,quantity})=>({id:product.id,title:product.title,price_mwk:product.price_mwk,quantity,demo:product.demo}))} onBack={()=>setCheckout(false)} onComplete={()=>{updateCart([]);setCheckout(false);setTab("Home");}} onOrderCreated={()=>{updateCart([]);}} />
     : selected ? <ScrollView contentContainerStyle={{paddingBottom:120,paddingHorizontal:isTablet?18:0}}>
       <Pressable onPress={() => setSelected(null)} style={s.back}><Text style={s.backText}>‹  {marketText(language,"Back to shopping")}</Text></Pressable>
-      {productImage(selected) ? <Image source={{uri:productImage(selected)}} style={[s.detailImage,{height:Math.min(440,Math.max(230,windowWidth*0.68))}]} resizeMode="contain" /> :
+      {productImage(selected) ? <Image source={{uri:productImage(selected)}} style={[s.detailImage,{height:Math.min(440,Math.max(230,windowWidth*0.68))}]} resizeMode="cover" /> :
         <View style={[s.detailImage,{height:Math.min(440,Math.max(230,windowWidth*0.68))},s.imagePlaceholder]}><Text style={s.placeholderText}>No product image</Text></View>}
       <View style={{padding:18}}>
         <Text style={s.detailTitle}>{selected.title}</Text>
@@ -324,7 +324,7 @@ export default function App() {
       <Text style={s.pageTitle}>{marketText(language,"Your cart")}</Text>
       {cartProducts.length === 0 ? <Text style={s.empty}>Your cart is empty. Explore products and add something you like.</Text> :
         <>{cartProducts.map(({product:p,quantity},index) => <View key={p.id} style={s.cartRow}>
-          {productImage(p) ? <Image source={{uri:productImage(p)}} style={s.cartImage} resizeMode="contain"/> : <View style={[s.cartImage,s.imagePlaceholder]}/>}
+          {productImage(p) ? <Image source={{uri:productImage(p)}} style={s.cartImage} resizeMode="cover"/> : <View style={[s.cartImage,s.imagePlaceholder]}/>}
           <View style={{flex:1}}><Text style={s.productName}>{p.title}</Text><Text style={s.price}>{money(p.price_mwk)}</Text><Text style={s.seller}>Quantity: {quantity}</Text>
             <View style={{flexDirection:"row",alignItems:"center",gap:12,marginTop:7}}>
               <Pressable onPress={()=>updateCart(v=>{const i=v.indexOf(p.id);if(i<0)return v;const copy=[...v];copy.splice(i,1);return copy;})} style={s.qtyButton}><Text style={s.qtyText}>−</Text></Pressable>
