@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Image } from "react-native";
-import { fetchLiveFootballFixtures, fetchLiveFootballStandings, fetchLiveNews, fetchWeather, fetchExchangeRates, requestDeviceCoordinates, searchMapboxPlaces, searchNearbyShops, mapboxStaticImageUrl, liveServiceAvailability, Coordinates, NearbyShop, ExchangeRate } from "../lib/live-services";
+import { fetchLiveFootballFixtures, fetchLiveFootballStandings, fetchWeather, fetchExchangeRates, requestDeviceCoordinates, searchMapboxPlaces, searchNearbyShops, mapboxStaticImageUrl, liveServiceAvailability, Coordinates, NearbyShop, ExchangeRate } from "../lib/live-services";
 import {marketText,MarketLanguage} from "../lib/i18n";
 import {MarketIcon} from "../components/MarketIcon";
 import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking, Alert, BackHandler } from "react-native";
@@ -110,7 +110,6 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
   const [liveFlags,setLiveFlags] = useState({news:false,jobs:false,stocks:false,football:false});
   const [standings,setStandings] = useState<any[]>([]);
   const [standingsError,setStandingsError] = useState("");
-  const [newsError,setNewsError] = useState("");
   const [loadingData,setLoadingData] = useState(true);
   const [loadError,setLoadError] = useState("");
   const [reloadKey,setReloadKey] = useState(0);
@@ -175,7 +174,6 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
   }).catch((error:any)=>{if(active)setLoadError(error?.message||"Explore data could not be loaded. Check your connection and try again.");}).finally(()=>{if(active)setLoadingData(false);}); return ()=>{active=false;}; },[reloadKey]);
   useEffect(()=>{let active=true;if(!liveServiceAvailability.football)return;fetchLiveFootballFixtures().then(rows=>{if(active&&rows.length){setFixtureRows(rows);setLiveFlags(v=>({...v,football:true}));}}).catch(error=>{if(active)setLoadError(error?.message||"Football data could not be loaded.");});return()=>{active=false;};},[reloadKey]);
   useEffect(()=>{let active=true;if(!liveServiceAvailability.football)return;setStandingsError("");fetchLiveFootballStandings().then(rows=>{if(active&&rows.length)setStandings(rows);}).catch(error=>{if(active)setStandingsError(error?.message||"Live standings could not be loaded.");});return()=>{active=false;};},[reloadKey]);
-  useEffect(()=>{if(section!=="news"||newsRows.length>0)return;let active=true;setNewsError("");fetchLiveNews().then(rows=>{if(active&&rows.length){setNewsRows(rows.map(item=>({category:item.category,title:item.title,summary:item.summary||"",source:item.source_name,sourceUrl:item.source_url,imageUrl:item.image_url,age:new Date(item.published_at).toLocaleDateString()})));setLiveFlags(v=>({...v,news:true}));}}).catch(error=>{if(active)setNewsError(error?.message||"Live news could not be loaded.");});return()=>{active=false;};},[section,reloadKey,newsRows.length]);
   useEffect(()=>{
     if(section!=="exchange")return;
     let active=true;
@@ -284,7 +282,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
         <Text style={s.newsMastheadTitle}>The stories shaping Malawi and the world.</Text>
         <Text style={s.newsMastheadCopy}>Reporting, context and updates from verified sources.</Text>
       </View>
-      {notice(newsError?"Live news unavailable: "+newsError:liveFlags.news?"Articles loaded from Malawi24 and BBC News feeds or the Malawi Market newsroom.":"Loading verified stories from Malawi24 and BBC News.")}
+      {notice("This newsroom displays original Malawi Market reporting or content covered by a publisher licence. External sources open on their own websites.")}
       <TextInput value={search} onChangeText={setSearch} placeholder="Search headlines and topics" placeholderTextColor={muted} style={[s.search,{backgroundColor:darkMode?"#252b35":"#f1f2f4",borderColor:line,color:ink}]}/>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:10}}>{categories.map(c=>pill(c,newsCategory===c,()=>setNewsCategory(c)))}</ScrollView>
       {newsCategory.toLowerCase()!=="sports" ? <>
@@ -335,7 +333,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
         {!sportsArticles.length?<Text style={[s.empty,{color:muted}]}>No verified sports stories are published yet.</Text>:null}
       </> : <>
         {filteredNews.slice(1).map((item,i)=><Pressable key={i} disabled={!item.sourceUrl} style={[s.article,{backgroundColor:surface,borderColor:line}]} onPress={()=>void openExternal(item.sourceUrl)}>{item.imageUrl?<Image source={{uri:item.imageUrl}} style={s.newsArticleImage} resizeMode="cover"/>:null}<Text style={[s.category,{color:topic.accent}]}>{item.category.toUpperCase()} · {item.age.toUpperCase()}</Text><Text style={[s.cardTitle,{color:ink}]}>{item.title}</Text><Text style={[s.body,{color:muted}]}>{item.summary}</Text><Text style={[s.meta,{color:muted}]}>{item.source} · Open original article</Text></Pressable>)}
-        {!filteredNews.length&&<Text style={[s.empty,{color:muted}]}>No verified articles match this view yet.</Text>}
+        {!filteredNews.length&&<><Text style={[s.empty,{color:muted}]}>No original or licensed articles are published in this section yet.</Text><View style={{flexDirection:"row",gap:9,marginTop:10}}><Pressable onPress={()=>void openExternal("https://malawi24.com/")} style={[s.platformRow,{backgroundColor:surface,borderColor:line,flex:1,paddingHorizontal:12}]}><Text style={[s.platformName,{color:ink}]}>Malawi24 ↗</Text></Pressable><Pressable onPress={()=>void openExternal("https://www.bbc.com/news")} style={[s.platformRow,{backgroundColor:surface,borderColor:line,flex:1,paddingHorizontal:12}]}><Text style={[s.platformName,{color:ink}]}>BBC News ↗</Text></Pressable></View></>}
       </>}
     </> : null}
     {section==="jobs" ? <>
