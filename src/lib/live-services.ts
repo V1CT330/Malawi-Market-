@@ -21,6 +21,7 @@ export function parseCoordinatesFromMapInput(value:string):Coordinates|null {
 }
 
 export type LiveFixture = { league:string; home:string; away:string; time:string; score:string; status:string; sourceName:string };
+export type LiveStanding = { id:string; competition:string; season:string; team_name:string; played:number; won:number; drawn:number; lost:number; goals_for:number; goals_against:number; points:number; position:number; source_name:string; source_url:string };
 
 export type ExchangeRate = { currency:string; mwkPerUnit:number };
 export type ExchangeRateSnapshot = { updatedAt:string; rates:ExchangeRate[] };
@@ -62,6 +63,13 @@ async function readJson(response: Response, provider: string): Promise<any> {
     throw new Error(`${provider}: ${String(detail)}`);
   }
   return body;
+}
+
+export async function fetchLiveFootballStandings(): Promise<LiveStanding[]> {
+  const { data, error } = await supabase.functions.invoke("market-live-services", { body: { action: "standings" } });
+  if (error) throw new Error(error.message || "Could not load football standings.");
+  if (data?.error) throw new Error(data.error);
+  return Array.isArray(data?.standings) ? data.standings as LiveStanding[] : [];
 }
 
 export async function fetchLiveFootballFixtures(): Promise<LiveFixture[]> {
