@@ -119,7 +119,8 @@ export function CheckoutScreen({ items, onBack, onComplete, onOrderCreated }: { 
       const {data:orderIdResult,error:orderError}=await supabase.rpc("create_market_order",{
         p_items:items.map(x=>({product_id:x.id,quantity:x.quantity})),
         p_delivery_name:name.trim(),p_delivery_phone:phone.trim(),p_delivery_address:address.trim(),
-        p_notes:notes.trim()||null,p_idempotency_key:makeUuid()
+        p_notes:notes.trim()||null,p_idempotency_key:makeUuid(),
+        p_delivery_latitude:coordinates?.latitude??null,p_delivery_longitude:coordinates?.longitude??null,p_delivery_landmark:landmark.trim()||null
       });
       if(orderError)throw orderError;
       const id=String(orderIdResult);
@@ -146,7 +147,7 @@ export function CheckoutScreen({ items, onBack, onComplete, onOrderCreated }: { 
       <Text style={s.label}>Phone number</Text><TextInput value={phone} onChangeText={setPhone} style={s.input} keyboardType="phone-pad" placeholder="+265..."/>
       {savedAddresses.length>0?<><Text style={s.label}>Saved delivery addresses</Text><View style={s.savedRow}>{savedAddresses.map(saved=><View key={saved.id} style={s.savedItem}><Pressable onPress={()=>void chooseAddress(saved)} style={[s.savedChip, addressLabel===saved.label&&address===saved.address?s.savedChipActive:null]}><Text style={s.savedChipText}>{saved.label}{saved.is_default?" · Default":""}</Text></Pressable><Pressable onPress={()=>void removeAddress(saved)} style={s.savedRemove}><Text style={s.savedRemoveText}>×</Text></Pressable></View>)}</View></>:null}
       <Text style={s.label}>Address label</Text><TextInput value={addressLabel} onChangeText={setAddressLabel} style={s.input} placeholder="Home, Work or Other" maxLength={40}/>
-      <Text style={s.label}>Delivery address (include area, town and district)</Text><TextInput value={address} onChangeText={setAddress} style={[s.input,{height:82,textAlignVertical:"top"}]} multiline placeholder="House, street/area, town or district"/>
+      <Text style={s.label}>Delivery address (include area, town and district)</Text><TextInput value={address} onChangeText={value=>{setAddress(value);setCoordinates(null);}} style={[s.input,{height:82,textAlignVertical:"top"}]} multiline placeholder="House, street/area, town or district"/>
       <Text style={s.label}>Landmark or drop-off instructions (optional)</Text><TextInput value={landmark} onChangeText={setLandmark} style={s.input} placeholder="Near the school gate, blue house, etc." maxLength={200}/>
       <View style={s.locationCard}>
         <Text style={s.locationTitle}>Precise delivery location</Text>
