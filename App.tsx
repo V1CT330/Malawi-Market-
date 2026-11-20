@@ -73,7 +73,6 @@ export default function App() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [storageReady, setStorageReady] = useState(false);
-  const [splashVisible, setSplashVisible] = useState(true);
   const [homeName, setHomeName] = useState("there");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
@@ -178,10 +177,6 @@ export default function App() {
     }
   }, [adCampaigns]);
 
-  useEffect(() => {
-    const splashTimer = setTimeout(() => setSplashVisible(false), 950);
-    return () => clearTimeout(splashTimer);
-  }, []);
   useEffect(() => {
     void AsyncStorage.getItem("@malawi-market/profile").then(raw => {
       if (!raw) return;
@@ -457,12 +452,6 @@ export default function App() {
     </ScrollView>
     : tab === "Explore" ? <ExploreScreens language={language} theme={appearance.theme} accentColor={appearance.accentColor} onHardwareBack={() => setTab("Home")} /> : <AccountScreens language={language} onHardwareBack={() => setTab("Home")} onLanguageChange={setLanguage} passwordRecovery={passwordRecovery} onPasswordRecoveryComplete={()=>setPasswordRecovery(false)} onAppearanceChange={(theme,accentColor)=>setAppearance({theme,accentColor})} />}
     {nav}
-    {splashVisible ? <View style={s.splashOverlay}>
-      <Image source={require("./assets/logo.png")} style={s.splashLogo} resizeMode="contain" />
-      <Text style={s.splashBrand}><Text style={{color:"#f0782b"}}>Malawi</Text> Market</Text>
-      <Text style={s.splashCaption}>A better way to shop local.</Text>
-      <ActivityIndicator size="small" color="#ef7b25" style={{marginTop:22}} />
-    </View> : null}
     </View>
   </SafeAreaView>;
 }
@@ -497,6 +486,6 @@ const s = StyleSheet.create({
  homeSearchInput:{flex:1,fontSize:14,color:"#252a31",paddingVertical:0},
  homeFilter:{width:40,height:40,borderLeftWidth:1,borderLeftColor:"#eee7e1",alignItems:"center",justifyContent:"center"},
  marketHeader:{backgroundColor:"#ffffff",paddingHorizontal:20,paddingTop:8,paddingBottom:16,borderBottomWidth:1,borderBottomColor:"#d9dde3"},marketHeaderTop:{height:56,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},marketEyebrow:{fontSize:9,fontWeight:"900",letterSpacing:1.5,color:"#4b5563",marginBottom:2},headerAction:{width:46,height:46,borderRadius:16,backgroundColor:"#fff5ed",borderWidth:1,borderColor:"#ffeadb",alignItems:"center",justifyContent:"center"},searchGlyph:{fontSize:22,color:"#666",width:22,textAlign:"center"},searchAction:{backgroundColor:"#ef7628",paddingHorizontal:17,paddingVertical:11,borderRadius:12},searchActionText:{color:"#fff",fontSize:13,fontWeight:"900"},locationLine:{flexDirection:"row",justifyContent:"space-between",marginTop:10,paddingHorizontal:2},locationText:{fontSize:10,color:"#4b5563",fontWeight:"700"},promoBanner:{marginHorizontal:18,marginTop:13,minHeight:194,borderRadius:22,backgroundColor:"#ef7628",padding:23,flexDirection:"row",overflow:"hidden",justifyContent:"space-between",alignItems:"center",borderWidth:1,borderColor:"#d9dde3"},promoCopy:{flex:1,paddingRight:3,zIndex:2},heroOrbLarge:{position:"absolute",width:230,height:230,borderRadius:115,right:-65,top:-95,backgroundColor:"#d95f18",borderWidth:1,borderColor:"#ffad76"},heroOrbSmall:{position:"absolute",width:145,height:145,borderRadius:73,right:12,bottom:-92,backgroundColor:"#e66b20",borderWidth:1,borderColor:"#ffad76"},promoKicker:{fontSize:9,color:"#ffffff",fontWeight:"800",letterSpacing:1.5},promoTitle:{fontSize:28,lineHeight:34,fontWeight:"900",color:"#ffffff",marginTop:10,maxWidth:280,letterSpacing:-.9},promoSub:{fontSize:12,lineHeight:19,color:"#ffffff",marginTop:8,maxWidth:270},promoButton:{alignSelf:"flex-start",backgroundColor:"#202124",paddingHorizontal:17,paddingVertical:13,borderRadius:12,marginTop:17,elevation:2},promoButtonText:{color:"#fff",fontSize:12,fontWeight:"900",letterSpacing:.1},shortcutRow:{flexDirection:"row",justifyContent:"space-around",backgroundColor:"#fff",marginTop:14,paddingVertical:15,borderRadius:15,marginHorizontal:16,borderWidth:1,borderColor:"#d9dde3",elevation:0,shadowColor:"#182b45",shadowOpacity:0,shadowRadius:0,shadowOffset:{width:0,height:0}},shortcut:{alignItems:"center",flex:1},shortcutIcon:{width:45,height:45,borderRadius:14,backgroundColor:"#fff2e9",alignItems:"center",justifyContent:"center"},shortcutGlyph:{fontSize:23,color:"#ed6b1b",fontWeight:"800"},shortcutLabel:{fontSize:11,color:"#3c424a",fontWeight:"700",marginTop:6},sectionHint:{fontSize:11,color:"#858b94",marginTop:3},featuredRow:{paddingHorizontal:12,gap:10},featuredCard:{width:164,backgroundColor:"#fff",borderRadius:18,padding:10,borderWidth:1,borderColor:"#d9dde3",elevation:2,shadowColor:"#252a31",shadowOpacity:0.055,shadowRadius:10,shadowOffset:{width:0,height:4}},featuredImage:{width:"100%",height:144,backgroundColor:"#f3f4f6",borderRadius:12},featuredName:{fontSize:12,color:"#343a42",fontWeight:"700",lineHeight:16,marginTop:8,minHeight:32},featuredPrice:{fontSize:15,color:"#222831",fontWeight:"900",marginTop:5},featuredSeller:{fontSize:9,color:"#23865a",fontWeight:"700",marginTop:3},
- splashOverlay:{...StyleSheet.absoluteFillObject,backgroundColor:"#ffffff",alignItems:"center",justifyContent:"center",zIndex:50},splashLogo:{width:112,height:112,marginBottom:18},splashBrand:{fontSize:29,fontWeight:"900",letterSpacing:-1.1,color:"#252a31"},splashCaption:{fontSize:12,color:"#7b8796",fontWeight:"600",marginTop:7,letterSpacing:.2},
+
  brandLockup:{flexDirection:"row",alignItems:"center",gap:9},brandLogo:{width:49,height:49,borderRadius:12},
 });
