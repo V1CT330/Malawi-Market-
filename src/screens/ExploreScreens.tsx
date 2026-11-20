@@ -263,7 +263,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
       <View style={[s.marketFootnote,{backgroundColor:darkMode?"#252B35":"#F0F5F3"}]}>
         <Text style={[s.marketFootnoteTitle,{color:ink}]}>Data transparency</Text>
         <Text style={[s.meta,{color:muted}]}>Prices are shown only when a source and quote timestamp are recorded. This section does not represent delayed or missing data as live prices.</Text>
-        {stockRows.length>0?<Text style={[s.meta,{color:muted}]}>Latest recorded quote: {stockRows.reduce((latest,x)=>!latest||new Date(x.quoteTime||0)>new Date(latest)?x.quoteTime:latest,"")}</Text>:null}
+        {stockRows.length>0?<Text style={[s.meta,{color:muted}]}>Latest recorded quote: {stockRows.reduce<string>((latest,x)=>{const stamp=x.quoteTime||"";return !latest||(stamp&&new Date(stamp)>new Date(latest))?stamp:latest;},"")}</Text>:null}
         <Pressable onPress={()=>void openExternal("https://www.mse.co.mw/market/reports")}><Text style={s.marketReportLink}>VIEW OFFICIAL MARKET REPORTS ↗</Text></Pressable>
       </View>
     </> : null}
@@ -296,7 +296,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
       </ScrollView>
       <Pressable style={[s.mapFindShops,{backgroundColor:topic.accent}]} onPress={()=>void loadNearbyShops()} disabled={shopsLoading}><Text style={s.mapPrimaryActionText}>{shopsLoading?"Finding shops…":"Find nearby shops"}</Text></Pressable>
       {shopsError?<Text style={s.errorText}>{shopsError}</Text>:null}
-      {liveServiceAvailability.mapbox?<Image source={{uri:mapboxStaticImageUrl(coordinates,nearbyShops.map(shop=>({latitude:shop.latitude,longitude:shop.longitude})))}} style={s.mapImage} resizeMode="cover"/>:<View style={s.mapPlaceholder}><Text style={[s.body,{color:muted}]}>Map preview is unavailable. Shop results and turn-by-turn directions can still open in your maps app.</Text></View>}
+      {liveServiceAvailability.mapbox?<Pressable onPress={()=>void openExternal("https://www.google.com/maps/search/shops/@"+coordinates.latitude+","+coordinates.longitude+",15z")}><Image source={{uri:mapboxStaticImageUrl(coordinates,nearbyShops.map(shop=>({latitude:shop.latitude,longitude:shop.longitude})))}} style={s.mapImage} resizeMode="cover"/></Pressable><Pressable style={[s.mapFindShops,{backgroundColor:surface,borderWidth:1,borderColor:topic.accent}]} onPress={()=>void openExternal("https://www.google.com/maps/search/shops/@"+coordinates.latitude+","+coordinates.longitude+",15z")}><Text style={[s.mapSecondaryActionText,{color:topic.accent}]}>Open zoomable map in Google Maps ↗</Text></Pressable>:<View style={s.mapPlaceholder}><Text style={[s.body,{color:muted}]}>Map preview is unavailable. Shop results and turn-by-turn directions can still open in your maps app.</Text></View>}
       <Text style={[s.meta,{color:muted,marginTop:7}]}>Map data © OpenStreetMap contributors · Mapbox map imagery</Text>
       <View style={s.mapResultsHeading}><Text style={[s.marketSectionTitle,{color:ink}]}>Nearby shops</Text><Text style={[s.meta,{color:muted}]}>{nearbyShops.length} found</Text></View>
       {nearbyShops.map(shop=><View key={shop.id} style={[s.nearbyShopCard,{backgroundColor:surface,borderColor:line}]}>
