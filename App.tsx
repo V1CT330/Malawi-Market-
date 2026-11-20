@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  SafeAreaView, ScrollView, View, Text, TextInput, Image, Pressable, Linking, Alert,
+  SafeAreaView, ScrollView, View, Text, TextInput, Image, Pressable, Linking, Alert, BackHandler,
   StatusBar, StyleSheet, FlatList, ActivityIndicator, RefreshControl, Platform, useWindowDimensions
 } from "react-native";
 import { supabase } from "./src/lib/supabase";
@@ -70,6 +70,27 @@ export default function App() {
   const [splashVisible, setSplashVisible] = useState(true);
   const [homeName, setHomeName] = useState("there");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (selected) {
+        setSelected(null);
+        return true;
+      }
+      if (checkout) {
+        setCheckout(false);
+        return true;
+      }
+      if (tab === "Explore" || tab === "Account") return false;
+      if (tab !== "Home") {
+        setTab("Home");
+        setQrProduct(null);
+        return true;
+      }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [tab, selected, checkout]);
 
   useEffect(() => {
     let active = true;
@@ -403,7 +424,7 @@ export default function App() {
       {savedProducts.length ? <FlatList data={savedProducts} renderItem={productCard} keyExtractor={p=>p.id} numColumns={gridColumns} scrollEnabled={false} columnWrapperStyle={[s.productRow,{gap:horizontalGutter}]} contentContainerStyle={{paddingHorizontal:horizontalGutter}}/> :
         <Text style={s.empty}>Products you save will appear here.</Text>}
     </ScrollView>
-    : tab === "Explore" ? <ExploreScreens language={language} /> : <AccountScreens language={language} onLanguageChange={setLanguage} passwordRecovery={passwordRecovery} onPasswordRecoveryComplete={()=>setPasswordRecovery(false)} />}
+    : tab === "Explore" ? <ExploreScreens language={language} onHardwareBack={() => setTab("Home")} /> : <AccountScreens language={language} onHardwareBack={() => setTab("Home")} onLanguageChange={setLanguage} passwordRecovery={passwordRecovery} onPasswordRecoveryComplete={()=>setPasswordRecovery(false)} />}
     {nav}
     {splashVisible ? <View style={s.splashOverlay}>
       <Image source={require("./assets/logo.png")} style={s.splashLogo} resizeMode="contain" />
