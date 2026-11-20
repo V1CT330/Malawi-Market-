@@ -160,6 +160,12 @@ export default function App() {
 
   useEffect(() => { void loadCatalogue(); }, []);
   useEffect(() => {
+    for (const ad of adCampaigns) {
+      void supabase.functions.invoke("onekhusa-payments", { body: { action: "track_ad_event", campaign_id: ad.id, event_type: "impression" } });
+    }
+  }, [adCampaigns]);
+
+  useEffect(() => {
     const splashTimer = setTimeout(() => setSplashVisible(false), 950);
     return () => clearTimeout(splashTimer);
   }, []);
