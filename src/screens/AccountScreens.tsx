@@ -6,6 +6,7 @@ import {supabase} from "../lib/supabase";
 import {AuthScreen} from "./AuthScreen";
 import {SellerPortal} from "./SellerPortal";
 import {AdminDashboard} from "./AdminDashboard";
+import {AdvertiserPortal} from "./AdvertiserPortal";
 import {marketText,MarketLanguage} from "../lib/i18n";
 import {MarketIcon} from "../components/MarketIcon";
 
@@ -19,7 +20,7 @@ const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 const tr=(language:string,english:string)=>marketText(language,english);
 
 export function AccountScreens({language,onLanguageChange,passwordRecovery,onPasswordRecoveryComplete,onHardwareBack}:{language:MarketLanguage;onLanguageChange:(language:MarketLanguage)=>void;passwordRecovery:boolean;onPasswordRecoveryComplete:()=>void;onHardwareBack:()=>void}){
- const [screen,setScreen]=useState<"menu"|"seller"|"orders"|"profile"|"settings"|"auth"|"drafts"|"notifications"|"admin">("menu");
+ const [screen,setScreen]=useState<"menu"|"seller"|"orders"|"profile"|"settings"|"auth"|"drafts"|"notifications"|"admin"|"advertiser">("menu");
  const [drafts,setDrafts]=useState<Draft[]>([]);
  const [profile,setProfile]=useState<Profile>(initialProfile);
  const [orders,setOrders]=useState<any[]>([]);
@@ -106,6 +107,7 @@ export function AccountScreens({language,onLanguageChange,passwordRecovery,onPas
   <View style={s.profileCard}>{profile.avatarUrl?<Image source={{uri:profile.avatarUrl}} style={s.avatarImage}/>:<View style={s.avatar}><MarketIcon name="account" size={28} color="#e87520"/></View>}<View style={{flex:1}}><Text style={s.menuTitle}>{profile.displayName||"Marketplace shopper"}</Text><Text style={s.meta}>{accountEmail||"Not signed in"} · {profile.location||"Location not set"}</Text></View>{isAdmin?<Text style={s.adminTag}>ADMIN</Text>:null}</View>
   {row("account",accountEmail?"Signed in":"Sign in / Register",accountEmail||"Unlock buyer and seller account features",()=>setScreen("auth"))}
   {row("seller","Seller Centre","Apply, manage your store and publish products",()=>setScreen("seller"))}
+  {row("advertise","Advertise","Promote your business on Malawi Market",()=>setScreen("advertiser"))}
   {row("orders","Orders","View purchases and delivery progress",()=>setScreen("orders"))}
   {row("notifications","Notifications",unread?unread+" unread notifications":"Order and account updates",()=>setScreen("notifications"))}
   {row("account","Profile","Manage your account details and profile photo",()=>setScreen("profile"))}
@@ -117,6 +119,7 @@ export function AccountScreens({language,onLanguageChange,passwordRecovery,onPas
  {screen==="auth"&&<AuthScreen initialMode={passwordRecovery?"reset":"signin"} onBack={back} onDone={()=>{setScreen("menu");onPasswordRecoveryComplete();}}/>}
  {screen==="seller"&&<SellerPortal/>}
  {screen==="admin"&&<AdminDashboard/>}
+ {screen==="advertiser"&&<AdvertiserPortal/>}
  {screen==="drafts"&&<>{header("Saved drafts")}{drafts.length?drafts.map(d=><View key={d.id} style={s.card}><Text style={s.menuTitle}>{d.title}</Text><Text style={s.price}>{money(Number(d.price)||0)} · {d.category}</Text><Text style={s.meta}>{d.description||"No description"}</Text><Pressable onPress={()=>Alert.alert("Delete draft?","Remove this saved draft from this device?",[{text:"Cancel"},{text:"Delete",style:"destructive",onPress:()=>void persistDrafts(drafts.filter(x=>x.id!==d.id))}])}><Text style={s.delete}>Delete draft</Text></Pressable></View>):<Text style={s.empty}>No saved drafts on this device.</Text>}</>}
  {screen==="orders"&&<>{header("Order history")}{loadingProfile?<ActivityIndicator color="#ef7b25"/>:orders.length?orders.map(o=><View key={o.id} style={s.card}><Text style={s.menuTitle}>Order {String(o.id).slice(0,8).toUpperCase()}</Text><Text style={s.meta}>{new Date(o.created_at).toLocaleString()} · {String(o.status).replace(/_/g," ").toUpperCase()}</Text><Text style={s.meta}>Payment: {String(o.payment_status||"unpaid").replace(/_/g," ").toUpperCase()}</Text><Text style={s.price}>{money(Number(o.total_mwk))}</Text>{(o.market_order_items??[]).map((item:any)=><Text key={item.product_title+item.quantity} style={s.meta}>{item.quantity} × {item.product_title} · {String(item.fulfillment_status).replace(/_/g," ")}</Text>)}{(o.market_payment_attempts??[]).map((attempt:any)=><View key={attempt.provider_reference}><Text style={s.meta}>OneKhusa: {attempt.status}{attempt.timed_account_number?" · TAN "+attempt.timed_account_number:""}</Text>{attempt.expires_at?<Text style={s.meta}>TAN expires: {new Date(attempt.expires_at).toLocaleString()}</Text>:null}</View>)}{o.status==="pending_payment"?<><Pressable onPress={async()=>{const {data,error}=await supabase.functions.invoke("onekhusa-payments",{body:{action:"initiate",order_id:o.id}});if(error||data?.error)Alert.alert("Payment unavailable",data?.error||error?.message||"Try again later.");else Alert.alert("OneKhusa TAN",String(data.timed_account_number)+"\nAmount: "+money(data.amount_mwk)+"\nExpires: "+new Date(data.expires_at).toLocaleString());}}><Text style={s.action}>Get / refresh payment TAN</Text></Pressable><Pressable onPress={()=>Alert.alert("Cancel unpaid order?","This releases reserved stock.",[{text:"Keep order",style:"cancel"},{text:"Cancel order",style:"destructive",onPress:async()=>{const {error}=await supabase.rpc("cancel_market_order",{p_order_id:o.id});if(error)Alert.alert("Could not cancel",error.message);else setOrders(v=>v.map(x=>x.id===o.id?{...x,status:"cancelled",payment_status:"cancelled"}:x));}}])}><Text style={s.delete}>Cancel unpaid order</Text></Pressable></>:null}</View>):<Text style={s.empty}>Your purchases and delivery updates will appear here.</Text>}</>}
  {screen==="notifications"&&<>{header("Notifications")}<View style={s.actionsRow}><Text style={s.meta}>{unread} unread</Text><Pressable onPress={()=>void markAllRead()}><Text style={s.action}>Mark all read</Text></Pressable></View>{notifications.length?notifications.map(n=><Pressable key={n.id} onPress={()=>!n.read_at&&void markRead(n.id)} style={[s.card,!n.read_at&&s.unreadCard]}><View style={s.actionsRow}><Text style={s.menuTitle}>{n.title}</Text><Text style={s.meta}>{new Date(n.created_at).toLocaleString()}</Text></View><Text style={s.meta}>{n.body}</Text>{!n.read_at?<Text style={s.action}>Tap to mark as read</Text>:null}</Pressable>):<Text style={s.empty}>No notifications yet. Order and account updates will appear here.</Text>}</>}
