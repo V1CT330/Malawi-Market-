@@ -381,6 +381,7 @@ export default function App() {
             <Pressable style={s.promoButton} onPress={() => setTab("Search")}><Text style={s.promoButtonText}>Explore marketplace  ›</Text></Pressable>
           </View>
         </View>
+        {adPlacement("homepage")}
         <View style={s.shortcutRow}>
           {shortcuts.map(([icon,label,action])=><Pressable key={label} style={s.shortcut} onPress={action}><View style={s.shortcutIcon}><MarketIcon name={icon} size={21} color="#e87520" /></View><Text style={s.shortcutLabel}>{label}</Text></Pressable>)}
         </View>
