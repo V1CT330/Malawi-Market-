@@ -301,7 +301,7 @@ export default function App() {
   };
 
   const adPlacement=(placement:"homepage"|"search"|"feed"|"business")=>adCampaigns.filter(ad=>ad.placement===placement).slice(0,2).map(ad=><Pressable key={ad.id} accessibilityRole="link" accessibilityLabel={"Sponsored: "+ad.title} style={s.adCard} onPress={()=>{void supabase.functions.invoke("onekhusa-payments",{body:{action:"track_ad_event",campaign_id:ad.id,event_type:"click"}});void Linking.openURL(ad.destination_url).catch(()=>Alert.alert("Unable to open advertisement","Check your internet connection and try again."));}}><Image source={{uri:ad.image_url}} style={s.adImage} resizeMode="cover"/><View style={s.adCopy}><Text style={s.adLabel}>SPONSORED · {ad.business_name}</Text><Text numberOfLines={2} style={s.adTitle}>{ad.title}</Text><Text numberOfLines={2} style={s.adBody}>{ad.body}</Text><Text style={s.adLink}>Learn more ›</Text></View></Pressable>);
-  const nav = <View style={[s.bottomNav,{bottom:Platform.OS==="android"?32:8,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8}]}>
+  const nav = <View style={[s.bottomNav,{bottom:Platform.OS==="android"?32:8,height:isCompact?60:66,left:isTablet?18:8:right:isTablet?18:8,backgroundColor:palette.surface,borderTopColor:palette.border}]}>
     {[
       ["Home","Home","home"],
       ["Explore","Explore","explore"],
@@ -309,9 +309,9 @@ export default function App() {
       ["Wishlist","Wishlist","wishlist"],
       ["Account","My Account","account"],
     ].map(([tabName,label,icon]) =>
-      <Pressable key={tabName} accessibilityRole="button" accessibilityState={{selected:tab===tabName}} onPress={() => { setSelected(null); setTab(tabName); }} style={s.navItem}>
-        <MarketIcon name={icon} size={isCompact?20:22} color={tab===tabName?"#ef7b25":"#777"} />
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.navLabel,{fontSize:isCompact?8.5:10,color:tab===tabName?"#ef7b25":"#777"}]}>{marketText(language,label)}</Text>
+      <Pressable key={tabName} accessibilityRole="button" accessibilityState={{selected:tab===tabName}} onPress={() => { setSelected(null); setTab(tabName); }} style={[s.navItem,{backgroundColor:"transparent"}]}>
+        <MarketIcon name={icon} size={isCompact?20:22} color={tab===tabName?palette.accent:palette.muted} />
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.navLabel,{color:tab===tabName?palette.accent:palette.muted,fontSize:isCompact?8.5:10,color:tab===tabName?"#ef7b25":"#777"}]}>{marketText(language,label)}</Text>
       </Pressable>)}
   </View>;
 
@@ -323,15 +323,15 @@ export default function App() {
 
   return <SafeAreaView style={[s.safe,{backgroundColor:palette.background,paddingTop:Platform.OS==="android"?(StatusBar.currentHeight ?? 0):0}]}>
     <StatusBar translucent backgroundColor="transparent" barStyle={darkMode?"light-content":"dark-content"} />
-    <View style={{width:"100%",maxWidth:contentMaxWidth,alignSelf:"center",flex:1,overflow:"hidden"}}>
+    <View style={{width:"100%",maxWidth:contentMaxWidth,alignSelf:"center",flex:1,overflow:"hidden",backgroundColor:palette.background}}>
     {checkout ? <CheckoutScreen items={cartProducts.map(({product,quantity})=>({id:product.id,title:product.title,price_mwk:product.price_mwk,quantity,demo:product.demo}))} onBack={()=>setCheckout(false)} onComplete={()=>{updateCart([]);setCheckout(false);setTab("Home");}} onOrderCreated={()=>{updateCart([]);}} />
     : selected ? <ScrollView contentContainerStyle={{paddingBottom:120,paddingHorizontal:isTablet?18:0}}>
       <Pressable onPress={() => setSelected(null)} style={s.back}><Text style={s.backText}>‹  {marketText(language,"Back to shopping")}</Text></Pressable>
       {productImage(selected) ? <Image source={{uri:productImage(selected)}} style={[s.detailImage,{height:Math.min(440,Math.max(230,windowWidth*0.68))}]} resizeMode="cover" /> :
         <View style={[s.detailImage,{height:Math.min(440,Math.max(230,windowWidth*0.68))},s.imagePlaceholder]}><Text style={s.placeholderText}>No product image</Text></View>}
       <View style={{padding:18}}>
-        <Text style={s.detailTitle}>{selected.title}</Text>
-        <Text style={s.priceLarge}>{money(selected.price_mwk)}</Text>
+        <Text style={[s.detailTitle,{color:palette.text}]}>{selected.title}</Text>
+        <Text style={[s.priceLarge,{color:palette.accent}]}>{money(selected.price_mwk)}</Text>
         <Text style={s.seller}>{selected.seller?.name ?? "Malawi Market seller"}{selected.seller?.is_verified ? " · Verified seller" : ""}</Text>
         <Text style={s.detailMeta}>{selected.category?.name ?? "Marketplace"} · {selected.condition} · {selected.stock_quantity} available{selected.location ? " · "+selected.location : ""}</Text>
         {selected.demo ? <Text style={s.demoDetail}>DEMO LISTING — product, seller and price are illustrative only.</Text> : null}
@@ -355,7 +355,7 @@ export default function App() {
     : tab === "Home" || tab === "Search" ? <ScrollView contentContainerStyle={{paddingBottom:132}} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void loadCatalogue(true)} />}>
       
       {tab === "Home" ? <>
-        <View style={s.homeTop}>
+        <View style={[s.homeTop,{backgroundColor:darkMode?"#191d25":"#fffaf5"}]}>
           <View style={s.homeBrandRow}>
             <Image source={require("./assets/logo.png")} style={s.homeLogo} resizeMode="contain" />
             <View style={s.homeActions}>
@@ -399,7 +399,7 @@ export default function App() {
           {shortcuts.map(([icon,label,action])=><Pressable key={label} style={s.shortcut} onPress={action}><View style={s.shortcutIcon}><MarketIcon name={icon} size={21} color="#e87520" /></View><Text style={s.shortcutLabel}>{label}</Text></Pressable>)}
         </View>
       </> : null}
-      <View style={s.sectionHead}><Text style={s.sectionTitle}>Shop by category</Text><Pressable onPress={()=>setTab("Search")}><Text style={s.viewAll}>See all  ›</Text></Pressable></View>
+      <View style={s.sectionHead}><Text style={[s.sectionTitle,{color:palette.text}]}>Shop by category</Text><Pressable onPress={()=>setTab("Search")}><Text style={s.viewAll}>See all  ›</Text></Pressable></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.categoryRow}>
         {[{id:"all",name:"All products",slug:"all",icon:"all-products"},...categories].map(c =>
           <Pressable key={c.id} onPress={() => {setCategory(c.slug);setTab("Search");}} style={[s.categoryTile,category===c.slug&&s.categoryTileActive]}>
