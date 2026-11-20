@@ -293,6 +293,7 @@ export default function App() {
   const cartProducts = Array.from(new Set(cart)).map(id => ({ product: products.find(p => p.id === id), quantity: cart.filter(x => x === id).length })).filter((x): x is { product: Product; quantity: number } => Boolean(x.product));
   const cartTotal = cartProducts.reduce((sum, item) => sum + Number(item.product.price_mwk) * item.quantity, 0);
   const savedProducts = products.filter(p => saved.includes(p.id));
+  const selectedImages = [...(selected?.images??[])].sort((left,right)=>Number(left.sort_order)-Number(right.sort_order));
   const shortcuts: [string, string, () => void][] = [
     ["categories", "All categories", () => { setCategory("all"); setTab("Search"); }],
     ["featured", "Featured", () => { setSortBy("relevance"); setTab("Search"); }],
@@ -349,7 +350,7 @@ export default function App() {
     {checkout ? <CheckoutScreen items={cartProducts.map(({product,quantity})=>({id:product.id,title:product.title,price_mwk:product.price_mwk,quantity,demo:product.demo}))} onBack={()=>setCheckout(false)} onComplete={()=>{updateCart([]);setCheckout(false);setTab("Home");}} onOrderCreated={()=>{updateCart([]);}} />
     : selected ? <ScrollView contentContainerStyle={{paddingBottom:120,paddingHorizontal:isTablet?18:0}}>
       <Pressable onPress={() => setSelected(null)} style={s.back}><Text style={s.backText}>‹  {marketText(language,"Back to shopping")}</Text></Pressable>
-      {productImage(selected) ? <Image source={{uri:productImage(selected)}} style={[s.detailImage,{height:Math.min(440,Math.max(230,windowWidth*0.68))}]} resizeMode="cover" /> :
+      {selectedImages.length ? <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{height:Math.min(440,Math.max(230,windowWidth*0.68))}}>{selectedImages.map((image,index)=><Image key={image.image_url+index} source={{uri:image.image_url}} style={[s.detailImage,{width:windowWidth,height:Math.min(440,Math.max(230,windowWidth*0.68))}]} resizeMode="cover" />)}</ScrollView> :
         <View style={[s.detailImage,{height:Math.min(440,Math.max(230,windowWidth*0.68))},s.imagePlaceholder]}><Text style={s.placeholderText}>No product image</Text></View>}
       <View style={{padding:18}}>
         <Text style={[s.detailTitle,{color:palette.text}]}>{selected.title}</Text>
