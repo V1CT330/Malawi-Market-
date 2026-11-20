@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState , from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   SafeAreaView, ScrollView, View, Text, TextInput, Image, Pressable, Linking, Alert, BackHandler,
   StatusBar, StyleSheet, FlatList, ActivityIndicator, RefreshControl, Platform, useWindowDimensions
-} from "react-native";
+, from "react-native";
 import { supabase } from "./src/lib/supabase";
 import { processAuthCallback } from "./src/lib/auth-callback";
 import { ExploreScreens } from "./src/screens/ExploreScreens";
