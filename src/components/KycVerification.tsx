@@ -1,5 +1,5 @@
 import React,{useCallback,useEffect,useState} from "react";
-import {ActivityIndicator,Alert,Image,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
+import {ActivityIndicator,Alert,Image,Linking,Pressable,ScrollView,StyleSheet,Text,TextInput,View} from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import {supabase} from "../lib/supabase";
 
@@ -44,7 +44,7 @@ export function SellerKycVerification({onStatusChange}:{onStatusChange?:(status:
        :"Camera access is blocked. Open Android Settings, allow Camera for Malawi Market, then try again.",
       permission.canAskAgain
        ?[{text:"Not now",style:"cancel"}]
-       :[{text:"Not now",style:"cancel"},{text:"Open settings",onPress:()=>void ImagePicker.requestCameraPermissionsAsync().then(()=>{})}]
+       :[{text:"Not now",style:"cancel"},{text:"Open settings",onPress:()=>void Linking.openSettings()}]
      );
      return;
     }
