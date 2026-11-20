@@ -46,9 +46,9 @@ Deno.serve(async(req)=>{
   ] as const;
   const results=await Promise.allSettled(feeds.map(feed=>fetchFeed(feed.url,feed.category,feed.source)));
   const rows=results.flatMap(r=>r.status==="fulfilled"?r.value:[]);
-  if(!rows.length)return json({error:"No articles were returned from the configured Malawi24 RSS feeds.",sources:results.map((r,i)=>({feed:feeds[i].url,status:r.status,error:r.status==="rejected"?String(r.reason):null}))},502);
+  if(!rows.length)return json({error:"No articles were returned from the configured Malawi24 and BBC RSS feeds.",sources:results.map((r,i)=>({feed:feeds[i].url,status:r.status,error:r.status==="rejected"?String(r.reason):null}))},502);
   const {data,error}=await admin.from("market_news_articles").upsert(rows,{onConflict:"source_url",ignoreDuplicates:false}).select("id");
   if(error)throw error;
-  return json({ok:true,received:rows.length,stored:data?.length??0,source:"Malawi24 + BBC News RSS",synced_at:new Date().toISOString(),feed_status:results.map((r,i)=>({feed:feeds[i][0],ok:r.status==="fulfilled",items:r.status==="fulfilled"?r.value.length:0}))});
+  return json({ok:true,received:rows.length,stored:data?.length??0,source:"Malawi24 + BBC News RSS",synced_at:new Date().toISOString(),feed_status:results.map((r,i)=>({feed:feeds[i].url,ok:r.status==="fulfilled",items:r.status==="fulfilled"?r.value.length:0}))});
  }catch(error){return json({error:error instanceof Error?error.message:"News sync failed."},500);}
 });
