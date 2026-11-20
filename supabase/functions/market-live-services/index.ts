@@ -12,6 +12,35 @@ const json = (data: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+let newsCache: { savedAt:number; articles:any[] } | null = null;
+function decodeRss(value:string){
+  return value.replace(/<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>/g,"$1").replace(/<[^>]*>/g," ")
+    .replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"')
+    .replace(/&#39;/g,"'").replace(/&#(\\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/\\s+/g," ").trim();
+}
+function rssTag(xml:string,name:string){
+  const match=xml.match(new RegExp("<"+name+"(?:\\\\s[^>]*)?>([\\\\s\\\\S]*?)</"+name+">","i"));
+  return match?decodeRss(match[1]):"";
+}
+function rssImage(item:string){
+  const media=item.match(/<(?:media:content|media:thumbnail|enclosure)\\b[^>]*\\burl=["']([^"']+)["'][^>]*>/i)?.[1];
+  const inline=item.match(/<img\\b[^>]*\\bsrc=["']([^"']+)["'][^>]*>/i)?.[1];
+  for(const value of [media,inline]){
+    if(!value)continue;
+    try{const url=new URL(value.trim().replace(/&amp;/g,"&"));if(url.protocol==="https:")return url.toString();}catch{}
+  }
+  return undefined;
+}
+async function fetchRssFeed(feed:{url:string;category:string;source:string}){
+  const response=await fetch(feed.url,{headers:{"User-Agent":"MalawiMarket/1.0","Accept":"application/rss+xml, application/xml, text/xml"}});
+  if(!response.ok)throw new Error("RSS HTTP "+response.status);
+  const xml=await response.text();
+  return [...xml.matchAll(/<item\\b[\\s\\S]*?<\\/item>/gi)].map(match=>{
+    const item=match[0],date=rssTag(item,"pubDate"),parsed=new Date(date),link=rssTag(item,"link");
+    return {title:rssTag(item,"title"),summary:rssTag(item,"description").slice(0,480),image_url:rssImage(item),category:feed.category,source_name:feed.source,source_url:link,published_at:Number.isNaN(parsed.getTime())?new Date().toISOString():parsed.toISOString()};
+  }).filter(item=>item.title.length>4&&/^https:\\/\\//i.test(item.source_url));
+}
+
 Deno.serve(withSupabase({ auth: "user" }, async (req, _ctx) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -105,6 +134,27 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, _ctx) => {
       source_url: "https://www.api-football.com/",
     }));
     return json({ standings: rows, competition: league?.name ?? "Malawi Super League", season: league?.season ?? selectedSeason, source: "API-Football" });
+  }
+
+  if (input.action === "news") {
+    if (newsCache && Date.now() - newsCache.savedAt < 10 * 60 * 1000) {
+      return json({ articles: newsCache.articles, cached: true, updated_at: new Date(newsCache.savedAt).toISOString() });
+    }
+    const feeds = [
+      { url:"https://malawi24.com/feed/", category:"Malawi", source:"Malawi24" },
+      { url:"https://malawi24.com/business/feed/", category:"Business", source:"Malawi24" },
+      { url:"https://feeds.bbci.co.uk/news/world/africa/rss.xml", category:"Africa", source:"BBC News" },
+      { url:"https://feeds.bbci.co.uk/news/world/rss.xml", category:"World", source:"BBC News" },
+      { url:"https://feeds.bbci.co.uk/news/business/rss.xml", category:"Business", source:"BBC News" },
+      { url:"https://feeds.bbci.co.uk/news/technology/rss.xml", category:"Technology", source:"BBC News" },
+      { url:"https://feeds.bbci.co.uk/sport/rss.xml", category:"Sports", source:"BBC Sport" },
+    ];
+    const results = await Promise.allSettled(feeds.map(fetchRssFeed));
+    const articles = Array.from(new Map(results.flatMap(result => result.status === "fulfilled" ? result.value : []).map(item => [item.source_url,item])).values())
+      .sort((a,b)=>new Date(b.published_at).getTime()-new Date(a.published_at).getTime()).slice(0,40);
+    if (!articles.length) return json({ error:"No live news articles could be retrieved from the configured feeds." },502);
+    newsCache = { savedAt:Date.now(), articles };
+    return json({ articles, cached:false, updated_at:new Date(newsCache.savedAt).toISOString() });
   }
 
   if (input.action === "weather") {
