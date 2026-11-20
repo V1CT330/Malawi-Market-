@@ -1,19 +1,19 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Image } from "react-native";
-import { fetchLiveFootballFixtures, fetchWeather, requestDeviceCoordinates, searchMapboxPlaces, searchNearbyShops, mapboxStaticImageUrl, liveServiceAvailability, Coordinates, NearbyShop } from "../lib/live-services";
+import { fetchLiveFootballFixtures, fetchWeather, fetchExchangeRates, requestDeviceCoordinates, searchMapboxPlaces, searchNearbyShops, mapboxStaticImageUrl, liveServiceAvailability, Coordinates, NearbyShop, ExchangeRate } from "../lib/live-services";
 import {marketText,MarketLanguage} from "../lib/i18n";
 import {MarketIcon} from "../components/MarketIcon";
 import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking, Alert, BackHandler } from "react-native";
 
-type Section = "hub" | "news" | "jobs" | "stocks" | "weather" | "map" | "businesses";
+type Section = "hub" | "news" | "jobs" | "stocks" | "exchange" | "weather" | "map" | "businesses";
 const orange = "#ef7b25";
 const navy = "#252a31";
 const news: {category:string;title:string;summary:string;source:string;age:string;sourceUrl?:string}[] = [];
 const jobs: {title:string;company:string;location:string;type:string;category:string;salary:string;applicationUrl?:string}[] = [];
 const stocks: {symbol:string;name:string;sector:string;price:string;change:string;sourceName?:string;quoteTime?:string}[] = [];
 const fixtures: {league:string;home:string;away:string;time:string;score:string;status?:string;sourceName?:string;sourceUrl?:string}[] = [];
-const categories = ["All","Business","Technology","Agriculture","Sports"];
+const categories = ["All","Malawi","Africa","World","Business","Technology","Agriculture","Sports"];
 const jobTypes = ["All","Full time","Part time","Contract","Internship"];
 
 export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onHardwareBack}:{language:MarketLanguage;theme?:"light"|"dark";accentColor?:string;onHardwareBack:()=>void}) {
@@ -24,6 +24,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
     news:{accent:"#2563EB",tint:"#EFF6FF",darkTint:"#172b4d",label:"News"},
     jobs:{accent:"#B45309",tint:"#FEF3C7",darkTint:"#3c2c17",label:"Careers"},
     stocks:{accent:"#0F766E",tint:"#CCFBF1",darkTint:"#123b39",label:"Markets"},
+    exchange:{accent:"#0F766E",tint:"#CCFBF1",darkTint:"#123b39",label:"Exchange Rates"},
     weather:{accent:"#0284C7",tint:"#E0F2FE",darkTint:"#12364b",label:"Weather"},
     map:{accent:"#7C3AED",tint:"#EDE9FE",darkTint:"#30214d",label:"Places"},
     businesses:{accent:"#15803D",tint:"#DCFCE7",darkTint:"#183b29",label:"Business"},
@@ -43,6 +44,10 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
   const [newsRows,setNewsRows] = useState(news);
   const [jobRows,setJobRows] = useState(jobs);
   const [stockRows,setStockRows] = useState(stocks);
+  const [exchangeRates,setExchangeRates] = useState<ExchangeRate[]>([]);
+  const [exchangeUpdatedAt,setExchangeUpdatedAt] = useState("");
+  const [exchangeLoading,setExchangeLoading] = useState(false);
+  const [exchangeError,setExchangeError] = useState("");
   const [fixtureRows,setFixtureRows] = useState(fixtures);
   const [businessRows,setBusinessRows]=useState<any[]>([]);
   const [feedAds,setFeedAds]=useState<any[]>([]);
@@ -87,6 +92,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
   const [locationLabel,setLocationLabel] = useState("Malawi overview");
   useEffect(()=>{
     const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
+      if(section==="stocks"||section==="exchange"){setSection("news");setSearch("");return true;}
       if(section!=="hub"){setSection("hub");setSearch("");return true;}
       onHardwareBack();
       return true;
@@ -109,6 +115,20 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
     if(table.data?.length)setStandings(table.data);
   }).catch((error:any)=>{if(active)setLoadError(error?.message||"Explore data could not be loaded. Check your connection and try again.");}).finally(()=>{if(active)setLoadingData(false);}); return ()=>{active=false;}; },[reloadKey]);
   useEffect(()=>{let active=true;if(!liveServiceAvailability.football)return;fetchLiveFootballFixtures().then(rows=>{if(active&&rows.length){setFixtureRows(rows);setLiveFlags(v=>({...v,football:true}));}}).catch(error=>{if(active)setLoadError(error?.message||"Football data could not be loaded.");});return()=>{active=false;};},[reloadKey]);
+  useEffect(()=>{
+    if(section!=="exchange")return;
+    let active=true;
+    setExchangeLoading(true);setExchangeError("");
+    fetchExchangeRates().then(snapshot=>{
+      if(!active)return;
+      setExchangeRates(snapshot.rates);
+      setExchangeUpdatedAt(snapshot.updatedAt);
+    }).catch((error:any)=>{
+      if(active)setExchangeError(error?.message||"Exchange rates could not be loaded. Check your connection and retry.");
+    }).finally(()=>{if(active)setExchangeLoading(false);});
+    return()=>{active=false;};
+  },[section,reloadKey]);
+
   const loadCurrentWeather = async () => {
     setWeatherLoading(true);setWeatherError("");
     try {const point=await requestDeviceCoordinates();setCoordinates(point);setLocationLabel("Current device location");setWeather(await fetchWeather(point));}
@@ -163,11 +183,11 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
     catch{Alert.alert("Unable to open link","Check your internet connection or try opening this link again.");}
   };
   const sponsoredCard=(ad:any)=><Pressable key={ad.id} accessibilityRole="link" style={{backgroundColor:surface,borderWidth:1,borderColor:line,borderRadius:13,marginTop:10,overflow:"hidden",flexDirection:"row"}} onPress={()=>{void supabase.functions.invoke("onekhusa-payments",{body:{action:"track_ad_event",campaign_id:ad.id,event_type:"click"}});void openExternal(ad.destination_url);}}><Image source={{uri:ad.image_url}} style={{width:92,height:104,backgroundColor:"#eee"}} resizeMode="cover"/><View style={{flex:1,padding:11,justifyContent:"center"}}><Text style={{fontSize:9,fontWeight:"900",color:"#b45d20"}}>SPONSORED · {ad.business_name}</Text><Text style={{fontSize:14,fontWeight:"900",color:ink,marginTop:5}}>{ad.title}</Text><Text numberOfLines={2} style={{fontSize:11,color:muted,marginTop:4}}>{ad.body}</Text><Text style={{fontSize:10,color:orange,fontWeight:"900",marginTop:6}}>Learn more ›</Text></View></Pressable>;
-  const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="weather"?"Weather":section==="map"?"Map & Location":section==="businesses"?"Businesses":"Malawi Market");
+  const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Business & Markets":section==="exchange"?"Exchange Rates":section==="weather"?"Weather":section==="map"?"Map & Location":section==="businesses"?"Businesses":"Malawi Market");
   const pill = (label:string, active:boolean, action:()=>void) => <Pressable key={label} onPress={action} style={[s.pill,{backgroundColor:surface,borderColor:line},active&&{backgroundColor:topic.accent,borderColor:topic.accent}]}><Text style={[s.pillText,{color:active?"#fff":muted}]}>{label}</Text></Pressable>;
   const notice = (text:string) => <View style={[s.notice,{backgroundColor:darkMode?topic.darkTint:topic.tint}]}><Text style={s.noticeText}>DATA STATUS · {text}</Text></View>;
   return <ScrollView style={[s.root,{backgroundColor:page}]} contentContainerStyle={s.content}>
-    {section!=="hub" && <Pressable onPress={()=>go("hub")} style={s.back}><Text style={[s.backText,{color:topic.accent}]}>‹  {marketText(language,"Explore")}</Text></Pressable>}
+    {section!=="hub" && <Pressable onPress={()=>go(section==="stocks"||section==="exchange"?"news":"hub")} style={s.back}><Text style={[s.backText,{color:topic.accent}]}>‹  {section==="stocks"||section==="exchange"?"News":marketText(language,"Explore")}</Text></Pressable>}
     <Text style={[s.title,{color:topic.accent}]}>{heading}</Text>
     {loadingData?<View style={[s.statusPanel,{backgroundColor:surface,borderColor:line}]}><Text style={s.statusTitle}>Loading verified information…</Text><Text style={s.statusBody}>Fetching the latest available content.</Text></View>:null}
     {loadError?<View style={[s.statusPanel,{backgroundColor:surface,borderColor:line}]}><Text style={s.statusTitle}>Some information could not be loaded</Text><Text style={s.statusBody}>{loadError}</Text><Pressable onPress={()=>setReloadKey(v=>v+1)} style={s.retry}><Text style={s.retryText}>Try again</Text></Pressable></View>:null}
@@ -176,8 +196,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
       <Text style={[s.subheading,{color:ink}]}>GENERAL</Text>
       <Text style={[s.subtitle,{color:muted}]}>Useful information and opportunities from across Malawi.</Text>
       {[
-        ["stocks","stocks","Stock Market","Malawi Stock Exchange information and company quotes"],
-        ["news","news","News","Stories and updates from verified sources"],
+        ["news","news","News","Top stories, live reporting, sports and business markets"],
         ["jobs","jobs","Jobs","Published job vacancies and opportunities"],
       ].map(([key,icon,label,desc])=>{
         const colors=topicPalette[key as Section];
@@ -199,9 +218,39 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
       {!businessRows.length?<Text style={[s.empty,{color:muted}]}>No active businesses are listed yet.</Text>:null}
     </> : null}
     {section==="news" ? <>
-      {notice(liveFlags.news?"Verified articles loaded from Malawi Market content feed.":"No verified articles are published yet. Sync Malawi24 RSS or add sourced articles in Admin.")}
-      <TextInput value={search} onChangeText={setSearch} placeholder="Search verified headlines" style={[s.search,{backgroundColor:darkMode?"#252b35":"#f1f2f4",borderColor:line,color:ink}]}/>
+      <View style={[s.newsMasthead,{backgroundColor:darkMode?"#202a38":"#12233f"}]}>
+        <Text style={s.newsMastheadEyebrow}>MALAWI MARKET · NEWSROOM</Text>
+        <Text style={s.newsMastheadTitle}>The stories shaping Malawi and the world.</Text>
+        <Text style={s.newsMastheadCopy}>Reporting, context and updates from verified sources.</Text>
+      </View>
+      {notice(liveFlags.news?"Verified articles loaded from Malawi Market content feed.":"No verified articles are published yet. Stories appear here when sourced articles are published.")}
+      <TextInput value={search} onChangeText={setSearch} placeholder="Search headlines and topics" placeholderTextColor={muted} style={[s.search,{backgroundColor:darkMode?"#252b35":"#f1f2f4",borderColor:line,color:ink}]}/>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:10}}>{categories.map(c=>pill(c,newsCategory===c,()=>setNewsCategory(c)))}</ScrollView>
+      {newsCategory.toLowerCase()!=="sports" ? <>
+        <View style={[s.businessMarketsPanel,{backgroundColor:darkMode?"#202a38":"#F3F6FA",borderColor:line}]}>
+          <View style={s.businessMarketsHeading}>
+            <View style={{flex:1}}>
+              <Text style={[s.businessMarketsTitle,{color:ink}]}>Business & Markets</Text>
+              <Text style={[s.meta,{color:muted}]}>Follow Malawi's economy and global currencies.</Text>
+            </View>
+            <Text style={s.businessMarketsLabel}>MARKETS</Text>
+          </View>
+          <View style={s.businessMarketsActions}>
+            <Pressable style={[s.businessMarketAction,{backgroundColor:surface,borderColor:line}]} onPress={()=>go("stocks")}>
+              <Text style={s.businessMarketEyebrow}>MSE</Text><Text style={[s.businessMarketName,{color:ink}]}>Stock Market</Text><Text style={[s.meta,{color:muted}]}>Listed companies and share prices</Text><Text style={s.businessMarketLink}>OPEN MARKET ›</Text>
+            </Pressable>
+            <Pressable style={[s.businessMarketAction,{backgroundColor:surface,borderColor:line}]} onPress={()=>go("exchange")}>
+              <Text style={s.businessMarketEyebrow}>MWK</Text><Text style={[s.businessMarketName,{color:ink}]}>Exchange Rates</Text><Text style={[s.meta,{color:muted}]}>Kwacha against major currencies</Text><Text style={s.businessMarketLink}>VIEW RATES ›</Text>
+            </Pressable>
+          </View>
+        </View>
+        {filteredNews.length>0 ? <Pressable disabled={!filteredNews[0].sourceUrl} onPress={()=>void openExternal(filteredNews[0].sourceUrl)} style={[s.newsLeadStory,{backgroundColor:darkMode?"#20242c":"#17253b"}]}>
+          <Text style={s.newsLeadEyebrow}>TOP STORY · {filteredNews[0].category.toUpperCase()}</Text>
+          <Text style={s.newsLeadTitle}>{filteredNews[0].title}</Text>
+          <Text style={s.newsLeadSummary}>{filteredNews[0].summary}</Text>
+          <Text style={s.newsLeadMeta}>{filteredNews[0].source} · {filteredNews[0].age}  {filteredNews[0].sourceUrl?"· READ STORY ↗":""}</Text>
+        </Pressable>:null}
+      </> : null}
       {newsCategory.toLowerCase()==="sports" ? <>
         <View style={[s.sportsHero,{backgroundColor:darkMode?"#102b27":"#123b35"}]}>
           <View style={s.sportsHeroTop}><Text style={s.sportsEyebrow}>MALAWI MARKET · SPORTS DESK</Text><Text style={s.sportsLiveTag}>SPORTS</Text></View>
@@ -235,7 +284,8 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
       {!filteredJobs.length&&<Text style={[s.empty,{color:muted}]}>No verified vacancies match your search yet.</Text>}
     </> : null}
     {section==="stocks" ? <>
-      <View style={[s.marketHero,{backgroundColor:darkMode?"#102D2B":"#103C36"}]}>
+      <Text style={[s.meta,{color:muted,marginTop:8}]}>NEWSROOM  /  BUSINESS & MARKETS  /  STOCK MARKET</Text>
+      <View style={[s.marketHero},{backgroundColor:darkMode?"#102D2B":"#103C36"}]}>
         <View style={s.marketHeroTop}><Text style={s.marketEyebrow}>MALAWI MARKET · INVESTOR DESK</Text><Text style={s.marketBadge}>{liveFlags.stocks?"QUOTES LOADED":"DATA PENDING"}</Text></View>
         <Text style={s.marketHeroTitle}>Understand the market.</Text>
         <Text style={s.marketHeroCopy}>A clearer view of Malawi's listed companies, share prices and market activity.</Text>
@@ -265,6 +315,30 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
         <Text style={[s.meta,{color:muted}]}>Prices are shown only when a source and quote timestamp are recorded. This section does not represent delayed or missing data as live prices.</Text>
         {stockRows.length>0?<Text style={[s.meta,{color:muted}]}>Latest recorded quote: {stockRows.reduce<string>((latest,x)=>{const stamp=x.quoteTime||"";return !latest||(stamp&&new Date(stamp)>new Date(latest))?stamp:latest;},"")}</Text>:null}
         <Pressable onPress={()=>void openExternal("https://www.mse.co.mw/market/reports")}><Text style={s.marketReportLink}>VIEW OFFICIAL MARKET REPORTS ↗</Text></Pressable>
+      </View>
+    </> : null}
+    {section==="exchange" ? <>
+      <Text style={[s.meta,{color:muted,marginTop:8}]}>NEWSROOM  /  BUSINESS & MARKETS  /  FOREIGN EXCHANGE</Text>
+      <View style={[s.marketHero,{backgroundColor:darkMode?"#102D2B":"#103C36"}]}>
+        <View style={s.marketHeroTop}><Text style={s.marketEyebrow}>MALAWI MARKET · CURRENCY DESK</Text><Text style={s.marketBadge}>{exchangeLoading?"UPDATING":exchangeRates.length?"REFERENCE RATES":"DATA UNAVAILABLE"}</Text></View>
+        <Text style={s.marketHeroTitle}>The Kwacha, in context.</Text>
+        <Text style={s.marketHeroCopy}>Indicative reference exchange rates against major regional and international currencies.</Text>
+        <View style={s.marketStats}><View style={s.marketStat}><Text style={s.marketStatValue}>{exchangeRates.length}</Text><Text style={s.marketStatLabel}>CURRENCIES</Text></View><View style={s.marketStat}><Text style={s.marketStatValue}>MWK</Text><Text style={s.marketStatLabel}>REFERENCE BASE</Text></View></View>
+      </View>
+      <View style={s.marketSectionHead}><View><Text style={[s.marketSectionTitle,{color:ink}]}>Exchange rates</Text><Text style={[s.meta,{color:muted}]}>Malawi Kwacha per 1 unit of foreign currency</Text></View><Pressable onPress={()=>setReloadKey(v=>v+1)} style={s.marketRefresh}><Text style={s.marketRefreshText}>↻ Refresh</Text></Pressable></View>
+      {exchangeLoading&&!exchangeRates.length?<View style={[s.statusPanel,{backgroundColor:surface,borderColor:line}]}><Text style={[s.statusTitle,{color:ink}]}>Loading reference rates…</Text><Text style={[s.statusBody,{color:muted}]}>Connecting to the exchange-rate provider.</Text></View>:null}
+      {exchangeError?<View style={[s.statusPanel,{backgroundColor:surface,borderColor:line}]}><Text style={[s.statusTitle,{color:ink}]}>Rates unavailable</Text><Text style={[s.statusBody,{color:muted}]}>{exchangeError}</Text><Pressable onPress={()=>setReloadKey(v=>v+1)} style={s.retry}><Text style={s.retryText}>Try again</Text></Pressable></View>:null}
+      {exchangeRates.map(rate=><View key={rate.currency} style={[s.exchangeRateRow,{backgroundColor:surface,borderColor:line}]}>
+        <View style={[s.exchangeCurrencyMark,{backgroundColor:darkMode?"#183D38":"#E6F4EF"}]}><Text style={s.exchangeCurrencyMarkText}>{rate.currency}</Text></View>
+        <View style={{flex:1}}><Text style={[s.marketSymbol,{color:ink}]}>{rate.currency}</Text><Text style={[s.marketCompany,{color:muted}]}>{rate.currency==="USD"?"US Dollar":rate.currency==="GBP"?"British Pound":rate.currency==="EUR"?"Euro":rate.currency==="ZAR"?"South African Rand":rate.currency==="KES"?"Kenyan Shilling":rate.currency==="TZS"?"Tanzanian Shilling":"Botswana Pula"}</Text></View>
+        <View style={{alignItems:"flex-end"}}><Text style={[s.marketPrice,{color:ink}]}>MK {rate.mwkPerUnit.toLocaleString("en-MW",{minimumFractionDigits:2,maximumFractionDigits:2})}</Text><Text style={[s.meta,{color:muted}]}>per 1 {rate.currency}</Text></View>
+      </View>)}
+      {!exchangeRates.length&&!exchangeLoading&&!exchangeError?<Text style={[s.empty,{color:muted}]}>No exchange rates are available.</Text>:null}
+      <View style={[s.marketFootnote,{backgroundColor:darkMode?"#252B35":"#F0F5F3"}]}>
+        <Text style={[s.marketFootnoteTitle,{color:ink}]}>Source & update time</Text>
+        <Text style={[s.meta,{color:muted}]}>Provider: ExchangeRate-API open reference feed. Rates are indicative, update periodically and may differ from bank, bureau or transaction rates.</Text>
+        {exchangeUpdatedAt?<Text style={[s.meta,{color:muted}]}>Last provider update: {new Date(exchangeUpdatedAt).toLocaleString()}</Text>:null}
+        <Text style={[s.meta,{color:muted}]}>Not a guaranteed buy/sell quote. Confirm the rate with your bank or licensed bureau before exchanging money.</Text>
       </View>
     </> : null}
     {section==="weather" ? <>
@@ -312,6 +386,10 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:"#ffffff"},content:{padding:16,paddingBottom:120},back:{paddingVertical:8},backText:{color:orange,fontWeight:"800",fontSize:14},
  title:{fontSize:24,fontWeight:"700",color:"#202124",marginTop:8,letterSpacing:-.5},subtitle:{fontSize:13,color:"#4b5563",lineHeight:20,marginTop:6,marginBottom:16},
+ newsMasthead:{borderRadius:4,padding:19,marginTop:12,marginBottom:4},newsMastheadEyebrow:{fontSize:9,fontWeight:"900",letterSpacing:1.4,color:"#B9D0F1"},newsMastheadTitle:{fontSize:27,lineHeight:33,fontWeight:"900",color:"#FFFFFF",letterSpacing:-.8,marginTop:14,maxWidth:310},newsMastheadCopy:{fontSize:12,lineHeight:18,color:"#D6E1F0",marginTop:8},
+ businessMarketsPanel:{borderWidth:1,borderRadius:14,padding:13,marginTop:14},businessMarketsHeading:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},businessMarketsTitle:{fontSize:17,fontWeight:"900"},businessMarketsLabel:{fontSize:8,fontWeight:"900",letterSpacing:1,color:"#0F766E"},businessMarketsActions:{flexDirection:"row",gap:9,marginTop:12},businessMarketAction:{flex:1,minWidth:0,borderWidth:1,borderRadius:11,padding:11},businessMarketEyebrow:{fontSize:9,fontWeight:"900",letterSpacing:1,color:"#0F766E"},businessMarketName:{fontSize:13,fontWeight:"900",marginTop:5},businessMarketLink:{fontSize:9,fontWeight:"900",letterSpacing:.4,color:"#0F766E",marginTop:10},
+ newsLeadStory:{padding:17,marginTop:14,borderRadius:4},newsLeadEyebrow:{fontSize:9,fontWeight:"900",letterSpacing:1.1,color:"#F5B77C"},newsLeadTitle:{fontSize:22,lineHeight:28,fontWeight:"900",color:"#FFFFFF",marginTop:12},newsLeadSummary:{fontSize:12,lineHeight:18,color:"#D9E2ED",marginTop:9},newsLeadMeta:{fontSize:9,fontWeight:"700",color:"#B6C6D8",marginTop:13},
+ exchangeRateRow:{flexDirection:"row",alignItems:"center",padding:13,borderBottomWidth:1,borderColor:"#E5EAE8",borderRadius:12,marginTop:7},exchangeCurrencyMark:{minWidth:46,height:38,paddingHorizontal:5,borderRadius:9,alignItems:"center",justifyContent:"center",marginRight:11},
  menuCard:{flexDirection:"row",alignItems:"center",backgroundColor:"#ffffff",borderWidth:1,borderColor:"#d9dde3",borderRadius:13,padding:14,marginTop:8,elevation:0},menuIcon:{width:40,height:40,borderRadius:11,backgroundColor:"#fff1e5",alignItems:"center",justifyContent:"center",marginRight:13},menuTitle:{fontSize:15,fontWeight:"800",color:navy},menuDesc:{fontSize:11,color:"#4b5563",marginTop:4},arrow:{fontSize:26,color:orange,marginLeft:8},
  subheading:{fontSize:15,fontWeight:"900",color:navy,marginTop:24,marginBottom:8},coming:{backgroundColor:"#fff",borderRadius:10,padding:13,marginTop:7,borderWidth:1,borderColor:"#d9dde3"},comingText:{fontSize:12,fontWeight:"700",color:"#465267"},soon:{fontSize:9,color:"#9a6a3a",fontWeight:"900",marginTop:7,letterSpacing:.5},
  statusPanel:{backgroundColor:"#fff",borderRadius:16,padding:16,marginTop:13,borderWidth:1,borderColor:"#e7ebf0"},statusTitle:{fontSize:13,fontWeight:"900",color:navy},statusBody:{fontSize:11,color:"#4b5563",lineHeight:17,marginTop:5},retry:{alignSelf:"flex-start",backgroundColor:orange,borderRadius:8,paddingHorizontal:13,paddingVertical:9,marginTop:10},retryText:{fontSize:11,color:"#fff",fontWeight:"900"},
