@@ -22,7 +22,7 @@
     "expo-camera": "~17.0.8",
     "react-native-qrcode-svg": "6.3.15",
     "react-native-svg": "15.12.1",
-    "lucide-react-native": "^0.468.0"
+    "lucide-react-native": "1.76.0"
   },
   "devDependencies": {
     "@types/react": "~19.1.10",
