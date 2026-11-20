@@ -30,14 +30,34 @@ export function SellerKycVerification({onStatusChange}:{onStatusChange?:(status:
  },[onStatusChange]);
  useEffect(()=>{void load();},[load]);
  const choose=async(kind:"document"|"selfie")=>{
-  const result=kind==="document"
-   ? await ImagePicker.launchImageLibraryAsync({mediaTypes:["images"],allowsEditing:true,quality:.85})
-   : await ImagePicker.launchCameraAsync({mediaTypes:["images"],allowsEditing:true,quality:.85});
-  if(result.canceled)return;const asset=result.assets[0];if(!asset)return;
+  try{
+   let result:ImagePicker.ImagePickerResult;
+   if(kind==="document"){
+    result=await ImagePicker.launchImageLibraryAsync({mediaTypes:["images"],allowsEditing:true,quality:.85});
+   }else{
+    const permission=await ImagePicker.requestCameraPermissionsAsync();
+    if(!permission.granted){
+     Alert.alert(
+      "Camera access needed",
+      permission.canAskAgain
+       ?"Allow camera access to take the identity-verification selfie. You can continue browsing without it."
+       :"Camera access is blocked. Open Android Settings, allow Camera for Malawi Market, then try again.",
+      permission.canAskAgain
+       ?[{text:"Not now",style:"cancel"}]
+       :[{text:"Not now",style:"cancel"},{text:"Open settings",onPress:()=>void ImagePicker.requestCameraPermissionsAsync().then(()=>{})}]
+     );
+     return;
+    }
+    result=await ImagePicker.launchCameraAsync({mediaTypes:["images"],allowsEditing:true,quality:.85});
+   }
+   if(result.canceled)return;const asset=result.assets[0];if(!asset)return;
   if(asset.fileSize&&asset.fileSize>5*1024*1024){Alert.alert("File too large","Choose an image under 5 MB.");return;}
   if(!["image/jpeg","image/png","image/webp"].includes(mime(asset))){Alert.alert("Unsupported file","Use a JPEG, PNG or WebP image.");return;}
   const picked={uri:asset.uri,mimeType:mime(asset),fileSize:asset.fileSize};
   if(kind==="document")setDocument(picked);else setSelfie(picked);
+  }catch(error:any){
+   Alert.alert("Unable to open camera or photos",error?.message||"Check the relevant permission in Android Settings and try again.");
+  }
  };
  const submit=async()=>{
   if(busy)return;
