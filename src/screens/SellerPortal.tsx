@@ -88,7 +88,8 @@ export function SellerPortal(){
    const values={category_id:cat.id,title:title.trim(),slug:slugify(title)+"-"+Date.now().toString(36),description:productDescription.trim(),price_mwk:amount,condition,stock_quantity:stock,location:location.trim(),...(editingId?{}:{seller_id:seller.id,status:"published",published_at:new Date().toISOString()})};
    if(editingId){const {error}=await supabase.from("market_products").update(values).eq("id",editingId).eq("seller_id",seller.id);if(error)throw error;}
    else{const {data,error}=await supabase.from("market_products").insert(values).select("id").single();if(error)throw error;productId=data.id;}
-   const imageRows:{product_id:string;image_url:string;is_primary:boolean;sort_order:number}[]=[];
+    if(!productId)throw new Error("Could not identify the product listing to attach photos.");
+    const imageRows:{product_id:string;image_url:string;is_primary:boolean;sort_order:number}[]=[];
    for(const [index,pickedImage] of pickedImages.entries()){
     const response=await fetch(pickedImage.uri);if(!response.ok)throw new Error("Could not read one of the selected photos.");
     const bytes=await response.arrayBuffer();const ext=pickedImage.mimeType==="image/png"?"png":pickedImage.mimeType==="image/webp"?"webp":"jpg";
