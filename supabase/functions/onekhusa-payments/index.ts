@@ -133,7 +133,7 @@ async function initiateAdPayment(req: Request) {
     .select("id,advertiser_user_id,status,payment_status,budget_mwk,payment_reference")
     .eq("id", campaign_id).eq("advertiser_user_id", userData.user.id).maybeSingle();
   if (error || !campaign) return json({ error: "Campaign not found." }, 404);
-  if (campaign.status !== "draft" || campaign.payment_status !== "unpaid") return json({ error: "This campaign is not awaiting payment." }, 409);
+  if (campaign.status !== "draft" || !["unpaid", "failed"].includes(campaign.payment_status)) return json({ error: "This campaign is not awaiting payment." }, 409);
   const env = (Deno.env.get("ONEKHUSA_ENV") ?? "sandbox").toLowerCase();
   const base = env === "live" ? "https://api.onekhusa.com/live/v1" : "https://api.onekhusa.com/sandbox/v1";
   const apiKey = Deno.env.get("ONEKHUSA_API_KEY");
@@ -147,7 +147,7 @@ async function initiateAdPayment(req: Request) {
   const reference = "MKA-" + crypto.randomUUID().replaceAll("-", "").toUpperCase();
   const { data: reserved, error: reserveError } = await admin.from("market_ad_campaigns").update({
     status: "pending_payment", payment_status: "pending", payment_reference: reference, updated_at: new Date().toISOString()
-  }).eq("id", campaign.id).eq("status", "draft").eq("payment_status", "unpaid").select("id").maybeSingle();
+  }).eq("id", campaign.id).eq("status", "draft").in("payment_status", ["unpaid", "failed"]).select("id").maybeSingle();
   if (reserveError || !reserved) return json({ error: "Campaign payment is already being processed. Refresh and retry." }, 409);
   try {
     const tokenResponse = await fetch(base + "/account/getAccessToken", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey, apiSecret, organisationId, merchantAccountNumber }) });
