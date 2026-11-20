@@ -15,7 +15,8 @@ const KEY_PROFILE="@malawi-market/profile";
 type Draft={id:string;title:string;price:string;category:string;description:string;createdAt:string};
 type Profile={displayName:string;phone:string;location:string;language:string;notifications:boolean;avatarUrl:string;theme:"light"|"dark";accentColor:string};
 type Notice={id:string;title:string;body:string;kind:string;read_at:string|null;created_at:string};
-const initialProfile:Profile={displayName:"",phone:"",location:"",language:"English",notifications:true,avatarUrl:"",theme:"light",accentColor:"#3B82F6"};\nconst accentPresets=[{name:"Malawi Orange",hex:"#EF7628"},{name:"Blue",hex:"#3B82F6"},{name:"Green",hex:"#16A34A"},{name:"Purple",hex:"#8B5CF6"},{name:"Red",hex:"#EF4444"},{name:"Teal",hex:"#0D9488"},{name:"Pink",hex:"#DB2777"},{name:"Gold",hex:"#D97706"},{name:"Black",hex:"#202124"}];
+const initialProfile:Profile={displayName:"",phone:"",location:"",language:"English",notifications:true,avatarUrl:"",theme:"light",accentColor:"#3B82F6"};
+const accentPresets=[{name:"Malawi Orange",hex:"#EF7628"},{name:"Blue",hex:"#3B82F6"},{name:"Green",hex:"#16A34A"},{name:"Purple",hex:"#8B5CF6"},{name:"Red",hex:"#EF4444"},{name:"Teal",hex:"#0D9488"},{name:"Pink",hex:"#DB2777"},{name:"Gold",hex:"#D97706"},{name:"Black",hex:"#202124"}];
 const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 const tr=(language:string,english:string)=>marketText(language,english);
 
