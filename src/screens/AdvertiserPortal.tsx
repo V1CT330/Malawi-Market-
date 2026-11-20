@@ -28,7 +28,7 @@ export function AdvertiserPortal(){
    if(authError)throw authError;
    if(!user){setUserId("");setEmail("");setCampaigns([]);return;}
    setUserId(user.id);setEmail(user.email??"");
-   const {data,error}=await supabase.from("market_ad_campaigns").select("id,business_name,title,placement,budget_mwk,status,payment_status,created_at,payment_reference").order("created_at",{ascending:false}).limit(50);
+   const {data,error}=await supabase.from("market_ad_campaigns").select("id,business_name,title,placement,budget_mwk,status,payment_status,created_at").order("created_at",{ascending:false}).limit(50);
    if(error)throw error;
    setCampaigns((data??[]) as Campaign[]);
   }catch(e:any){Alert.alert("Advertising",e?.message||"Could not load your campaigns.");}
