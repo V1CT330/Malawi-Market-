@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { Image } from "react-native";
-import { fetchLiveFootballFixtures, fetchWeather, fetchExchangeRates, requestDeviceCoordinates, searchMapboxPlaces, searchNearbyShops, mapboxStaticImageUrl, liveServiceAvailability, Coordinates, NearbyShop, ExchangeRate } from "../lib/live-services";
+import { fetchLiveFootballFixtures, fetchLiveFootballStandings, fetchWeather, fetchExchangeRates, requestDeviceCoordinates, searchMapboxPlaces, searchNearbyShops, mapboxStaticImageUrl, liveServiceAvailability, Coordinates, NearbyShop, ExchangeRate } from "../lib/live-services";
 import {marketText,MarketLanguage} from "../lib/i18n";
 import {MarketIcon} from "../components/MarketIcon";
 import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking, Alert, BackHandler } from "react-native";
@@ -109,6 +109,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
   const [businessAds,setBusinessAds]=useState<any[]>([]);
   const [liveFlags,setLiveFlags] = useState({news:false,jobs:false,stocks:false,football:false});
   const [standings,setStandings] = useState<any[]>([]);
+  const [standingsError,setStandingsError] = useState("");
   const [loadingData,setLoadingData] = useState(true);
   const [loadError,setLoadError] = useState("");
   const [reloadKey,setReloadKey] = useState(0);
@@ -170,6 +171,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
     if(table.data?.length)setStandings(table.data);
   }).catch((error:any)=>{if(active)setLoadError(error?.message||"Explore data could not be loaded. Check your connection and try again.");}).finally(()=>{if(active)setLoadingData(false);}); return ()=>{active=false;}; },[reloadKey]);
   useEffect(()=>{let active=true;if(!liveServiceAvailability.football)return;fetchLiveFootballFixtures().then(rows=>{if(active&&rows.length){setFixtureRows(rows);setLiveFlags(v=>({...v,football:true}));}}).catch(error=>{if(active)setLoadError(error?.message||"Football data could not be loaded.");});return()=>{active=false;};},[reloadKey]);
+  useEffect(()=>{let active=true;if(!liveServiceAvailability.football)return;setStandingsError("");fetchLiveFootballStandings().then(rows=>{if(active&&rows.length)setStandings(rows);}).catch(error=>{if(active)setStandingsError(error?.message||"Live standings could not be loaded.");});return()=>{active=false;};},[reloadKey]);
   useEffect(()=>{
     if(section!=="exchange")return;
     let active=true;
@@ -323,7 +325,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
           <View style={s.sportsFixtureFoot}><Text style={[s.meta,{color:muted}]}>{item.sourceName||"Source not recorded"}</Text>{item.sourceUrl?<Text style={s.sportsSourceLink}>MATCH DETAILS ↗</Text>:null}</View>
         </Pressable>):<View style={[s.sportsEmpty,{backgroundColor:surface,borderColor:line}]}><Text style={[s.sportsEmptyTitle,{color:ink}]}>{sportsCategory} coverage</Text><Text style={[s.body,{color:muted}]}>Stories will appear here when verified {sportsCategory.toLowerCase()} coverage is published. Match data is not fabricated.</Text></View>}
         {sportsCategory==="All sports"||sportsCategory==="Football" ? !sportsFixtures.length?<View style={[s.sportsEmpty,{backgroundColor:surface,borderColor:line}]}><Text style={[s.sportsEmptyTitle,{color:ink}]}>No verified matches yet</Text><Text style={[s.body,{color:muted}]}>Fixtures and results will appear here when a trusted source publishes them.</Text></View>:null:null}
-        {sportsCategory==="All sports"||sportsCategory==="Football" ? <><View style={s.sportsSectionHead}><View><Text style={[s.sportsSectionTitle,{color:ink}]}>League table</Text><Text style={[s.meta,{color:muted}]}>Competition standings</Text></View></View>{standings.length?standings.map(team=><View key={team.id} style={[s.sportsTableRow,{backgroundColor:surface,borderColor:line}]}><Text style={[s.sportsPosition,{color:muted}]}>{team.position}</Text><View style={{flex:1}}><Text style={[s.sportsTableTeam,{color:ink}]}>{team.team_name}</Text><Text style={[s.meta,{color:muted}]}>{team.competition} · {team.season} · P {team.played} · W {team.won} · D {team.drawn} · L {team.lost}</Text></View><Text style={[s.sportsPoints,{color:ink}]}>{team.points} pts</Text></View>):<Text style={[s.empty,{color:muted}]}>Official standings will appear when verified data is available.</Text>}</>:null}
+        {sportsCategory==="All sports"||sportsCategory==="Football" ? <><View style={s.sportsSectionHead}><View><Text style={[s.sportsSectionTitle,{color:ink}]}>League table</Text><Text style={[s.meta,{color:muted}]}>Competition standings</Text></View></View>{standingsError?<Text style={[s.meta,{color:muted}]}>{standingsError}</Text>:null}{standings.length?standings.map(team=><View key={team.id} style={[s.sportsTableRow,{backgroundColor:surface,borderColor:line}]}><Text style={[s.sportsPosition,{color:muted}]}>{team.position}</Text><View style={{flex:1}}><Text style={[s.sportsTableTeam,{color:ink}]}>{team.team_name}</Text><Text style={[s.meta,{color:muted}]}>{team.competition} · {team.season} · P {team.played} · W {team.won} · D {team.drawn} · L {team.lost}</Text></View><Text style={[s.sportsPoints,{color:ink}]}>{team.points} pts</Text></View>):<Text style={[s.empty,{color:muted}]}>Official standings will appear when verified data is available.</Text>}</>:null}
         <View style={s.sportsSectionHead}><View><Text style={[s.sportsSectionTitle,{color:ink}]}>From the sports desk</Text><Text style={[s.meta,{color:muted}]}>Reporting and analysis</Text></View></View>
         {sportsArticles.map((item,i)=><Pressable key={i} disabled={!item.sourceUrl} style={[s.article,{backgroundColor:surface,borderColor:line}]} onPress={()=>void openExternal(item.sourceUrl)}><Text style={[s.category,{color:"#0F766E"}]}>{item.category.toUpperCase()} · {item.age.toUpperCase()}</Text><Text style={[s.cardTitle,{color:ink}]}>{item.title}</Text><Text style={[s.body,{color:muted}]}>{item.summary}</Text><Text style={[s.meta,{color:muted}]}>{item.source} · Open original article</Text></Pressable>)}
         {!sportsArticles.length?<Text style={[s.empty,{color:muted}]}>No verified sports stories are published yet.</Text>:null}
