@@ -31,5 +31,5 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - run: deno check --no-lock supabase/functions/market-live-services/index.ts
-      - run: deno check --no-lock supabase/functions/market-content-sync/index.ts
+      - run: deno check --no-lock --node-modules-dir=auto supabase/functions/market-live-services/index.ts
+      - run: deno check --no-lock --node-modules-dir=auto supabase/functions/market-content-sync/index.ts
