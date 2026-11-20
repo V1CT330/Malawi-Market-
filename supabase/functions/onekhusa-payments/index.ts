@@ -290,7 +290,8 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     if (url.pathname.endsWith("/webhook")) return await receiveWebhook(req);
     const body = await req.clone().json().catch(() => ({}));
-    if (body.action === "initiate_ad") return await initiateAdPayment(req);\n    if (body.action === "track_ad_event") return await trackAdEvent(req);
+    if (body.action === "initiate_ad") return await initiateAdPayment(req);
+    if (body.action === "track_ad_event") return await trackAdEvent(req);
     if (body.action !== "initiate") return json({ error: "Unsupported action." }, 400);
     return await initiatePayment(req);
   } catch (error) {
