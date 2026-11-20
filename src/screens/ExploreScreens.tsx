@@ -285,7 +285,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
     </> : null}
     {section==="stocks" ? <>
       <Text style={[s.meta,{color:muted,marginTop:8}]}>NEWSROOM  /  BUSINESS & MARKETS  /  STOCK MARKET</Text>
-      <View style={[s.marketHero,{backgroundColor:darkMode?"#102D2B":"#103C36"}]}}>
+      <View style={[s.marketHero,{backgroundColor:darkMode?"#102D2B":"#103C36"}]}>
         <View style={s.marketHeroTop}><Text style={s.marketEyebrow}>MALAWI MARKET · INVESTOR DESK</Text><Text style={s.marketBadge}>{liveFlags.stocks?"QUOTES LOADED":"DATA PENDING"}</Text></View>
         <Text style={s.marketHeroTitle}>Understand the market.</Text>
         <Text style={s.marketHeroCopy}>A clearer view of Malawi's listed companies, share prices and market activity.</Text>
