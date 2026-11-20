@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {ScrollView,View,Text,TextInput,Pressable,StyleSheet,Switch,Alert,Image,ActivityIndicator} from "react-native";
+import {ScrollView,View,Text,TextInput,Pressable,StyleSheet,Switch,Alert,Image,ActivityIndicator,BackHandler} from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import {supabase} from "../lib/supabase";
 import {AuthScreen} from "./AuthScreen";
@@ -18,7 +18,7 @@ const initialProfile:Profile={displayName:"",phone:"",location:"",language:"Engl
 const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 const tr=(language:string,english:string)=>marketText(language,english);
 
-export function AccountScreens({language,onLanguageChange,passwordRecovery,onPasswordRecoveryComplete}:{language:MarketLanguage;onLanguageChange:(language:MarketLanguage)=>void;passwordRecovery:boolean;onPasswordRecoveryComplete:()=>void}){
+export function AccountScreens({language,onLanguageChange,passwordRecovery,onPasswordRecoveryComplete,onHardwareBack}:{language:MarketLanguage;onLanguageChange:(language:MarketLanguage)=>void;passwordRecovery:boolean;onPasswordRecoveryComplete:()=>void;onHardwareBack:()=>void}){
  const [screen,setScreen]=useState<"menu"|"seller"|"orders"|"profile"|"settings"|"auth"|"drafts"|"notifications"|"admin">("menu");
  const [drafts,setDrafts]=useState<Draft[]>([]);
  const [profile,setProfile]=useState<Profile>(initialProfile);
@@ -29,6 +29,14 @@ export function AccountScreens({language,onLanguageChange,passwordRecovery,onPas
  const [loadingProfile,setLoadingProfile]=useState(false);
  useEffect(()=>{setProfile(v=>({...v,language}));},[language]);
  useEffect(()=>{if(passwordRecovery)setScreen("auth");},[passwordRecovery]);
+ useEffect(()=>{
+  const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
+   if(screen!=="menu"){setScreen("menu");return true;}
+   onHardwareBack();
+   return true;
+  });
+  return()=>subscription.remove();
+ },[screen,onHardwareBack]);
  const [saving,setSaving]=useState(false);
  const unread=notifications.filter(x=>!x.read_at).length;
  useEffect(()=>{
