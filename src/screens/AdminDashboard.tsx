@@ -30,7 +30,7 @@ export function AdminDashboard(){
     supabase.from("market_reports").select("id,reporter_user_id,target_type,target_id,reason,details,status,created_at").order("created_at",{ascending:false}).limit(100)
    ]);
    if(s.error)throw s.error;if(p.error)throw p.error;if(o.error)throw o.error;if(paid.error)throw paid.error;if(rev.error)throw rev.error;if(u.error)throw u.error;if(rp.error)throw rp.error;
-   setSellers(s.data??[]);setProducts(p.data??[]);setOrders(o.data??[]);setUsers(u.data??[]);setReports(rp.data??[]);\n   const adResult=await supabase.from("market_ad_campaigns").select("id,business_name,title,placement,budget_mwk,spent_mwk,status,payment_status,payment_reference,created_at,advertiser_user_id").order("created_at",{ascending:false}).limit(200);\n   if(adResult.error)throw adResult.error;setAds(adResult.data??[]);
+   setSellers(s.data??[]);setProducts(p.data??[]);setOrders(o.data??[]);setUsers(u.data??[]);setReports(rp.data??[]);\n   const adResult=await supabase.from("market_ad_campaigns").select("id,business_name,title,placement,budget_mwk,spent_mwk,status,payment_status,payment_reference,created_at").order("created_at",{ascending:false}).limit(200);\n   if(adResult.error)throw adResult.error;setAds(adResult.data??[]);
    setStats({sellers:(s.data??[]).length,pending:(s.data??[]).filter(x=>x.status==="pending").length,products:(p.data??[]).length,orders:(o.data??[]).length,paid:paid.count??0,revenue:(rev.data??[]).reduce((sum,x)=>sum+Number(x.total_mwk),0)});
   }catch(e:any){Alert.alert("Admin dashboard",e?.message||"Could not load administration data.");}
   finally{setLoading(false);}
