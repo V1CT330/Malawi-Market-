@@ -9,7 +9,7 @@ import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking, Aler
 type Section = "hub" | "news" | "jobs" | "stocks" | "exchange" | "weather" | "map" | "businesses";
 const orange = "#ef7b25";
 const navy = "#252a31";
-const news: {category:string;title:string;summary:string;source:string;age:string;sourceUrl?:string}[] = [];
+const news: {category:string;title:string;summary:string;source:string;age:string;sourceUrl?:string;imageUrl?:string}[] = [];
 const jobs: {title:string;company:string;location:string;type:string;category:string;salary:string;applicationUrl?:string}[] = [];
 const stocks: {symbol:string;name:string;sector:string;price:string;change:string;sourceName?:string;quoteTime?:string}[] = [];
 const fixtures: {league:string;home:string;away:string;time:string;score:string;status?:string;sourceName?:string;sourceUrl?:string}[] = [];
@@ -155,7 +155,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
     return()=>subscription.remove();
   },[section,onHardwareBack]);
   useEffect(()=>{ let active=true; setLoadingData(true); setLoadError(""); Promise.all([
-    supabase.from("market_news_articles").select("id,title,summary,category,source_name,source_url,published_at").eq("is_published",true).order("published_at",{ascending:false}).limit(40),
+    supabase.from("market_news_articles").select("id,title,summary,image_url,category,source_name,source_url,published_at").eq("is_published",true).order("published_at",{ascending:false}).limit(40),
     supabase.from("market_job_listings").select("id,title,company_name,location,job_type,category,description,salary_range,application_url").eq("is_published",true).order("created_at",{ascending:false}).limit(40),
     supabase.from("market_stock_quotes").select("id,symbol,company_name,price,change_percent,currency,quote_time,source_name,source_url").order("quote_time",{ascending:false}).limit(50),
     supabase.from("market_football_fixtures").select("id,competition,home_team,away_team,home_score,away_score,kickoff_at,status,source_name,source_url").eq("is_published",true).order("kickoff_at",{ascending:true}).limit(40),
@@ -163,7 +163,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
    ]).then(([n,j,st,ft,table])=>{if(!active)return;
     const firstError=n.error||j.error||st.error||ft.error||table.error;
     if(firstError)setLoadError(firstError.message||"Some Explore data could not be loaded. Try again.");
-    if(n.data?.length){setNewsRows(n.data.map(x=>({category:x.category,title:x.title,summary:x.summary||"",source:x.source_name,sourceUrl:x.source_url,age:new Date(x.published_at).toLocaleDateString()})));setLiveFlags(v=>({...v,news:true}));}
+    if(n.data?.length){setNewsRows(n.data.map(x=>({category:x.category,title:x.title,summary:x.summary||"",source:x.source_name,sourceUrl:x.source_url,imageUrl:x.image_url||undefined,age:new Date(x.published_at).toLocaleDateString()})));setLiveFlags(v=>({...v,news:true}));}
     if(j.data?.length){setJobRows(j.data.map(x=>({title:x.title,company:x.company_name,location:x.location||"Malawi",type:x.job_type.replace(/_/g," ").replace(/\b\w/g,(m:string)=>m.toUpperCase()),category:x.category,salary:x.salary_range||"Not specified",applicationUrl:x.application_url||undefined})));setLiveFlags(v=>({...v,jobs:true}));}
     if(st.data?.length){const latest=new Map();st.data.forEach(x=>{if(!latest.has(x.symbol))latest.set(x.symbol,x);});setStockRows(Array.from(latest.values()).map(x=>({symbol:x.symbol,name:x.company_name,sector:"Malawi Stock Exchange",price:x.price===null?"Unavailable":x.currency+" "+Number(x.price).toLocaleString(),change:x.change_percent===null?"—":(Number(x.change_percent)>0?"+":"")+Number(x.change_percent).toFixed(2)+"%",sourceName:x.source_name,quoteTime:new Date(x.quote_time).toLocaleString()})));setLiveFlags(v=>({...v,stocks:true}));}
     if(ft.data?.length){setFixtureRows(ft.data.map(x=>({league:x.competition,home:x.home_team,away:x.away_team,time:new Date(x.kickoff_at).toLocaleString(),score:x.home_score===null||x.away_score===null?"— : —":x.home_score+" : "+x.away_score,status:x.status,sourceName:x.source_name,sourceUrl:x.source_url})));setLiveFlags(v=>({...v,football:true}));}
@@ -300,6 +300,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
           </View>
         </View>
         {filteredNews.length>0 ? <Pressable disabled={!filteredNews[0].sourceUrl} onPress={()=>void openExternal(filteredNews[0].sourceUrl)} style={[s.newsLeadStory,{backgroundColor:darkMode?"#20242c":"#17253b"}]}>
+          {filteredNews[0].imageUrl?<Image source={{uri:filteredNews[0].imageUrl}} style={s.newsLeadImage} resizeMode="cover"/>:null}
           <Text style={s.newsLeadEyebrow}>TOP STORY · {filteredNews[0].category.toUpperCase()}</Text>
           <Text style={s.newsLeadTitle}>{filteredNews[0].title}</Text>
           <Text style={s.newsLeadSummary}>{filteredNews[0].summary}</Text>
@@ -327,7 +328,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
         {sportsArticles.map((item,i)=><Pressable key={i} disabled={!item.sourceUrl} style={[s.article,{backgroundColor:surface,borderColor:line}]} onPress={()=>void openExternal(item.sourceUrl)}><Text style={[s.category,{color:"#0F766E"}]}>{item.category.toUpperCase()} · {item.age.toUpperCase()}</Text><Text style={[s.cardTitle,{color:ink}]}>{item.title}</Text><Text style={[s.body,{color:muted}]}>{item.summary}</Text><Text style={[s.meta,{color:muted}]}>{item.source} · Open original article</Text></Pressable>)}
         {!sportsArticles.length?<Text style={[s.empty,{color:muted}]}>No verified sports stories are published yet.</Text>:null}
       </> : <>
-        {filteredNews.slice(1).map((item,i)=><Pressable key={i} disabled={!item.sourceUrl} style={[s.article,{backgroundColor:surface,borderColor:line}]} onPress={()=>void openExternal(item.sourceUrl)}><Text style={[s.category,{color:topic.accent}]}>{item.category.toUpperCase()} · {item.age.toUpperCase()}</Text><Text style={[s.cardTitle,{color:ink}]}>{item.title}</Text><Text style={[s.body,{color:muted}]}>{item.summary}</Text><Text style={[s.meta,{color:muted}]}>{item.source} · Open original article</Text></Pressable>)}
+        {filteredNews.slice(1).map((item,i)=><Pressable key={i} disabled={!item.sourceUrl} style={[s.article,{backgroundColor:surface,borderColor:line}]} onPress={()=>void openExternal(item.sourceUrl)}>{item.imageUrl?<Image source={{uri:item.imageUrl}} style={s.newsArticleImage} resizeMode="cover"/>:null}<Text style={[s.category,{color:topic.accent}]}>{item.category.toUpperCase()} · {item.age.toUpperCase()}</Text><Text style={[s.cardTitle,{color:ink}]}>{item.title}</Text><Text style={[s.body,{color:muted}]}>{item.summary}</Text><Text style={[s.meta,{color:muted}]}>{item.source} · Open original article</Text></Pressable>)}
         {!filteredNews.length&&<Text style={[s.empty,{color:muted}]}>No verified articles match this view yet.</Text>}
       </>}
     </> : null}
@@ -498,7 +499,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
 const s=StyleSheet.create({
  root:{flex:1,backgroundColor:"#ffffff"},content:{padding:16,paddingBottom:120},back:{paddingVertical:8},backText:{color:orange,fontWeight:"800",fontSize:14},
  title:{fontSize:24,fontWeight:"700",color:"#202124",marginTop:8,letterSpacing:-.5},subtitle:{fontSize:13,color:"#4b5563",lineHeight:20,marginTop:6,marginBottom:16},
- newsMasthead:{borderRadius:4,padding:19,marginTop:12,marginBottom:4},newsMastheadEyebrow:{fontSize:12,fontWeight:"900",letterSpacing:1.4,color:"#B9D0F1"},newsMastheadTitle:{fontSize:27,lineHeight:33,fontWeight:"900",color:"#FFFFFF",letterSpacing:-.8,marginTop:14,maxWidth:310},newsMastheadCopy:{fontSize:12,lineHeight:18,color:"#D6E1F0",marginTop:8},
+ newsMasthead:{borderRadius:4,padding:19,marginTop:12,marginBottom:4},newsLeadImage:{width:"100%",height:176,borderRadius:3,marginBottom:13},newsArticleImage:{width:"100%",height:164,borderRadius:9,marginBottom:10},newsMastheadEyebrow:{fontSize:12,fontWeight:"900",letterSpacing:1.4,color:"#B9D0F1"},newsMastheadTitle:{fontSize:27,lineHeight:33,fontWeight:"900",color:"#FFFFFF",letterSpacing:-.8,marginTop:14,maxWidth:310},newsMastheadCopy:{fontSize:12,lineHeight:18,color:"#D6E1F0",marginTop:8},
  businessMarketsPanel:{borderWidth:1,borderRadius:14,padding:13,marginTop:14},businessMarketsHeading:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},businessMarketsTitle:{fontSize:17,fontWeight:"900"},businessMarketsLabel:{fontSize:12,fontWeight:"900",letterSpacing:1,color:"#0F766E"},businessMarketsActions:{flexDirection:"row",gap:9,marginTop:12},businessMarketAction:{flex:1,minWidth:0,borderWidth:1,borderRadius:11,padding:11},businessMarketEyebrow:{fontSize:12,fontWeight:"900",letterSpacing:1,color:"#0F766E"},businessMarketName:{fontSize:13,fontWeight:"900",marginTop:5},businessMarketLink:{fontSize:12,fontWeight:"900",letterSpacing:.4,color:"#0F766E",marginTop:10},
  newsLeadStory:{padding:17,marginTop:14,borderRadius:4},newsLeadEyebrow:{fontSize:12,fontWeight:"900",letterSpacing:1.1,color:"#F5B77C"},newsLeadTitle:{fontSize:22,lineHeight:28,fontWeight:"900",color:"#FFFFFF",marginTop:12},newsLeadSummary:{fontSize:12,lineHeight:18,color:"#D9E2ED",marginTop:9},newsLeadMeta:{fontSize:12,fontWeight:"700",color:"#B6C6D8",marginTop:13},
  exchangeRateRow:{flexDirection:"row",alignItems:"center",padding:13,borderBottomWidth:1,borderColor:"#E5EAE8",borderRadius:12,marginTop:7},exchangeCurrencyMark:{minWidth:46,height:38,paddingHorizontal:5,borderRadius:9,alignItems:"center",justifyContent:"center",marginRight:11},exchangeCurrencyMarkText:{fontSize:12,fontWeight:"900",color:"#17634F"},
