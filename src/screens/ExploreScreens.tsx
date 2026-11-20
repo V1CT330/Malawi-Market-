@@ -16,8 +16,25 @@ const fixtures: {league:string;home:string;away:string;time:string;score:string;
 const categories = ["All","Business","Technology","Agriculture","Sports"];
 const jobTypes = ["All","Full time","Part time","Contract","Internship"];
 
-export function ExploreScreens({language,onHardwareBack}:{language:MarketLanguage;onHardwareBack:()=>void}) {
+export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onHardwareBack}:{language:MarketLanguage;theme?:"light"|"dark";accentColor?:string;onHardwareBack:()=>void}) {
   const [section,setSection] = useState<Section>("hub");
+  const darkMode=theme==="dark";
+  const topicPalette:Record<Section,{accent:string;tint:string;darkTint:string;label:string}>={
+    hub:{accent:accentColor,tint:"#fff1e5",darkTint:"#39271d",label:"Discover"},
+    news:{accent:"#2563EB",tint:"#EFF6FF",darkTint:"#172b4d",label:"News"},
+    jobs:{accent:"#B45309",tint:"#FEF3C7",darkTint:"#3c2c17",label:"Careers"},
+    stocks:{accent:"#0F766E",tint:"#CCFBF1",darkTint:"#123b39",label:"Markets"},
+    football:{accent:"#DC2626",tint:"#FEE2E2",darkTint:"#451f25",label:"Sports"},
+    weather:{accent:"#0284C7",tint:"#E0F2FE",darkTint:"#12364b",label:"Weather"},
+    map:{accent:"#7C3AED",tint:"#EDE9FE",darkTint:"#30214d",label:"Places"},
+    businesses:{accent:"#15803D",tint:"#DCFCE7",darkTint:"#183b29",label:"Business"},
+  };
+  const topic=topicPalette[section];
+  const surface=darkMode?"#1b1f27":"#ffffff";
+  const page=darkMode?"#111318":"#ffffff";
+  const ink=darkMode?"#f3f4f6":"#202124";
+  const muted=darkMode?"#aab2bf":"#4b5563";
+  const line=darkMode?"#343b47":"#d9dde3";
   const [newsCategory,setNewsCategory] = useState("All");
   const [jobType,setJobType] = useState("All");
   const [search,setSearch] = useState("");
@@ -112,24 +129,31 @@ export function ExploreScreens({language,onHardwareBack}:{language:MarketLanguag
     try{await Linking.openURL(url);}
     catch{Alert.alert("Unable to open link","Check your internet connection or try opening this link again.");}
   };
-  const sponsoredCard=(ad:any)=><Pressable key={ad.id} accessibilityRole="link" style={{backgroundColor:"#fff",borderWidth:1,borderColor:"#e4e7eb",borderRadius:13,marginTop:10,overflow:"hidden",flexDirection:"row"}} onPress={()=>{void supabase.functions.invoke("onekhusa-payments",{body:{action:"track_ad_event",campaign_id:ad.id,event_type:"click"}});void openExternal(ad.destination_url);}}><Image source={{uri:ad.image_url}} style={{width:92,height:104,backgroundColor:"#eee"}} resizeMode="cover"/><View style={{flex:1,padding:11,justifyContent:"center"}}><Text style={{fontSize:9,fontWeight:"900",color:"#b45d20"}}>SPONSORED · {ad.business_name}</Text><Text style={{fontSize:14,fontWeight:"900",color:navy,marginTop:5}}>{ad.title}</Text><Text numberOfLines={2} style={{fontSize:11,color:"#59616b",marginTop:4}}>{ad.body}</Text><Text style={{fontSize:10,color:orange,fontWeight:"900",marginTop:6}}>Learn more ›</Text></View></Pressable>;
+  const sponsoredCard=(ad:any)=><Pressable key={ad.id} accessibilityRole="link" style={{backgroundColor:surface,borderWidth:1,borderColor:line,borderRadius:13,marginTop:10,overflow:"hidden",flexDirection:"row"}} onPress={()=>{void supabase.functions.invoke("onekhusa-payments",{body:{action:"track_ad_event",campaign_id:ad.id,event_type:"click"}});void openExternal(ad.destination_url);}}><Image source={{uri:ad.image_url}} style={{width:92,height:104,backgroundColor:"#eee"}} resizeMode="cover"/><View style={{flex:1,padding:11,justifyContent:"center"}}><Text style={{fontSize:9,fontWeight:"900",color:"#b45d20"}}>SPONSORED · {ad.business_name}</Text><Text style={{fontSize:14,fontWeight:"900",color:ink,marginTop:5}}>{ad.title}</Text><Text numberOfLines={2} style={{fontSize:11,color:muted,marginTop:4}}>{ad.body}</Text><Text style={{fontSize:10,color:orange,fontWeight:"900",marginTop:6}}>Learn more ›</Text></View></Pressable>;
   const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":section==="weather"?"Weather":section==="map"?"Map & Location":section==="businesses"?"Businesses":"Malawi Market");
-  const pill = (label:string, active:boolean, action:()=>void) => <Pressable key={label} onPress={action} style={[s.pill,active&&s.pillActive]}><Text style={[s.pillText,active&&{color:"#fff"}]}>{label}</Text></Pressable>;
+  const pill = (label:string, active:boolean, action:()=>void) => <Pressable key={label} onPress={action} style={[s.pill,{backgroundColor:surface,borderColor:line},active&&{backgroundColor:topic.accent,borderColor:topic.accent}]}><Text style={[s.pillText,{color:active?"#fff":muted}]}>{label}</Text></Pressable>;
   const notice = (text:string) => <View style={s.notice}><Text style={s.noticeText}>DATA STATUS · {text}</Text></View>;
-  return <ScrollView style={s.root} contentContainerStyle={s.content}>
-    {section!=="hub" && <Pressable onPress={()=>go("hub")} style={s.back}><Text style={s.backText}>‹  {marketText(language,"Explore")}</Text></Pressable>}
-    <Text style={s.title}>{heading}</Text>
+  return <ScrollView style={[s.root,{backgroundColor:page}]} contentContainerStyle={s.content}>
+    {section!=="hub" && <Pressable onPress={()=>go("hub")} style={s.back}><Text style={[s.backText,{color:topic.accent}]}>‹  {marketText(language,"Explore")}</Text></Pressable>}
+    <Text style={[s.title,{color:topic.accent}]}>{heading}</Text>
     {loadingData?<View style={s.statusPanel}><Text style={s.statusTitle}>Loading verified information…</Text><Text style={s.statusBody}>Fetching the latest available content.</Text></View>:null}
     {loadError?<View style={s.statusPanel}><Text style={s.statusTitle}>Some information could not be loaded</Text><Text style={s.statusBody}>{loadError}</Text><Pressable onPress={()=>setReloadKey(v=>v+1)} style={s.retry}><Text style={s.retryText}>Try again</Text></Pressable></View>:null}
     {section==="hub" ? <>
       {feedAds.map(sponsoredCard)}
-      <Text style={s.subheading}>GENERAL</Text>
-      <Text style={s.subtitle}>Useful information and opportunities from across Malawi.</Text>
+      <Text style={[s.subheading,{color:ink}]}>GENERAL</Text>
+      <Text style={[s.subtitle,{color:muted}]}>Useful information and opportunities from across Malawi.</Text>
       {[
         ["stocks","stocks","Stock Market","Malawi Stock Exchange information and company quotes"],
         ["news","news","News","Stories and updates from verified sources"],
         ["jobs","jobs","Jobs","Published job vacancies and opportunities"],
-      ].map(([key,icon,label,desc])=><Pressable key={key} style={s.menuCard} onPress={()=>go(key as Section)}><View style={s.menuIcon}><MarketIcon name={icon} size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>{marketText(language,label)}</Text><Text style={s.menuDesc}>{desc}</Text></View><Text style={s.arrow}>›</Text></Pressable>)}
+      ].map(([key,icon,label,desc])=>{
+        const colors=topicPalette[key as Section];
+        return <Pressable key={key} style={[s.menuCard,{backgroundColor:surface,borderColor:line}]} onPress={()=>go(key as Section)}>
+          <View style={[s.menuIcon,{backgroundColor:darkMode?colors.darkTint:colors.tint}]}><MarketIcon name={icon} size={23} color={colors.accent}/></View>
+          <View style={{flex:1}}><Text style={[s.menuTitle,{color:ink}]}>{marketText(language,label)}</Text><Text style={[s.menuDesc,{color:muted}]}>{desc}</Text></View>
+          <Text style={[s.arrow,{color:colors.accent}]}>›</Text>
+        </Pressable>;
+      })}
       <Text style={[s.subheading,{marginTop:24}]}>LOCAL SERVICES</Text>
       <Pressable style={s.menuCard} onPress={()=>go("businesses")}><View style={s.menuIcon}><MarketIcon name="store" size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>Businesses</Text><Text style={s.menuDesc}>Discover active marketplace stores</Text></View><Text style={s.arrow}>›</Text></Pressable>
       <Pressable style={s.menuCard} onPress={()=>go("weather")}><View style={s.menuIcon}><MarketIcon name="weather" size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>Weather</Text><Text style={s.menuDesc}>Current conditions at your device location</Text></View><Text style={s.arrow}>›</Text></Pressable>
