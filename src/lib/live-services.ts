@@ -57,8 +57,86 @@ export async function searchMapboxPlaces(query: string): Promise<{name:string;la
   })).filter((place: any) => Number.isFinite(place.latitude) && Number.isFinite(place.longitude));
 }
 
-export function mapboxStaticImageUrl(coordinates: Coordinates): string {
+export type NearbyShop = {
+  id:string;
+  name:string;
+  category:string;
+  latitude:number;
+  longitude:number;
+  address:string;
+  phone?:string;
+  website?:string;
+  distanceKm:number;
+};
+
+const nearbyShopCache = new Map<string,{savedAt:number;shops:NearbyShop[]}>();
+const SHOP_CATEGORY_FILTERS:Record<string,string> = {
+  "All shops": 'node["shop"];way["shop"];relation["shop"];node["amenity"~"marketplace|pharmacy"];way["amenity"~"marketplace|pharmacy"];',
+  "Groceries": 'node["shop"~"supermarket|convenience|greengrocer|butcher|bakery|deli"];way["shop"~"supermarket|convenience|greengrocer|butcher|bakery|deli"];',
+  "Clothing": 'node["shop"~"clothes|shoes|fashion|tailor"];way["shop"~"clothes|shoes|fashion|tailor"];',
+  "Electronics": 'node["shop"~"electronics|mobile_phone|computer|computer_parts"];way["shop"~"electronics|mobile_phone|computer|computer_parts"];',
+  "Hardware": 'node["shop"~"hardware|doityourself|building_materials"];way["shop"~"hardware|doityourself|building_materials"];',
+  "Pharmacies": 'node["amenity"="pharmacy"];way["amenity"="pharmacy"];',
+  "Markets": 'node["amenity"="marketplace"];way["amenity"="marketplace"];',
+};
+
+function distanceBetweenKm(a:Coordinates,b:Coordinates):number {
+  const radians=(value:number)=>value*Math.PI/180;
+  const dLat=radians(b.latitude-a.latitude);
+  const dLon=radians(b.longitude-a.longitude);
+  const lat1=radians(a.latitude);
+  const lat2=radians(b.latitude);
+  const h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;
+  return 6371*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
+}
+
+export async function searchNearbyShops(
+  coordinates:Coordinates,
+  radiusMeters=5000,
+  category="All shops",
+  query=""
+):Promise<NearbyShop[]> {
+  const radius=Math.min(15000,Math.max(500,radiusMeters));
+  const cacheKey=[coordinates.latitude.toFixed(3),coordinates.longitude.toFixed(3),radius,category].join(":");
+  let shops=nearbyShopCache.get(cacheKey)?.shops;
+  const cached=nearbyShopCache.get(cacheKey);
+  if(!shops||!cached||Date.now()-cached.savedAt>180000){
+    const selectors=SHOP_CATEGORY_FILTERS[category]||SHOP_CATEGORY_FILTERS["All shops"];
+    const queryText=`[out:json][timeout:20];( ${selectors.split(";").filter(Boolean).map(selector=>selector+`(around:${radius},${coordinates.latitude},${coordinates.longitude});`).join(" ")} );out center tags 80;`;
+    const controller=new AbortController();
+    const timeout=setTimeout(()=>controller.abort(),25000);
+    try{
+      const response=await fetch("https://overpass.private.coffee/api/interpreter",{
+        method:"POST",
+        headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8","Accept":"application/json","User-Agent":"MalawiMarket/1.0 shop-discovery"},
+        body:"data="+encodeURIComponent(queryText),
+        signal:controller.signal,
+      });
+      const body=await readJson(response,"OpenStreetMap shop search");
+      shops=(body.elements||[]).map((element:any):NearbyShop|null=>{
+        const tags=element.tags||{};
+        const point=element.center||element;
+        const latitude=Number(point.lat);
+        const longitude=Number(point.lon);
+        const name=String(tags.name||tags.brand||tags.operator||"").trim();
+        if(!name||!Number.isFinite(latitude)||!Number.isFinite(longitude))return null;
+        const address=[tags["addr:housenumber"],tags["addr:street"],tags["addr:suburb"],tags["addr:city"]||tags["addr:district"]].filter(Boolean).join(", ")||tags["addr:full"]||"";
+        const kind=String(tags.shop||tags.amenity||"shop").replace(/_/g," ");
+        return {id:String(element.type)+"/"+String(element.id),name,category:kind,latitude,longitude,address,phone:tags["contact:phone"]||tags.phone,website:tags["contact:website"]||tags.website,distanceKm:distanceBetweenKm(coordinates,{latitude,longitude})};
+      }).filter(Boolean) as NearbyShop[];
+      shops.sort((left,right)=>left.distanceKm-right.distanceKm);
+      nearbyShopCache.set(cacheKey,{savedAt:Date.now(),shops});
+      if(nearbyShopCache.size>30)nearbyShopCache.delete(nearbyShopCache.keys().next().value as string);
+    }finally{clearTimeout(timeout);}
+  }
+  const normalized=query.trim().toLowerCase();
+  return (shops||[]).filter(shop=>!normalized||[shop.name,shop.category,shop.address].join(" ").toLowerCase().includes(normalized)).slice(0,50);
+}
+
+export function mapboxStaticImageUrl(coordinates: Coordinates, markers:Coordinates[]=[]): string {
   if (!MAPBOX_TOKEN) return "";
   const { latitude, longitude } = coordinates;
-  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+ef7b25(${longitude},${latitude})/${longitude},${latitude},11/900x520?access_token=${encodeURIComponent(MAPBOX_TOKEN)}`;
+  const shopPins=markers.slice(0,10).map(point=>`pin-s+0F766E(${point.longitude},${point.latitude})`);
+  const overlays=shopPins.length?shopPins.join(","):`pin-s+ef7b25(${longitude},${latitude})`;
+  return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${overlays}/${longitude},${latitude},13/900x520?access_token=${encodeURIComponent(MAPBOX_TOKEN)}`;
 }
