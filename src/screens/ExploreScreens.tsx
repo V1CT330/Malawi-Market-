@@ -23,6 +23,32 @@ const freelanceSkillGroups = [
   {name:"Business Support",items:["Virtual Assistance","Data Entry","Research & Analytics","Accounting & Bookkeeping","Customer Support"]},
   {name:"Education & Professional",items:["Tutoring & Education","Engineering & Architecture","Consulting"]}
 ];
+const onlineEarningGroups = [
+  {name:"Website & app testing",intro:"Test real websites, apps and devices. You may need to report reproducible bugs or complete assigned test cases.",items:[
+    {name:"uTest",kind:"Crowdtesting · bug reports · test cases",bestFor:"Structured software testing, bug reports and usability studies. Payment methods vary by country.",url:"https://www.utest.com/",color:"#2563EB"},
+    {name:"Test IO",kind:"Freelance software testing",bestFor:"Exploratory testing and accepted bug reports. Test IO says registration is free; payment depends on accepted work.",url:"https://test.io/company/become-a-tester",color:"#16A34A"},
+    {name:"UserTesting",kind:"Usability feedback",bestFor:"Record feedback on websites and apps. Country recruitment is restricted; confirm Malawi eligibility before applying.",url:"https://www.usertesting.com/get-paid-to-test",color:"#6D28D9"}
+  ]},
+  {name:"Affiliate marketing",intro:"Recommend products or software to an audience and earn commission when qualifying actions happen. You need a genuine audience and must disclose affiliate links.",items:[
+    {name:"Awin",kind:"Affiliate network",bestFor:"Apply to advertiser programmes using a website, blog or eligible social channel. Publisher approval applies.",url:"https://www.awin.com/",color:"#E11D48"},
+    {name:"Amazon Associates",kind:"Retail affiliate programme",bestFor:"Earn from qualifying purchases through approved websites or apps. Check the programme's country and site requirements.",url:"https://affiliate-program.amazon.com/",color:"#F59E0B"},
+    {name:"Impact",kind:"Partnership network",bestFor:"Discover brand partnership and affiliate programmes; each brand sets its own acceptance rules.",url:"https://impact.com/partnerships/creators/",color:"#334155"},
+    {name:"PartnerStack",kind:"B2B software referrals",bestFor:"Promote software products and earn partner commissions when accepted into programmes.",url:"https://partnerstack.com/partners",color:"#0F766E"}
+  ]},
+  {name:"Microtasks & AI data work",intro:"Short tasks can include data labelling, search evaluation, transcription and small online jobs. Work volume and registration depend on your country.",items:[
+    {name:"Clickworker",kind:"Microtasks · data · research",bestFor:"Check whether Malawi registration is open and confirm a supported payout method inside your account first.",url:"https://www.clickworker.com/clickworker/",color:"#2563EB"},
+    {name:"Toloka",kind:"Data labelling & evaluation",bestFor:"Task availability and onboarding restrictions depend on your location.",url:"https://toloka.ai/tolokers/",color:"#7C3AED"},
+    {name:"OneForma",kind:"AI data · language projects",bestFor:"Apply to specific transcription, language, data collection and AI evaluation projects; read each project's country list.",url:"https://www.oneforma.com/jobs/",color:"#0D9488"},
+    {name:"SproutGigs",kind:"Small online tasks",bestFor:"Browse small tasks and review each task's rules, payment terms and legitimacy before doing work.",url:"https://sproutgigs.com/",color:"#D97706"},
+    {name:"2Captcha",kind:"Captcha-solving tasks",bestFor:"Simple repetitive captcha work with low earning potential; check current rates and withdrawal options before starting.",url:"https://2captcha.com/make-money-online",color:"#475569"}
+  ]},
+  {name:"Remote employment",intro:"These are job boards, not task apps. Apply for advertised roles and check whether each employer accepts applicants based in Malawi.",items:[
+    {name:"We Work Remotely",kind:"Remote job board",bestFor:"Filter for roles marked worldwide or open to your region.",url:"https://weworkremotely.com/",color:"#0F766E"},
+    {name:"Remote OK",kind:"Remote job board",bestFor:"Search remote roles and read location restrictions on each listing.",url:"https://remoteok.com/",color:"#111827"},
+    {name:"Wellfound",kind:"Startup jobs",bestFor:"Find startup roles; check hiring location and work-authorisation requirements.",url:"https://wellfound.com/jobs",color:"#7C3AED"}
+  ]}
+];
+
 const freelancePlatformGroups = [
   {name:"General freelance marketplaces",intro:"Best starting point for browsing client briefs and applying to projects.",items:[
     {name:"Upwork",kind:"Project marketplace",bestFor:"Development, design, writing, admin and professional services.",url:"https://www.upwork.com/",color:"#14A800"},
@@ -330,6 +356,20 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
       </View>)}
       <View style={s.jobsDirectoryHeading}><View style={{flex:1}}><Text style={[s.jobsSectionTitle,{color:ink,marginTop:8}]}>Freelance platform directory</Text><Text style={[s.body,{color:muted}]}>Choose by how you want to work—not by logo. Every link opens the platform's official website.</Text></View><Text style={[s.jobsDirectoryCount,{color:topic.accent}]}>10 SITES</Text></View>
       {freelancePlatformGroups.map(group=><View key={group.name} style={s.platformGroup}>
+        <Text style={[s.platformGroupTitle,{color:ink}]}>{group.name}</Text>
+        <Text style={[s.platformGroupIntro,{color:muted}]}>{group.intro}</Text>
+        {group.items.map(platform=><Pressable key={platform.name} accessibilityRole="link" onPress={()=>void openExternal(platform.url)} style={[s.platformRow,{backgroundColor:surface,borderColor:line}]}>
+          <View style={[s.platformAccent,{backgroundColor:platform.color}]}/>
+          <View style={{flex:1,minWidth:0}}>
+            <View style={s.platformNameLine}><Text style={[s.platformName,{color:ink}]}>{platform.name}</Text><Text style={[s.platformKind,{color:topic.accent}]}>{platform.kind}</Text></View>
+            <Text style={[s.platformBestFor,{color:muted}]}>{platform.bestFor}</Text>
+          </View>
+          <Text style={[s.platformOpen,{color:topic.accent}]}>OPEN ↗</Text>
+        </Pressable>)}
+      </View>)}
+      <Text style={[s.jobsSectionTitle,{color:ink,marginTop:22}]}>More ways to earn online</Text>
+      <Text style={[s.body,{color:muted}]}>These are different earning models—not all freelance marketplaces. Open each official site and check country eligibility, payout methods and terms before signing up.</Text>
+      {onlineEarningGroups.map(group=><View key={group.name} style={s.platformGroup}>
         <Text style={[s.platformGroupTitle,{color:ink}]}>{group.name}</Text>
         <Text style={[s.platformGroupIntro,{color:muted}]}>{group.intro}</Text>
         {group.items.map(platform=><Pressable key={platform.name} accessibilityRole="link" onPress={()=>void openExternal(platform.url)} style={[s.platformRow,{backgroundColor:surface,borderColor:line}]}>
