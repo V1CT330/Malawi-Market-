@@ -9,7 +9,7 @@ const admin=createClient(url,serverKey(),{auth:{persistSession:false,autoRefresh
 function decode(value:string){return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1").replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/\s+/g," ").trim();}
 function tag(xml:string,name:string){const m=xml.match(new RegExp("<"+name+"(?:\\s[^>]*)?>([\\s\\S]*?)</"+name+">","i"));return m?decode(m[1]):"";}
 function safeImageUrl(value:string){
- try{const url=new URL(value.trim());return url.protocol==="https:"?url.toString():null;}catch{return null;}
+ try{const url=new URL(value.trim().replace(/&amp;/g,"&"));return url.protocol==="https:"?url.toString():null;}catch{return null;}
 }
 function imageFromItem(item:string){
  const attribute=item.match(/<(?:media:content|media:thumbnail|enclosure)\b[^>]*\burl=["']([^"']+)["'][^>]*>/i)?.[1];
@@ -47,8 +47,9 @@ Deno.serve(async(req)=>{
   const results=await Promise.allSettled(feeds.map(feed=>fetchFeed(feed.url,feed.category,feed.source)));
   const rows=results.flatMap(r=>r.status==="fulfilled"?r.value:[]);
   if(!rows.length)return json({error:"No articles were returned from the configured Malawi24 and BBC RSS feeds.",sources:results.map((r,i)=>({feed:feeds[i].url,status:r.status,error:r.status==="rejected"?String(r.reason):null}))},502);
-  const {data,error}=await admin.from("market_news_articles").upsert(rows,{onConflict:"source_url",ignoreDuplicates:false}).select("id");
+  const uniqueRows=Array.from(new Map(rows.map(row=>[row.source_url,row])).values());
+  const {data,error}=await admin.from("market_news_articles").upsert(uniqueRows,{onConflict:"source_url",ignoreDuplicates:false}).select("id");
   if(error)throw error;
-  return json({ok:true,received:rows.length,stored:data?.length??0,source:"Malawi24 + BBC News RSS",synced_at:new Date().toISOString(),feed_status:results.map((r,i)=>({feed:feeds[i].url,ok:r.status==="fulfilled",items:r.status==="fulfilled"?r.value.length:0}))});
+  return json({ok:true,received:rows.length,unique:uniqueRows.length,stored:data?.length??0,source:"Malawi24 + BBC News RSS",synced_at:new Date().toISOString(),feed_status:results.map((r,i)=>({feed:feeds[i].url,ok:r.status==="fulfilled",items:r.status==="fulfilled"?r.value.length:0}))});
  }catch(error){return json({error:error instanceof Error?error.message:"News sync failed."},500);}
 });
