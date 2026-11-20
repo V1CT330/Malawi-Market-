@@ -6,14 +6,15 @@ import {SellerKycVerification} from "../components/KycVerification";
 
 type Seller={id:string;name:string;status:"pending"|"active"|"suspended";description?:string|null;location?:string|null;whatsapp_url?:string|null};
 type Category={id:string;name:string;slug:string};
-type Listing={id:string;title:string;description?:string|null;price_mwk:number;status:string;stock_quantity:number;category_id:string;condition:string;location?:string|null;images?:{id:string;image_url:string;is_primary:boolean}[]};
+type Listing={id:string;title:string;description?:string|null;price_mwk:number;status:string;stock_quantity:number;category_id:string;condition:string;location?:string|null;images?:{id:string;image_url:string;is_primary:boolean;sort_order:number}[]};
+type PickedImage={uri:string;mimeType:string;fileSize?:number};
 const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 const slugify=(v:string)=>v.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
 
 export function SellerPortal(){
  const [seller,setSeller]=useState<Seller|null>(null);const [kycStatus,setKycStatus]=useState<"none"|"pending"|"approved"|"rejected">("none");const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const actionLock=useRef(false);
  const [name,setName]=useState("");const [location,setLocation]=useState("");const [storeDescription,setStoreDescription]=useState("");const [productDescription,setProductDescription]=useState("");const [whatsapp,setWhatsapp]=useState("");
- const [title,setTitle]=useState("");const [price,setPrice]=useState("");const [category,setCategory]=useState("");const [condition,setCondition]=useState("new");const [quantity,setQuantity]=useState("1");const [imageUrl,setImageUrl]=useState("");const [pickedImage,setPickedImage]=useState<{uri:string;mimeType:string;fileSize?:number}|null>(null);
+ const [title,setTitle]=useState("");const [price,setPrice]=useState("");const [category,setCategory]=useState("");const [condition,setCondition]=useState("new");const [quantity,setQuantity]=useState("1");const [imageUrl,setImageUrl]=useState("");const [pickedImages,setPickedImages]=useState<PickedImage[]>([]);const [existingImages,setExistingImages]=useState<{id:string;image_url:string;is_primary:boolean;sort_order:number}[]>([]);
  const [editingId,setEditingId]=useState<string|null>(null);const [categories,setCategories]=useState<Category[]>([]);const [myProducts,setMyProducts]=useState<Listing[]>([]);const [orderItems,setOrderItems]=useState<any[]>([]);
  const load=async()=>{
   setLoading(true);
@@ -26,7 +27,7 @@ export function SellerPortal(){
     if(profile){
      setName(profile.name??"");setLocation(profile.location??"");setStoreDescription(profile.description??"");setWhatsapp(profile.whatsapp_url??"");
      const [{data:products,error:productError},{data:orders,error:orderError}]=await Promise.all([
-      supabase.from("market_products").select("id,title,description,price_mwk,status,stock_quantity,category_id,condition,location,images:market_product_images(id,image_url,is_primary)").eq("seller_id",profile.id).order("created_at",{ascending:false}),
+      supabase.from("market_products").select("id,title,description,price_mwk,status,stock_quantity,category_id,condition,location,images:market_product_images(id,image_url,is_primary,sort_order)").eq("seller_id",profile.id).order("created_at",{ascending:false}),
       supabase.from("market_order_items").select("id,product_title,unit_price_mwk,quantity,fulfillment_status,order:market_orders(id,status,payment_status,delivery_name,delivery_phone,delivery_address,delivery_latitude,delivery_longitude,delivery_landmark,created_at)").eq("seller_id",profile.id).order("created_at",{ascending:false})
      ]);
      if(productError)throw productError;if(orderError)throw orderError;setMyProducts((products??[]) as Listing[]);setOrderItems(orders??[]);
@@ -39,15 +40,20 @@ export function SellerPortal(){
  const paidItems=orderItems.filter(x=>x.order?.payment_status==="paid");
  const revenue=paidItems.reduce((sum,x)=>sum+Number(x.unit_price_mwk)*Number(x.quantity),0);
  const pickImage=async()=>{
-  const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:["images"],allowsEditing:true,aspect:[4,3],quality:.8});
-  if(result.canceled)return;const asset=result.assets[0];if(!asset)return;
-  if(asset.fileSize&&asset.fileSize>5*1024*1024){Alert.alert("Image too large","Choose an image under 5 MB.");return;}
-  if(!["image/jpeg","image/png","image/webp"].includes(asset.mimeType??"image/jpeg")){Alert.alert("Unsupported image","Choose a JPEG, PNG or WebP image.");return;}
-  setPickedImage({uri:asset.uri,mimeType:asset.mimeType??"image/jpeg",fileSize:asset.fileSize});setImageUrl("");
+  const available=6-existingImages.length-pickedImages.length;
+  if(available<=0){Alert.alert("Photo limit reached","A product can have up to six photos. Remove an existing photo before adding more.");return;}
+  const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:["images"],allowsMultipleSelection:true,selectionLimit:available,quality:.8});
+  if(result.canceled)return;
+  const assets=result.assets??[];
+  for(const asset of assets){
+   if(asset.fileSize&&asset.fileSize>5*1024*1024){Alert.alert("Image too large","Each product photo must be under 5 MB.");return;}
+   if(!["image/jpeg","image/png","image/webp"].includes(asset.mimeType??"image/jpeg")){Alert.alert("Unsupported image","Choose JPEG, PNG or WebP photos.");return;}
+  }
+  setPickedImages(current=>[...current,...assets.map(asset=>({uri:asset.uri,mimeType:asset.mimeType??"image/jpeg",fileSize:asset.fileSize}))].slice(0,available));
  };
- const clearForm=()=>{setEditingId(null);setTitle("");setPrice("");setQuantity("1");setImageUrl("");setPickedImage(null);setProductDescription("");setCategory("");setCondition("new");};
+ const clearForm=()=>{setEditingId(null);setTitle("");setPrice("");setQuantity("1");setImageUrl("");setPickedImages([]);setExistingImages([]);setProductDescription("");setCategory("");setCondition("new");};
  const startEdit=(item:Listing)=>{
-  setEditingId(item.id);setTitle(item.title);setPrice(String(item.price_mwk));setQuantity(String(item.stock_quantity));setProductDescription(item.description??"");setCategory(item.category_id);setCondition(item.condition);setImageUrl(item.images?.find(x=>x.is_primary)?.image_url??item.images?.[0]?.image_url??"");setPickedImage(null);
+  setEditingId(item.id);setTitle(item.title);setPrice(String(item.price_mwk));setQuantity(String(item.stock_quantity));setProductDescription(item.description??"");setCategory(item.category_id);setCondition(item.condition);setImageUrl("");setExistingImages([...(item.images??[])].sort((a,b)=>a.sort_order-b.sort_order));setPickedImages([]);
  };
  const apply=async()=>{
   if(actionLock.current)return;
@@ -72,30 +78,30 @@ export function SellerPortal(){
   if(kycStatus!=="approved"){Alert.alert("Identity verification required","Your KYC must be approved before publishing or editing products.");return;}
   if(title.trim().length<3||!Number.isSafeInteger(amount)||amount<=0||!Number.isInteger(stock)||stock<0||!cat){Alert.alert("Check listing","Enter a title, valid whole-number price, stock quantity and category.");return;}
   if(imageUrl.trim()&&!/^https:\/\//i.test(imageUrl.trim())){Alert.alert("Invalid image URL","Use HTTPS or choose a photo from your device.");return;}
+  if(existingImages.length+pickedImages.length+(imageUrl.trim()?1:0)>6){Alert.alert("Photo limit reached","A product can have up to six photos.");return;}
   actionLock.current=true;setBusy(true);
-  let uploadedPath:string|null=null;
+  const uploadedPaths:string[]=[];
   try{
    const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Sign in again to continue.");
    let productId=editingId;
    const values={category_id:cat.id,title:title.trim(),slug:slugify(title)+"-"+Date.now().toString(36),description:productDescription.trim(),price_mwk:amount,condition,stock_quantity:stock,location:location.trim(),...(editingId?{}:{seller_id:seller.id,status:"published",published_at:new Date().toISOString()})};
    if(editingId){const {error}=await supabase.from("market_products").update(values).eq("id",editingId).eq("seller_id",seller.id);if(error)throw error;}
    else{const {data,error}=await supabase.from("market_products").insert(values).select("id").single();if(error)throw error;productId=data.id;}
-   let finalImageUrl=imageUrl.trim();
-   if(pickedImage){
-    const response=await fetch(pickedImage.uri);if(!response.ok)throw new Error("Could not read the selected photo.");
+   const imageRows:{product_id:string;image_url:string;is_primary:boolean;sort_order:number}[]=[];
+   for(const [index,pickedImage] of pickedImages.entries()){
+    const response=await fetch(pickedImage.uri);if(!response.ok)throw new Error("Could not read one of the selected photos.");
     const bytes=await response.arrayBuffer();const ext=pickedImage.mimeType==="image/png"?"png":pickedImage.mimeType==="image/webp"?"webp":"jpg";
-    uploadedPath=user.id+"/products/"+productId+"-"+Date.now()+"."+ext;
-    const {error:uploadError}=await supabase.storage.from("market-media").upload(uploadedPath,bytes,{contentType:pickedImage.mimeType,upsert:false,cacheControl:"31536000"});
-    if(uploadError)throw uploadError;finalImageUrl=supabase.storage.from("market-media").getPublicUrl(uploadedPath).data.publicUrl;
+    const path=user.id+"/products/"+productId+"-"+Date.now()+"-"+index+"."+ext;
+    const {error:uploadError}=await supabase.storage.from("market-media").upload(path,bytes,{contentType:pickedImage.mimeType,upsert:false,cacheControl:"31536000"});
+    if(uploadError)throw uploadError;uploadedPaths.push(path);
+    imageRows.push({product_id:productId,image_url:supabase.storage.from("market-media").getPublicUrl(path).data.publicUrl,is_primary:existingImages.length===0&&imageRows.length===0,sort_order:existingImages.length+imageRows.length});
    }
-   if(finalImageUrl){
-    await supabase.from("market_product_images").update({is_primary:false}).eq("product_id",productId);
-    const {error:imageError}=await supabase.from("market_product_images").insert({product_id:productId,image_url:finalImageUrl,is_primary:true,sort_order:0});
-    if(imageError)throw imageError;
-   }
+   if(imageUrl.trim())imageRows.push({product_id:productId,image_url:imageUrl.trim(),is_primary:existingImages.length===0&&imageRows.length===0,sort_order:existingImages.length+imageRows.length});
+   if(imageRows.length){const {error:imageError}=await supabase.from("market_product_images").insert(imageRows);if(imageError)throw imageError;}
+
    Alert.alert(editingId?"Listing updated":"Product published",editingId?"Your changes have been saved.":"Your product is now published.");
    clearForm();await load();
-  }catch(e:any){if(uploadedPath)await supabase.storage.from("market-media").remove([uploadedPath]);Alert.alert("Could not save listing",e?.message||"Please try again.");}
+  }catch(e:any){if(uploadedPaths.length)await supabase.storage.from("market-media").remove(uploadedPaths);Alert.alert("Could not save listing",e?.message||"Please try again.");}
   finally{setBusy(false);actionLock.current=false;}
  };
  const updateSeller=async()=>{
@@ -124,7 +130,13 @@ export function SellerPortal(){
   <Text style={s.label}>Condition</Text><View style={s.pills}>{["new","used","refurbished"].map(v=><Pressable key={v} onPress={()=>setCondition(v)} style={[s.pill,condition===v&&s.pillActive]}><Text style={[s.pillText,condition===v&&{color:"#fff"}]}>{v}</Text></Pressable>)}</View>
   <Text style={s.label}>Stock quantity</Text><TextInput value={quantity} onChangeText={setQuantity} keyboardType="numeric" style={s.input}/>
   <Text style={s.label}>Product location</Text><TextInput value={location} onChangeText={setLocation} style={s.input}/>
-  <Text style={s.label}>Product photo</Text>{pickedImage?<Image source={{uri:pickedImage.uri}} style={s.preview}/>:imageUrl?<Image source={{uri:imageUrl}} style={s.preview}/>:null}<Pressable disabled={busy} style={s.secondary} onPress={()=>void pickImage()}><Text style={s.secondaryText}>{pickedImage?"Choose a different photo":"Select photo from device"}</Text></Pressable><TextInput value={imageUrl} onChangeText={v=>{setImageUrl(v);setPickedImage(null);}} autoCapitalize="none" style={s.input} placeholder="Or paste an HTTPS image URL"/>
+  <Text style={s.label}>Product photos · up to 6</Text>
+  {(existingImages.length>0||pickedImages.length>0)?<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:9,paddingVertical:8}}>
+   {existingImages.map(image=><View key={image.id} style={{position:"relative"}}><Image source={{uri:image.image_url}} style={s.galleryPreview}/><Text style={s.photoTag}>{image.is_primary?"COVER":"EXISTING"}</Text></View>)}
+   {pickedImages.map((image,index)=><View key={image.uri+index} style={{position:"relative"}}><Image source={{uri:image.uri}} style={s.galleryPreview}/><Text style={s.photoTag}>NEW PHOTO</Text></View>)}
+  </ScrollView>:null}
+  <Pressable disabled={busy} style={s.secondary} onPress={()=>void pickImage()}><Text style={s.secondaryText}>Add photos from device ({existingImages.length+pickedImages.length}/6)</Text></Pressable>
+  <TextInput value={imageUrl} onChangeText={setImageUrl} autoCapitalize="none" style={s.input} placeholder="Or add one HTTPS image URL"/>
   <Text style={s.label}>Description</Text><TextInput value={productDescription} onChangeText={setProductDescription} multiline style={[s.input,{height:90,textAlignVertical:"top"}]} placeholder="Describe your product"/>
   <Text style={s.small}>Photos are stored in the Malawi Market media bucket. Maximum image size: 5 MB.</Text>
   <Pressable disabled={busy||kycStatus!=="approved"} style={s.button} onPress={()=>void saveListing()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>{editingId?"Save listing changes":"Publish product"}</Text>}</Pressable>{editingId?<Pressable style={s.secondary} onPress={clearForm}><Text style={s.secondaryText}>Cancel editing</Text></Pressable>:null}
@@ -136,4 +148,4 @@ export function SellerPortal(){
   {!paidItems.length?<Text style={s.meta}>Paid orders will appear here. Do not fulfil orders awaiting payment.</Text>:null}
  </ScrollView>;
 }
-const s=StyleSheet.create({wrap:{padding:18,paddingBottom:115,backgroundColor:"#f4f6f9"},center:{padding:30,alignItems:"center"},title:{fontSize:27,fontWeight:"900",color:"#252a31",marginTop:10,marginBottom:9,letterSpacing:-.5},section:{fontSize:17,fontWeight:"900",color:"#252a31",marginTop:24,marginBottom:7},meta:{fontSize:12,color:"#4b5563",lineHeight:17},label:{fontSize:12,fontWeight:"800",color:"#414b59",marginTop:15,marginBottom:6},input:{backgroundColor:"#fff",borderWidth:1,borderColor:"#cbd1d9",borderRadius:12,padding:14,fontSize:14,color:"#252a31"},button:{backgroundColor:"#155EEF",paddingHorizontal:18,paddingVertical:14,borderRadius:12,alignItems:"center",marginTop:18,minHeight:50,justifyContent:"center"},buttonText:{color:"#fff",fontWeight:"800",fontSize:14},secondary:{backgroundColor:"#202124",borderWidth:1,borderColor:"#202124",padding:12,borderRadius:9,alignItems:"center",marginTop:9},secondaryText:{color:"#ffffff",fontSize:12,fontWeight:"800"},notice:{backgroundColor:"#fff1e5",padding:12,borderRadius:9,marginTop:14},noticeText:{fontSize:12,color:"#854d22",fontWeight:"700",lineHeight:16},listing:{backgroundColor:"#fff",borderWidth:0,borderColor:"#d9dde3",borderRadius:14,padding:14,marginTop:8,flexDirection:"row",alignItems:"center",gap:10},listingTitle:{fontSize:12,fontWeight:"800",color:"#252a31"},action:{fontSize:12,fontWeight:"900",color:"#ef7b25",paddingVertical:5},actions:{gap:6,alignItems:"flex-end"},pills:{flexDirection:"row",flexWrap:"wrap",gap:7},pill:{backgroundColor:"#fff",borderWidth:1,borderColor:"#cbd1d9",borderRadius:18,paddingVertical:8,paddingHorizontal:11},pillActive:{backgroundColor:"#f36f21",borderColor:"#f36f21"},pillText:{fontSize:12,color:"#414b59",fontWeight:"700"},stats:{flexDirection:"row",gap:8,marginTop:16},stat:{flex:1,backgroundColor:"#fff",padding:10,borderRadius:10,borderWidth:1,borderColor:"#d9dde3"},statValue:{fontSize:14,fontWeight:"900",color:"#252a31"},statLabel:{fontSize:12,color:"#4b5563",marginTop:4},preview:{width:"100%",height:160,borderRadius:10,marginTop:8,backgroundColor:"#eef1f4"},small:{fontSize:12,color:"#4b5563",marginTop:8,lineHeight:15}});
+const s=StyleSheet.create({wrap:{padding:18,paddingBottom:115,backgroundColor:"#f4f6f9"},center:{padding:30,alignItems:"center"},title:{fontSize:27,fontWeight:"900",color:"#252a31",marginTop:10,marginBottom:9,letterSpacing:-.5},section:{fontSize:17,fontWeight:"900",color:"#252a31",marginTop:24,marginBottom:7},meta:{fontSize:12,color:"#4b5563",lineHeight:17},label:{fontSize:12,fontWeight:"800",color:"#414b59",marginTop:15,marginBottom:6},input:{backgroundColor:"#fff",borderWidth:1,borderColor:"#cbd1d9",borderRadius:12,padding:14,fontSize:14,color:"#252a31"},button:{backgroundColor:"#155EEF",paddingHorizontal:18,paddingVertical:14,borderRadius:12,alignItems:"center",marginTop:18,minHeight:50,justifyContent:"center"},buttonText:{color:"#fff",fontWeight:"800",fontSize:14},secondary:{backgroundColor:"#202124",borderWidth:1,borderColor:"#202124",padding:12,borderRadius:9,alignItems:"center",marginTop:9},secondaryText:{color:"#ffffff",fontSize:12,fontWeight:"800"},notice:{backgroundColor:"#fff1e5",padding:12,borderRadius:9,marginTop:14},noticeText:{fontSize:12,color:"#854d22",fontWeight:"700",lineHeight:16},listing:{backgroundColor:"#fff",borderWidth:0,borderColor:"#d9dde3",borderRadius:14,padding:14,marginTop:8,flexDirection:"row",alignItems:"center",gap:10},listingTitle:{fontSize:12,fontWeight:"800",color:"#252a31"},action:{fontSize:12,fontWeight:"900",color:"#ef7b25",paddingVertical:5},actions:{gap:6,alignItems:"flex-end"},pills:{flexDirection:"row",flexWrap:"wrap",gap:7},pill:{backgroundColor:"#fff",borderWidth:1,borderColor:"#cbd1d9",borderRadius:18,paddingVertical:8,paddingHorizontal:11},pillActive:{backgroundColor:"#f36f21",borderColor:"#f36f21"},pillText:{fontSize:12,color:"#414b59",fontWeight:"700"},stats:{flexDirection:"row",gap:8,marginTop:16},stat:{flex:1,backgroundColor:"#fff",padding:10,borderRadius:10,borderWidth:1,borderColor:"#d9dde3"},statValue:{fontSize:14,fontWeight:"900",color:"#252a31"},statLabel:{fontSize:12,color:"#4b5563",marginTop:4},preview:{width:"100%",height:160,borderRadius:10,marginTop:8,backgroundColor:"#eef1f4"},galleryPreview:{width:118,height:112,borderRadius:10,backgroundColor:"#eef1f4"},photoTag:{position:"absolute",left:5,bottom:5,backgroundColor:"#172b46",color:"#fff",fontSize:9,fontWeight:"900",paddingHorizontal:5,paddingVertical:3,borderRadius:4},small:{fontSize:12,color:"#4b5563",marginTop:8,lineHeight:15}});
