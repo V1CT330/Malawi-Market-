@@ -149,6 +149,6 @@ export function mapboxStaticImageUrl(coordinates: Coordinates, markers:Coordinat
   if (!MAPBOX_TOKEN) return "";
   const { latitude, longitude } = coordinates;
   const shopPins=markers.slice(0,10).map(point=>`pin-s+0F766E(${point.longitude},${point.latitude})`);
-  const overlays=shopPins.length?shopPins.join(","):`pin-s+ef7b25(${longitude},${latitude})`;
+  const overlays=[...shopPins,`pin-s+ef7b25(${longitude},${latitude})`].join(",");
   return `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${overlays}/${longitude},${latitude},13/900x520?access_token=${encodeURIComponent(MAPBOX_TOKEN)}`;
 }
