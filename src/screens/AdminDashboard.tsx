@@ -30,7 +30,7 @@ export function AdminDashboard(){
     supabase.from("market_reports").select("id,reporter_user_id,target_type,target_id,reason,details,status,created_at").order("created_at",{ascending:false}).limit(100)
    ]);
    if(s.error)throw s.error;if(p.error)throw p.error;if(o.error)throw o.error;if(paid.error)throw paid.error;if(rev.error)throw rev.error;if(u.error)throw u.error;if(rp.error)throw rp.error;
-   setSellers(s.data??[]);setProducts(p.data??[]);setOrders(o.data??[]);setUsers(u.data??[]);setReports(rp.data??[]);\n   const adResult=await supabase.from("market_ad_campaigns").select("id,business_name,title,placement,budget_mwk,spent_mwk,status,payment_status,payment_reference,created_at").order("created_at",{ascending:false}).limit(200);\n   if(adResult.error)throw adResult.error;setAds(adResult.data??[]);
+   setSellers(s.data??[]);setProducts(p.data??[]);setOrders(o.data??[]);setUsers(u.data??[]);setReports(rp.data??[]);\n   const adResult=await supabase.from("market_ad_campaigns").select("id,business_name,title,placement,budget_mwk,spent_mwk,status,payment_status,created_at").order("created_at",{ascending:false}).limit(200);\n   if(adResult.error)throw adResult.error;setAds(adResult.data??[]);
    const eventResult=await supabase.from("market_ad_events").select("campaign_id,event_type").gte("created_at",new Date(Date.now()-30*24*60*60*1000).toISOString()).limit(10000);
    if(eventResult.error)throw eventResult.error;
    const metrics:Record<string,{impressions:number;clicks:number}>={};
