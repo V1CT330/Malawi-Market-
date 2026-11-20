@@ -4,7 +4,7 @@ import { Image } from "react-native";
 import { fetchLiveFootballFixtures, fetchWeather, requestDeviceCoordinates, searchMapboxPlaces, mapboxStaticImageUrl, liveServiceAvailability, Coordinates } from "../lib/live-services";
 import {marketText,MarketLanguage} from "../lib/i18n";
 import {MarketIcon} from "../components/MarketIcon";
-import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking, Alert } from "react-native";
+import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking, Alert, BackHandler } from "react-native";
 
 type Section = "hub" | "news" | "jobs" | "stocks" | "football" | "weather" | "map";
 const orange = "#ef7b25";
@@ -16,7 +16,7 @@ const fixtures: {league:string;home:string;away:string;time:string;score:string;
 const categories = ["All","Business","Technology","Agriculture","Sports"];
 const jobTypes = ["All","Full time","Part time","Contract","Internship"];
 
-export function ExploreScreens({language}:{language:MarketLanguage}) {
+export function ExploreScreens({language,onHardwareBack}:{language:MarketLanguage;onHardwareBack:()=>void}) {
   const [section,setSection] = useState<Section>("hub");
   const [newsCategory,setNewsCategory] = useState("All");
   const [jobType,setJobType] = useState("All");
@@ -39,6 +39,14 @@ export function ExploreScreens({language}:{language:MarketLanguage}) {
   const [mapError,setMapError] = useState("");
   const [mapLoading,setMapLoading] = useState(false);
   const [locationLabel,setLocationLabel] = useState("Malawi overview");
+  useEffect(()=>{
+    const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
+      if(section!=="hub"){setSection("hub");setSearch("");return true;}
+      onHardwareBack();
+      return true;
+    });
+    return()=>subscription.remove();
+  },[section,onHardwareBack]);
   useEffect(()=>{ let active=true; setLoadingData(true); setLoadError(""); Promise.all([
     supabase.from("market_news_articles").select("id,title,summary,category,source_name,source_url,published_at").eq("is_published",true).order("published_at",{ascending:false}).limit(40),
     supabase.from("market_job_listings").select("id,title,company_name,location,job_type,category,description,salary_range,application_url").eq("is_published",true).order("created_at",{ascending:false}).limit(40),
