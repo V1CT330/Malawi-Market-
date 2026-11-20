@@ -22,6 +22,31 @@ export function parseCoordinatesFromMapInput(value:string):Coordinates|null {
 
 export type LiveFixture = { league:string; home:string; away:string; time:string; score:string; status:string; sourceName:string };
 
+export type ExchangeRate = { currency:string; mwkPerUnit:number };
+export type ExchangeRateSnapshot = { updatedAt:string; rates:ExchangeRate[] };
+
+export async function fetchExchangeRates():Promise<ExchangeRateSnapshot> {
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),15000);
+  try {
+    const response=await fetch("https://open.er-api.com/v6/latest/USD",{signal:controller.signal});
+    const body=await readJson(response,"Exchange-rate provider");
+    if(body?.result!=="success"||!body?.rates||!Number.isFinite(Number(body.rates.MWK))) {
+      throw new Error("The exchange-rate provider returned an invalid response.");
+    }
+    const currencies=["USD","GBP","EUR","ZAR","KES","TZS","BWP"];
+    const rates=currencies.map(currency=>{
+      const foreignPerUsd=currency==="USD"?1:Number(body.rates[currency]);
+      const mwkPerUsd=Number(body.rates.MWK);
+      return {currency,mwkPerUnit:mwkPerUsd/foreignPerUsd};
+    }).filter(rate=>Number.isFinite(rate.mwkPerUnit)&&rate.mwkPerUnit>0);
+    if(!rates.length)throw new Error("No usable exchange rates were returned.");
+    return {updatedAt:body.time_last_update_utc||new Date().toISOString(),rates};
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "";
 
 export const liveServiceAvailability = {
