@@ -50,7 +50,7 @@ export function SellerPortal(){
    if(asset.fileSize&&asset.fileSize>5*1024*1024){Alert.alert("Image too large","Each product photo must be under 5 MB.");return;}
    if(!["image/jpeg","image/png","image/webp"].includes(asset.mimeType??"image/jpeg")){Alert.alert("Unsupported image","Choose JPEG, PNG or WebP photos.");return;}
   }
-  setPickedImages(current=>[...current,...assets.map(asset=>({uri:asset.uri,mimeType:asset.mimeType??"image/jpeg",fileSize:asset.fileSize}))].slice(0,available));
+  setPickedImages(current=>[...current,...assets.map(asset=>({uri:asset.uri,mimeType:asset.mimeType??"image/jpeg",fileSize:asset.fileSize}))].slice(0,6-existingImages.length));
  };
  const clearForm=()=>{setEditingId(null);setTitle("");setPrice("");setQuantity("1");setImageUrl("");setPickedImages([]);setExistingImages([]);setProductDescription("");setCategory("");setCondition("new");};
  const startEdit=(item:Listing)=>{
