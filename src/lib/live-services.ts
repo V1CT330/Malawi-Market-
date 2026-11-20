@@ -7,10 +7,10 @@ export function parseCoordinatesFromMapInput(value:string):Coordinates|null {
   const input=value.trim();
   if(!input)return null;
   const candidates=[
-    input.match(/!3d(-?\\d+(?:\\.\\d+)?)!4d(-?\\d+(?:\\.\\d+)?)/i),
-    input.match(/@(-?\\d+(?:\\.\\d+)?),\\s*(-?\\d+(?:\\.\\d+)?)/),
-    input.match(/[?&](?:q|query|destination|ll)=(-?\\d+(?:\\.\\d+)?),\\s*(-?\\d+(?:\\.\\d+)?)/i),
-    input.match(/^\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*$/)
+    input.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/i),
+    input.match(/@(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/),
+    input.match(/[?&](?:q|query|destination|ll)=(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)/i),
+    input.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/)
   ];
   for(const match of candidates){
     if(!match)continue;
