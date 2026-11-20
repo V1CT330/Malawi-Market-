@@ -13,6 +13,7 @@ import { CheckoutScreen } from "./src/screens/CheckoutScreen";
 import { QRToolsScreen } from "./src/screens/QRToolsScreen";
 import { marketText, MarketLanguage } from "./src/lib/i18n";
 import { MarketIcon } from "./src/components/MarketIcon";
+import { DEMO_PRODUCTS } from "./src/data/demo";
 
 type Category = { id: string; name: string; slug: string; icon?: string | null };
 type Product = {
@@ -39,6 +40,8 @@ const productImage = (p: Product) =>
 
 export default function App() {
   const { width: windowWidth } = useWindowDimensions();
+  const promoScrollRef = useRef<ScrollView>(null);
+  const [promoIndex, setPromoIndex] = useState(0);
   const isCompact = windowWidth < 360;
   const isTablet = windowWidth >= 600;
   const contentMaxWidth = windowWidth >= 900 ? 1180 : windowWidth >= 600 ? 900 : 680;
@@ -48,7 +51,7 @@ export default function App() {
   const [language, setLanguage] = useState<MarketLanguage>("English");
   const [appearance,setAppearance]=useState<{theme:"light"|"dark";accentColor:string}>({theme:"light",accentColor:"#3B82F6"});
   const darkMode=appearance.theme==="dark";
-  const palette={background:darkMode?"#111318":"#ffffff",surface:darkMode?"#1b1f27":"#ffffff",text:darkMode?"#f3f4f6":"#202124",muted:darkMode?"#aab2bf":"#4b5563",border:darkMode?"#343b47":"#d9dde3",accent:appearance.accentColor};
+  const palette={background:darkMode?"#111318":"#ffffff",surface:darkMode?"#1b1f27":"#ffffff",text:darkMode?"#f3f4f6":"#202124",muted:darkMode?"#aab2bf":"#4b5563",border:darkMode?"#343b47":"#d9dde3",accent:appearance.accentColor,commerce:"#155EEF",energy:"#F97316",success:"#159B68",gold:"#E7B93F"};
 
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [checkout, setCheckout] = useState(false);
@@ -75,6 +78,21 @@ export default function App() {
   const [storageReady, setStorageReady] = useState(false);
   const [homeName, setHomeName] = useState("there");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const promoPageWidth = Math.max(280, Math.min(windowWidth, contentMaxWidth) - 36);
+  const promoSlides = [
+    { id:"phones", kicker:"TECH PICKS", title:"Upgrade your everyday.", body:"Explore phones and electronics from sellers across Malawi.", product:DEMO_PRODUCTS[0], color:"#155EEF" },
+    { id:"style", kicker:"STYLE FINDS", title:"Fresh looks. Local sellers.", body:"Discover fashion and accessories for every day.", product:DEMO_PRODUCTS[5], color:"#E85D24" },
+    { id:"creative", kicker:"BUSINESS SPOTLIGHT", title:"Make your brand stand out.", body:"Find graphic design and creative services in one marketplace.", product:DEMO_PRODUCTS[13], color:"#087F6B" },
+  ];
+  useEffect(() => {
+    if (tab !== "Home") return;
+    const timer = setInterval(() => setPromoIndex(current => {
+      const next = (current + 1) % promoSlides.length;
+      promoScrollRef.current?.scrollTo({ x: next * promoPageWidth, animated: true });
+      return next;
+    }), 5200);
+    return () => clearInterval(timer);
+  }, [tab, promoPageWidth]);
 
   useEffect(() => {
     let active=true;
@@ -158,12 +176,15 @@ export default function App() {
       setAdCampaigns((adResult.data??[]) as AdCampaign[]);
       const mergedCategories = new Map<string, Category>();
       ((categoryResult.data ?? []) as Category[]).forEach(item => mergedCategories.set(item.slug, item));
+      DEMO_PRODUCTS.forEach(item => { if (!mergedCategories.has(item.category.slug)) mergedCategories.set(item.category.slug,{id:"demo-category-"+item.category.slug,name:item.category.name,slug:item.category.slug}); });
       setCategories(Array.from(mergedCategories.values()));
-      setProducts(liveProducts);
+      setProducts([...liveProducts, ...(DEMO_PRODUCTS as unknown as Product[])]);
       if (productResult.error) setLoadError(productResult.error.message);
       else if (categoryResult.error) setLoadError(categoryResult.error.message);
     } catch (error:any) {
-      setLoadError(error?.message || "The catalogue could not be loaded. Check your connection and try again.");
+      setProducts(DEMO_PRODUCTS as unknown as Product[]);
+      setCategories(Array.from(new Map(DEMO_PRODUCTS.map(item=>[item.category.slug,{id:"demo-category-"+item.category.slug,name:item.category.name,slug:item.category.slug}])).values()));
+      setLoadError(error?.message || "The catalogue could not be loaded. Check your connection and try again. Demo listings are shown for preview.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -290,7 +311,7 @@ export default function App() {
         <Text style={[s.price,{color:palette.text}]}>{money(item.price_mwk)}</Text>
         {item.compare_at_price_mwk ? <Text style={s.oldPrice}>{money(item.compare_at_price_mwk)}</Text> : null}
         <Text numberOfLines={1} style={[s.seller,{color:palette.muted}]}>{item.seller?.name ?? "Malawi Market seller"}{item.seller?.is_verified ? "  ✓" : ""}</Text>
-        <Pressable disabled={item.stock_quantity<=0} style={[s.addButton,item.stock_quantity<=0&&{opacity:1,backgroundColor:"#858b94"}]} onPress={(event) => {event.stopPropagation();addToCart(item.id);}}><Text style={s.addText}>{marketText(language,item.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
+        <Pressable disabled={item.stock_quantity<=0} style={[s.addButton,{backgroundColor:item.stock_quantity<=0?"#858b94":palette.accent}]} onPress={(event) => {event.stopPropagation();addToCart(item.id);}}><Text style={s.addText}>{marketText(language,item.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
       </View>
     </Pressable>;
   };
@@ -306,7 +327,7 @@ export default function App() {
     ].map(([tabName,label,icon]) =>
       <Pressable key={tabName} accessibilityRole="button" accessibilityState={{selected:tab===tabName}} onPress={() => { setSelected(null); setTab(tabName); }} style={[s.navItem,{backgroundColor:"transparent"}]}>
         <MarketIcon name={icon} size={isCompact?20:22} color={tab===tabName?palette.accent:palette.muted} />
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.navLabel,{color:tab===tabName?palette.accent:palette.muted,fontSize:isCompact?8.5:10}]}>{marketText(language,label)}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.navLabel,{color:tab===tabName?palette.accent:palette.muted,fontSize:isCompact?10:11}]}>{marketText(language,label)}</Text>
       </Pressable>)}
   </View>;
 
@@ -332,8 +353,8 @@ export default function App() {
         {selected.demo ? <Text style={s.demoDetail}>DEMO LISTING — product, seller and price are illustrative only.</Text> : null}
         <Text style={s.detailDescription}>{selected.description || "No product description has been provided."}</Text>
         <ProductReviews productId={selected.id} />
-        <Pressable style={[s.primaryButton,{backgroundColor:"#202124"}]} onPress={() => { setSelected(null); setQrProduct(selected); setTab("QR"); }}><Text style={s.primaryText}>Show product QR code</Text></Pressable>
-        <Pressable disabled={selected.stock_quantity<=0} style={[s.primaryButton,selected.stock_quantity<=0&&{opacity:0.45}]} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>{marketText(language,selected.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
+        <Pressable style={[s.primaryButton,{backgroundColor:palette.text}]} onPress={() => { setSelected(null); setQrProduct(selected); setTab("QR"); }}><Text style={s.primaryText}>Show product QR code</Text></Pressable>
+        <Pressable disabled={selected.stock_quantity<=0} style={[s.primaryButton,{backgroundColor:palette.accent},selected.stock_quantity<=0&&{opacity:0.55}]} onPress={() => addToCart(selected.id)}><Text style={s.primaryText}>{marketText(language,selected.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
         <Pressable style={s.reportButton} onPress={() => {
           Alert.alert("Report this listing","Send a report to the Malawi Market moderation team?",[
             {text:"Cancel",style:"cancel"},
@@ -352,7 +373,7 @@ export default function App() {
       {tab === "Home" ? <>
         <View style={[s.homeTop,{backgroundColor:darkMode?"#191d25":"#fffaf5"}]}>
           <View style={s.homeBrandRow}>
-            <Image source={require("./assets/logo.png")} style={s.homeLogo} resizeMode="contain" />
+            <View style={s.homeLogoWrap}><View style={s.homeLogoGlow}/><Image source={require("./assets/logo.png")} style={s.homeLogo} resizeMode="contain" /></View>
             <View style={s.homeActions}>
               <Pressable accessibilityRole="button" accessibilityLabel={unreadNotifications ? `${unreadNotifications} unread notifications` : "Notifications"} onPress={() => setTab("Account")} style={s.homeAction}>
                 <MarketIcon name="notifications" size={25} color={darkMode?"#f3f4f6":"#34241b"} />
@@ -381,13 +402,20 @@ export default function App() {
             </Pressable>
           </View>
         </View>
-        <View style={s.promoBanner}>
-          <View style={s.promoCopy}>
-            <Text style={s.promoKicker}>MALAWI'S MARKETPLACE</Text>
-            <Text style={s.promoTitle}>Discover more. Shop better.</Text>
-            <Text style={s.promoSub}>A better way to find great products from sellers across Malawi.</Text>
-            <Pressable style={s.promoButton} onPress={() => setTab("Search")}><Text style={s.promoButtonText}>Explore marketplace  ›</Text></Pressable>
-          </View>
+        <View style={s.promoCarousel}>
+          <ScrollView ref={promoScrollRef} horizontal pagingEnabled showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={event=>setPromoIndex(Math.round(event.nativeEvent.contentOffset.x/promoPageWidth))}>
+            {promoSlides.map((slide,index)=><Pressable key={slide.id} style={[s.promoBanner,{width:promoPageWidth,backgroundColor:slide.color}]} onPress={()=>{setQuery(slide.product.title);setTab("Search");}}>
+              <View style={s.promoCopy}>
+                <Text style={s.promoKicker}>{slide.kicker}</Text>
+                <Text style={s.promoTitle}>{slide.title}</Text>
+                <Text style={s.promoSub}>{slide.body}</Text>
+                <View style={s.promoButton}><Text style={s.promoButtonText}>Explore now  ›</Text></View>
+              </View>
+              <View style={s.promoVisual}><View style={s.promoVisualHalo}/><Image source={{uri:slide.product.images[0]?.image_url}} style={s.promoProductImage} resizeMode="cover"/><View style={s.promoProductTag}><Text style={s.promoProductTagText}>{index===2?"CREATIVE":"SHOP LOCAL"}</Text></View></View>
+            </Pressable>)}
+          </ScrollView>
+          <View style={s.promoDots}>{promoSlides.map((slide,index)=><Pressable key={slide.id} accessibilityRole="button" accessibilityLabel={"Show promotion "+(index+1)} onPress={()=>{setPromoIndex(index);promoScrollRef.current?.scrollTo({x:index*promoPageWidth,animated:true});}} style={[s.promoDot,index===promoIndex&&s.promoDotActive]}/>)}</View>
         </View>
         {adPlacement("homepage")}
         <View style={[s.shortcutRow,{backgroundColor:palette.surface,borderColor:palette.border}]}>
@@ -463,19 +491,19 @@ const s = StyleSheet.create({
  cartIcon:{padding:10},cartCount:{position:"absolute",right:0,top:0,backgroundColor:"#ef7b25",color:"#fff",fontSize:10,fontWeight:"bold",borderRadius:10,minWidth:18,textAlign:"center",overflow:"hidden"},
  search:{height:50,borderRadius:14,backgroundColor:"#f5f5f7",borderWidth:1,borderColor:"#f0f0f2",paddingLeft:14,paddingRight:5,flexDirection:"row",alignItems:"center",gap:10,marginTop:12},searchInput:{flex:1,fontSize:14,color:"#252a31",paddingVertical:0},
  hero:{backgroundColor:"#f36f21",marginHorizontal:14,marginTop:4,borderRadius:15,padding:19,overflow:"hidden"},heroTop:{flexDirection:"row",alignItems:"center",justifyContent:"space-between"},heroKicker:{color:"#ffbd82",fontSize:10,fontWeight:"900",letterSpacing:1.1},heroTag:{color:"#fff",fontSize:10,fontWeight:"900",letterSpacing:2,borderWidth:1,borderColor:"#ffbf91",borderRadius:5,paddingHorizontal:8,paddingVertical:5},heroTitle:{color:"#fff",fontSize:24,lineHeight:30,fontWeight:"900",marginTop:11},heroSub:{color:"#ffffff",fontSize:13,marginTop:7,lineHeight:19},heroButton:{backgroundColor:"#ef7b25",alignSelf:"flex-start",paddingHorizontal:16,paddingVertical:12,borderRadius:8,marginTop:14},heroButtonText:{color:"#fff",fontWeight:"900",fontSize:13},
- sectionHead:{paddingHorizontal:17,marginTop:25,marginBottom:13,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},sectionTitle:{fontSize:20,fontWeight:"900",color:"#252a31",letterSpacing:-.55},viewAll:{fontSize:12,color:"#e76f18",fontWeight:"800"},
- categoryRow:{paddingHorizontal:16,gap:11},categoryTile:{width:88,minHeight:108,backgroundColor:"#fff",borderRadius:17,padding:10,alignItems:"center",justifyContent:"center",gap:8,borderWidth:1,borderColor:"#d9dde3"},categoryTileActive:{borderColor:"#ef7628",backgroundColor:"#ef7628"},categoryIcon:{width:50,height:50,borderRadius:17,backgroundColor:"#fff0e5",alignItems:"center",justifyContent:"center"},categoryIconActive:{backgroundColor:"#202124"},categoryIconText:{fontSize:20,fontWeight:"900",color:"#e87520"},categoryIconTextActive:{color:"#fff"},categoryText:{fontSize:10.5,lineHeight:14,fontWeight:"800",color:"#414b59",textAlign:"center"},categoryTextActive:{color:"#ffffff",fontWeight:"900"},
+ sectionHead:{paddingHorizontal:17,marginTop:25,marginBottom:13,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},sectionTitle:{fontSize:20,fontWeight:"900",color:"#252a31",letterSpacing:-.45},viewAll:{fontSize:13,color:"#155EEF",fontWeight:"800"},
+ categoryRow:{paddingHorizontal:16,gap:11},categoryTile:{width:88,minHeight:108,backgroundColor:"#fff",borderRadius:17,padding:10,alignItems:"center",justifyContent:"center",gap:8,borderWidth:1,borderColor:"#d9dde3"},categoryTileActive:{borderColor:"#ef7628",backgroundColor:"#ef7628"},categoryIcon:{width:50,height:50,borderRadius:17,backgroundColor:"#fff0e5",alignItems:"center",justifyContent:"center"},categoryIconActive:{backgroundColor:"#202124"},categoryIconText:{fontSize:20,fontWeight:"900",color:"#e87520"},categoryIconTextActive:{color:"#fff"},categoryText:{fontSize:12,lineHeight:16,fontWeight:"700",color:"#414b59",textAlign:"center"},categoryTextActive:{color:"#ffffff",fontWeight:"900"},
  productRow:{gap:12,marginBottom:16},card:{flex:1,backgroundColor:"#ffffff",borderWidth:1,borderColor:"#d9dde3",borderRadius:16,overflow:"hidden",elevation:0,shadowColor:"#000000",shadowOpacity:0,shadowRadius:0,shadowOffset:{width:0,height:0}},imageWrap:{position:"relative",padding:7,backgroundColor:"#f3f4f6"},productImage:{width:"100%",aspectRatio:1,backgroundColor:"#f3f4f6",borderRadius:11},imagePlaceholder:{alignItems:"center",justifyContent:"center"},placeholderText:{fontSize:12,color:"#4b5563"},badge:{position:"absolute",left:9,top:9,backgroundColor:"#ef7b25",color:"#fff",fontSize:10,fontWeight:"900",paddingHorizontal:8,paddingVertical:5,borderRadius:5,overflow:"hidden"},heart:{position:"absolute",right:8,top:8,backgroundColor:"#fff",width:36,height:36,borderRadius:18,alignItems:"center",justifyContent:"center",elevation:2},
- cardInfo:{paddingHorizontal:13,paddingTop:10,paddingBottom:13},productName:{fontSize:13,fontWeight:"700",color:"#202b3c",lineHeight:18,minHeight:36},price:{fontSize:16,fontWeight:"700",color:"#202124",marginTop:7,letterSpacing:-.25},oldPrice:{fontSize:11,color:"#5b6470",textDecorationLine:"line-through"},seller:{fontSize:10,color:"#4b5563",marginTop:7},addButton:{backgroundColor:"#ef7628",borderRadius:11,alignItems:"center",justifyContent:"center",paddingVertical:11,marginTop:12,minHeight:44},addText:{color:"#fff",fontWeight:"900",fontSize:12,letterSpacing:.2},
- bottomNav:{position:"absolute",bottom:8,left:10,right:10,height:64,borderTopWidth:1,borderTopColor:"#d9dde3",backgroundColor:"#ffffff",flexDirection:"row",justifyContent:"space-around",alignItems:"center",paddingBottom:2,borderRadius:18,elevation:8,shadowColor:"#000000",shadowOpacity:0.07,shadowRadius:12,shadowOffset:{width:0,height:4}},navItem:{alignItems:"center",justifyContent:"center",flex:1,minHeight:54,paddingHorizontal:2},navIcon:{fontSize:24},navLabel:{fontSize:10,fontWeight:"800",marginTop:4},
+ cardInfo:{paddingHorizontal:13,paddingTop:10,paddingBottom:13},productName:{fontSize:14,fontWeight:"700",color:"#202b3c",lineHeight:20,minHeight:40},price:{fontSize:17,fontWeight:"800",color:"#202124",marginTop:7,letterSpacing:-.25},oldPrice:{fontSize:12,color:"#5b6470",textDecorationLine:"line-through"},seller:{fontSize:12,color:"#4b5563",marginTop:7},addButton:{backgroundColor:"#155EEF",borderRadius:12,alignItems:"center",justifyContent:"center",paddingHorizontal:14,paddingVertical:12,marginTop:12,minHeight:48},addText:{color:"#fff",fontWeight:"800",fontSize:14,letterSpacing:0},
+ bottomNav:{position:"absolute",bottom:8,left:10,right:10,height:64,borderTopWidth:1,borderTopColor:"#d9dde3",backgroundColor:"#ffffff",flexDirection:"row",justifyContent:"space-around",alignItems:"center",paddingBottom:2,borderRadius:18,elevation:8,shadowColor:"#000000",shadowOpacity:0.07,shadowRadius:12,shadowOffset:{width:0,height:4}},navItem:{alignItems:"center",justifyContent:"center",flex:1,minHeight:54,paddingHorizontal:2},navIcon:{fontSize:24},navLabel:{fontSize:11,fontWeight:"700",marginTop:5},
  demoNotice:{marginHorizontal:14,marginTop:8,padding:10,borderRadius:8,backgroundColor:"#fff4e9"},demoNoticeText:{fontSize:10,color:"#8b4c18",fontWeight:"700",lineHeight:15},demoDetail:{fontSize:11,color:"#9a5b20",fontWeight:"800",marginTop:10},trust:{margin:15,padding:18,backgroundColor:"#fff",borderWidth:1,borderColor:"#d9dde3",borderRadius:12},trustTitle:{fontWeight:"900",fontSize:16,color:"#252a31"},trustText:{fontSize:13,color:"#4b5563",marginTop:5,lineHeight:19},
- filterPanel:{marginHorizontal:14,marginTop:4,padding:16,backgroundColor:"#fff",borderWidth:1,borderColor:"#d9dde3",borderRadius:13},filterHeading:{fontSize:13,fontWeight:"900",color:"#414b59",marginTop:5,marginBottom:8},filterRow:{flexDirection:"row",flexWrap:"wrap",gap:7,marginBottom:10},filterPill:{borderWidth:1,borderColor:"#cbd1d9",borderRadius:18,paddingHorizontal:13,paddingVertical:10,backgroundColor:"#fff"},filterActive:{backgroundColor:"#f36f21",borderColor:"#f36f21"},filterText:{fontSize:12,color:"#414b59",fontWeight:"800"},page:{padding:18,paddingBottom:130},pageTitle:{fontSize:26,fontWeight:"900",color:"#252a31",marginBottom:16},empty:{color:"#4b5563",fontSize:15,lineHeight:23,paddingVertical:25,textAlign:"center"},emptyBox:{marginHorizontal:16,marginTop:22,padding:22,backgroundColor:"#fff",borderRadius:13,alignItems:"center"},emptyTitle:{fontSize:18,fontWeight:"900",color:"#252a31"},outlineButton:{marginTop:12,borderWidth:1,borderColor:"#ef7b25",paddingHorizontal:16,paddingVertical:11,borderRadius:8},outlineText:{fontSize:13,color:"#df6c19",fontWeight:"900"},loading:{padding:35,alignItems:"center",gap:10},loadingText:{fontSize:13,color:"#777"},
+ filterPanel:{marginHorizontal:14,marginTop:4,padding:16,backgroundColor:"#fff",borderWidth:1,borderColor:"#d9dde3",borderRadius:13},filterHeading:{fontSize:13,fontWeight:"900",color:"#414b59",marginTop:5,marginBottom:8},filterRow:{flexDirection:"row",flexWrap:"wrap",gap:7,marginBottom:10},filterPill:{borderWidth:1,borderColor:"#cbd1d9",borderRadius:12,paddingHorizontal:15,paddingVertical:11,minHeight:44,justifyContent:"center",backgroundColor:"#fff"},filterActive:{backgroundColor:"#f36f21",borderColor:"#f36f21"},filterText:{fontSize:13,color:"#414b59",fontWeight:"700"},page:{padding:18,paddingBottom:130},pageTitle:{fontSize:26,fontWeight:"900",color:"#252a31",marginBottom:16},empty:{color:"#4b5563",fontSize:15,lineHeight:23,paddingVertical:25,textAlign:"center"},emptyBox:{marginHorizontal:16,marginTop:22,padding:22,backgroundColor:"#fff",borderRadius:13,alignItems:"center"},emptyTitle:{fontSize:18,fontWeight:"900",color:"#252a31"},outlineButton:{marginTop:12,borderWidth:1.5,borderColor:"#155EEF",paddingHorizontal:18,paddingVertical:13,borderRadius:11,minHeight:48,justifyContent:"center"},outlineText:{fontSize:14,color:"#155EEF",fontWeight:"800"},loading:{padding:35,alignItems:"center",gap:10},loadingText:{fontSize:13,color:"#777"},
  cartRow:{flexDirection:"row",alignItems:"center",gap:10,borderBottomWidth:1,borderColor:"#eee",paddingVertical:12},cartImage:{width:72,height:72,borderRadius:9,backgroundColor:"#f3f4f6"},qtyButton:{width:32,height:32,borderRadius:8,backgroundColor:"#fff1e5",alignItems:"center",justifyContent:"center"},qtyText:{fontSize:14,fontWeight:"900",color:"#252a31"},total:{fontSize:18,fontWeight:"900",color:"#252a31",marginTop:20,textAlign:"right"},
- back:{padding:16},backText:{color:"#ef7b25",fontWeight:"900"},detailImage:{width:"100%",height:320,backgroundColor:"#f3f4f6",borderRadius:20,overflow:"hidden"},detailTitle:{fontSize:25,fontWeight:"900",color:"#252a31",letterSpacing:-.55,lineHeight:32},priceLarge:{fontSize:27,fontWeight:"900",color:"#ef7b25",marginTop:12},detailMeta:{fontSize:12,color:"#4b5563",marginTop:9},detailDescription:{fontSize:14,color:"#4b5563",lineHeight:22,marginTop:18},primaryButton:{backgroundColor:"#ef7b25",padding:17,borderRadius:13,alignItems:"center",marginTop:20,minHeight:54,justifyContent:"center",elevation:2},primaryText:{color:"#fff",fontWeight:"900",fontSize:14},reportButton:{alignItems:"center",padding:14,marginTop:8},reportText:{color:"#a33",fontWeight:"800",fontSize:12},
- adCard:{marginHorizontal:16,marginTop:12,backgroundColor:"#fff",borderWidth:1,borderColor:"#eadfd6",borderRadius:14,overflow:"hidden",flexDirection:"row",minHeight:112},adImage:{width:104,minHeight:112,backgroundColor:"#f2f2f2"},adCopy:{flex:1,padding:11,justifyContent:"center"},adLabel:{fontSize:9,color:"#a45a24",fontWeight:"900",letterSpacing:.7},adTitle:{fontSize:14,color:"#252a31",fontWeight:"900",marginTop:5},adBody:{fontSize:11,color:"#5b6470",marginTop:4,lineHeight:15},adLink:{fontSize:10,color:"#ef7628",fontWeight:"900",marginTop:6},
+ back:{padding:16},backText:{color:"#ef7b25",fontWeight:"900"},detailImage:{width:"100%",height:320,backgroundColor:"#f3f4f6",borderRadius:20,overflow:"hidden"},detailTitle:{fontSize:25,fontWeight:"900",color:"#252a31",letterSpacing:-.55,lineHeight:32},priceLarge:{fontSize:27,fontWeight:"900",color:"#ef7b25",marginTop:12},detailMeta:{fontSize:12,color:"#4b5563",marginTop:9},detailDescription:{fontSize:14,color:"#4b5563",lineHeight:22,marginTop:18},primaryButton:{backgroundColor:"#155EEF",paddingHorizontal:18,paddingVertical:14,borderRadius:12,alignItems:"center",marginTop:20,minHeight:50,justifyContent:"center",elevation:2},primaryText:{color:"#fff",fontWeight:"800",fontSize:15},reportButton:{alignItems:"center",padding:14,marginTop:8},reportText:{color:"#a33",fontWeight:"800",fontSize:12},
+ adCard:{marginHorizontal:16,marginTop:12,backgroundColor:"#fff",borderWidth:1,borderColor:"#eadfd6",borderRadius:14,overflow:"hidden",flexDirection:"row",minHeight:112},adImage:{width:104,minHeight:112,backgroundColor:"#f2f2f2"},adCopy:{flex:1,padding:11,justifyContent:"center"},adLabel:{fontSize:11,color:"#A45A24",fontWeight:"900",letterSpacing:.6},adTitle:{fontSize:15,color:"#252a31",fontWeight:"900",marginTop:5},adBody:{fontSize:13,color:"#5b6470",marginTop:5,lineHeight:18},adLink:{fontSize:13,color:"#155EEF",fontWeight:"900",marginTop:7},
  homeTop:{paddingHorizontal:18,paddingTop:10,paddingBottom:4,backgroundColor:"#fffaf5"},
  homeBrandRow:{minHeight:58,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
- homeLogo:{width:76,height:66},
+ homeLogoWrap:{width:92,height:72,alignItems:"center",justifyContent:"center",position:"relative"},homeLogoGlow:{position:"absolute",width:72,height:58,borderRadius:30,backgroundColor:"#FCE6D6",opacity:.8},homeLogo:{width:88,height:68},
  homeActions:{flexDirection:"row",alignItems:"center",gap:12},
  homeAction:{width:43,height:43,borderRadius:22,alignItems:"center",justifyContent:"center",position:"relative"},
  homeAvatar:{backgroundColor:"#f3eee9"},
@@ -485,7 +513,7 @@ const s = StyleSheet.create({
  homeSearch:{height:52,borderRadius:17,backgroundColor:"#fff",borderWidth:1,borderColor:"#eee7e1",paddingLeft:14,paddingRight:7,flexDirection:"row",alignItems:"center",gap:10,elevation:2,shadowColor:"#33251e",shadowOpacity:.06,shadowRadius:8,shadowOffset:{width:0,height:3}},
  homeSearchInput:{flex:1,fontSize:14,color:"#252a31",paddingVertical:0},
  homeFilter:{width:40,height:40,borderLeftWidth:1,borderLeftColor:"#eee7e1",alignItems:"center",justifyContent:"center"},
- marketHeader:{backgroundColor:"#ffffff",paddingHorizontal:20,paddingTop:8,paddingBottom:16,borderBottomWidth:1,borderBottomColor:"#d9dde3"},marketHeaderTop:{height:56,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},marketEyebrow:{fontSize:9,fontWeight:"900",letterSpacing:1.5,color:"#4b5563",marginBottom:2},headerAction:{width:46,height:46,borderRadius:16,backgroundColor:"#fff5ed",borderWidth:1,borderColor:"#ffeadb",alignItems:"center",justifyContent:"center"},searchGlyph:{fontSize:22,color:"#666",width:22,textAlign:"center"},searchAction:{backgroundColor:"#ef7628",paddingHorizontal:17,paddingVertical:11,borderRadius:12},searchActionText:{color:"#fff",fontSize:13,fontWeight:"900"},locationLine:{flexDirection:"row",justifyContent:"space-between",marginTop:10,paddingHorizontal:2},locationText:{fontSize:10,color:"#4b5563",fontWeight:"700"},promoBanner:{marginHorizontal:18,marginTop:13,minHeight:194,borderRadius:22,backgroundColor:"#ef7628",padding:23,flexDirection:"row",overflow:"hidden",justifyContent:"space-between",alignItems:"center",borderWidth:1,borderColor:"#d9dde3"},promoCopy:{flex:1,paddingRight:3,zIndex:2},heroOrbLarge:{position:"absolute",width:230,height:230,borderRadius:115,right:-65,top:-95,backgroundColor:"#d95f18",borderWidth:1,borderColor:"#ffad76"},heroOrbSmall:{position:"absolute",width:145,height:145,borderRadius:73,right:12,bottom:-92,backgroundColor:"#e66b20",borderWidth:1,borderColor:"#ffad76"},promoKicker:{fontSize:9,color:"#ffffff",fontWeight:"800",letterSpacing:1.5},promoTitle:{fontSize:28,lineHeight:34,fontWeight:"900",color:"#ffffff",marginTop:10,maxWidth:280,letterSpacing:-.9},promoSub:{fontSize:12,lineHeight:19,color:"#ffffff",marginTop:8,maxWidth:270},promoButton:{alignSelf:"flex-start",backgroundColor:"#202124",paddingHorizontal:17,paddingVertical:13,borderRadius:12,marginTop:17,elevation:2},promoButtonText:{color:"#fff",fontSize:12,fontWeight:"900",letterSpacing:.1},shortcutRow:{flexDirection:"row",justifyContent:"space-around",backgroundColor:"#fff",marginTop:14,paddingVertical:15,borderRadius:15,marginHorizontal:16,borderWidth:1,borderColor:"#d9dde3",elevation:0,shadowColor:"#182b45",shadowOpacity:0,shadowRadius:0,shadowOffset:{width:0,height:0}},shortcut:{alignItems:"center",flex:1},shortcutIcon:{width:45,height:45,borderRadius:14,backgroundColor:"#fff2e9",alignItems:"center",justifyContent:"center"},shortcutGlyph:{fontSize:23,color:"#ed6b1b",fontWeight:"800"},shortcutLabel:{fontSize:11,color:"#3c424a",fontWeight:"700",marginTop:6},sectionHint:{fontSize:11,color:"#858b94",marginTop:3},featuredRow:{paddingHorizontal:12,gap:10},featuredCard:{width:164,backgroundColor:"#fff",borderRadius:18,padding:10,borderWidth:1,borderColor:"#d9dde3",elevation:2,shadowColor:"#252a31",shadowOpacity:0.055,shadowRadius:10,shadowOffset:{width:0,height:4}},featuredImage:{width:"100%",height:144,backgroundColor:"#f3f4f6",borderRadius:12},featuredName:{fontSize:12,color:"#343a42",fontWeight:"700",lineHeight:16,marginTop:8,minHeight:32},featuredPrice:{fontSize:15,color:"#222831",fontWeight:"900",marginTop:5},featuredSeller:{fontSize:9,color:"#23865a",fontWeight:"700",marginTop:3},
+ marketHeader:{backgroundColor:"#ffffff",paddingHorizontal:20,paddingTop:8,paddingBottom:16,borderBottomWidth:1,borderBottomColor:"#d9dde3"},marketHeaderTop:{height:56,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},marketEyebrow:{fontSize:9,fontWeight:"900",letterSpacing:1.5,color:"#4b5563",marginBottom:2},headerAction:{width:46,height:46,borderRadius:16,backgroundColor:"#fff5ed",borderWidth:1,borderColor:"#ffeadb",alignItems:"center",justifyContent:"center"},searchGlyph:{fontSize:22,color:"#666",width:22,textAlign:"center"},searchAction:{backgroundColor:"#ef7628",paddingHorizontal:17,paddingVertical:11,borderRadius:12},searchActionText:{color:"#fff",fontSize:13,fontWeight:"900"},locationLine:{flexDirection:"row",justifyContent:"space-between",marginTop:10,paddingHorizontal:2},locationText:{fontSize:10,color:"#4b5563",fontWeight:"700"},promoCarousel:{marginTop:13},promoBanner:{minHeight:218,borderRadius:22,paddingHorizontal:18,paddingVertical:19,flexDirection:"row",overflow:"hidden",justifyContent:"space-between",alignItems:"center"},promoCopy:{flex:1,paddingRight:5,zIndex:2},promoVisual:{width:"39%",height:170,alignItems:"center",justifyContent:"center",position:"relative"},promoVisualHalo:{position:"absolute",width:150,height:150,borderRadius:75,backgroundColor:"rgba(255,255,255,0.18)"},promoProductImage:{width:126,height:144,borderRadius:18,borderWidth:3,borderColor:"rgba(255,255,255,0.85)",transform:[{rotate:"5deg"}]},promoProductTag:{position:"absolute",bottom:1,right:-2,backgroundColor:"#FFFFFF",paddingHorizontal:9,paddingVertical:6,borderRadius:9,elevation:3},promoProductTagText:{fontSize:9,color:"#202938",fontWeight:"900",letterSpacing:.6},promoDots:{flexDirection:"row",justifyContent:"center",alignItems:"center",gap:7,marginTop:10},promoDot:{width:7,height:7,borderRadius:4,backgroundColor:"#D5D9E0"},promoDotActive:{width:22,backgroundColor:"#155EEF"},heroOrbLarge:{position:"absolute",width:230,height:230,borderRadius:115,right:-65,top:-95,backgroundColor:"#d95f18",borderWidth:1,borderColor:"#ffad76"},heroOrbSmall:{position:"absolute",width:145,height:145,borderRadius:73,right:12,bottom:-92,backgroundColor:"#e66b20",borderWidth:1,borderColor:"#ffad76"},promoKicker:{fontSize:10,color:"#ffffff",fontWeight:"900",letterSpacing:1.2},promoTitle:{fontSize:24,lineHeight:29,fontWeight:"900",color:"#ffffff",marginTop:9,maxWidth:230,letterSpacing:-.7},promoSub:{fontSize:13,lineHeight:19,color:"#ffffff",marginTop:7,maxWidth:230},promoButton:{alignSelf:"flex-start",backgroundColor:"#FFFFFF",paddingHorizontal:15,paddingVertical:11,borderRadius:11,marginTop:13,minHeight:44,justifyContent:"center"},promoButtonText:{color:"#202938",fontSize:13,fontWeight:"900",letterSpacing:.1},shortcutRow:{flexDirection:"row",justifyContent:"space-around",backgroundColor:"#fff",marginTop:14,paddingVertical:15,borderRadius:15,marginHorizontal:16,borderWidth:1,borderColor:"#d9dde3",elevation:0,shadowColor:"#182b45",shadowOpacity:0,shadowRadius:0,shadowOffset:{width:0,height:0}},shortcut:{alignItems:"center",flex:1},shortcutIcon:{width:45,height:45,borderRadius:14,backgroundColor:"#fff2e9",alignItems:"center",justifyContent:"center"},shortcutGlyph:{fontSize:23,color:"#ed6b1b",fontWeight:"800"},shortcutLabel:{fontSize:12,color:"#3c424a",fontWeight:"700",marginTop:7},sectionHint:{fontSize:13,color:"#687386",marginTop:4},featuredRow:{paddingHorizontal:12,gap:10},featuredCard:{width:164,backgroundColor:"#fff",borderRadius:18,padding:10,borderWidth:1,borderColor:"#d9dde3",elevation:2,shadowColor:"#252a31",shadowOpacity:0.055,shadowRadius:10,shadowOffset:{width:0,height:4}},featuredImage:{width:"100%",height:144,backgroundColor:"#f3f4f6",borderRadius:12},featuredName:{fontSize:13,color:"#343a42",fontWeight:"700",lineHeight:18,marginTop:8,minHeight:36},featuredPrice:{fontSize:16,color:"#222831",fontWeight:"900",marginTop:5},featuredSeller:{fontSize:12,color:"#16845b",fontWeight:"700",marginTop:4},
 
  brandLockup:{flexDirection:"row",alignItems:"center",gap:9},brandLogo:{width:49,height:49,borderRadius:12},
 });
