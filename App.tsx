@@ -301,7 +301,7 @@ export default function App() {
   };
 
   const adPlacement=(placement:"homepage"|"search"|"feed"|"business")=>adCampaigns.filter(ad=>ad.placement===placement).slice(0,2).map(ad=><Pressable key={ad.id} accessibilityRole="link" accessibilityLabel={"Sponsored: "+ad.title} style={s.adCard} onPress={()=>{void supabase.functions.invoke("onekhusa-payments",{body:{action:"track_ad_event",campaign_id:ad.id,event_type:"click"}});void Linking.openURL(ad.destination_url).catch(()=>Alert.alert("Unable to open advertisement","Check your internet connection and try again."));}}><Image source={{uri:ad.image_url}} style={s.adImage} resizeMode="cover"/><View style={s.adCopy}><Text style={s.adLabel}>SPONSORED · {ad.business_name}</Text><Text numberOfLines={2} style={s.adTitle}>{ad.title}</Text><Text numberOfLines={2} style={s.adBody}>{ad.body}</Text><Text style={s.adLink}>Learn more ›</Text></View></Pressable>);
-  const nav = <View style={[s.bottomNav,{bottom:Platform.OS==="android"?32:8,height:isCompact?60:66,left:isTablet?18:8:right:isTablet?18:8,backgroundColor:palette.surface,borderTopColor:palette.border}]}>
+  const nav = <View style={[s.bottomNav,{bottom:Platform.OS==="android"?32:8,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8,backgroundColor:palette.surface,borderTopColor:palette.border}]}>
     {[
       ["Home","Home","home"],
       ["Explore","Explore","explore"],
@@ -311,7 +311,7 @@ export default function App() {
     ].map(([tabName,label,icon]) =>
       <Pressable key={tabName} accessibilityRole="button" accessibilityState={{selected:tab===tabName}} onPress={() => { setSelected(null); setTab(tabName); }} style={[s.navItem,{backgroundColor:"transparent"}]}>
         <MarketIcon name={icon} size={isCompact?20:22} color={tab===tabName?palette.accent:palette.muted} />
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.navLabel,{color:tab===tabName?palette.accent:palette.muted,fontSize:isCompact?8.5:10,color:tab===tabName?"#ef7b25":"#777"}]}>{marketText(language,label)}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.navLabel,{color:tab===tabName?palette.accent:palette.muted,fontSize:isCompact?8.5:10}]}>{marketText(language,label)}</Text>
       </Pressable>)}
   </View>;
 
