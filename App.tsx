@@ -1,9 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState , from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   SafeAreaView, ScrollView, View, Text, TextInput, Image, Pressable, Linking, Alert, BackHandler,
   StatusBar, StyleSheet, FlatList, ActivityIndicator, RefreshControl, Platform, useWindowDimensions
-, from "react-native";
+} from "react-native";
 import { supabase } from "./src/lib/supabase";
 import { processAuthCallback } from "./src/lib/auth-callback";
 import { ExploreScreens } from "./src/screens/ExploreScreens";
@@ -455,7 +455,7 @@ export default function App() {
       {savedProducts.length ? <FlatList data={savedProducts} renderItem={productCard} keyExtractor={p=>p.id} numColumns={gridColumns} scrollEnabled={false} columnWrapperStyle={[s.productRow,{gap:horizontalGutter}]} contentContainerStyle={{paddingHorizontal:horizontalGutter}}/> :
         <Text style={s.empty}>Products you save will appear here.</Text>}
     </ScrollView>
-    : tab === "Explore" ? <ExploreScreens language={language} onHardwareBack={() => setTab("Home")} /> : <AccountScreens language={language} onHardwareBack={() => setTab("Home")} onLanguageChange={setLanguage} passwordRecovery={passwordRecovery} onPasswordRecoveryComplete={()=>setPasswordRecovery(false)} onAppearanceChange={(theme,accentColor)=>setAppearance({theme,accentColor})} />}
+    : tab === "Explore" ? <ExploreScreens language={language} theme={appearance.theme} accentColor={appearance.accentColor} onHardwareBack={() => setTab("Home")} /> : <AccountScreens language={language} onHardwareBack={() => setTab("Home")} onLanguageChange={setLanguage} passwordRecovery={passwordRecovery} onPasswordRecoveryComplete={()=>setPasswordRecovery(false)} onAppearanceChange={(theme,accentColor)=>setAppearance({theme,accentColor})} />}
     {nav}
     {splashVisible ? <View style={s.splashOverlay}>
       <Image source={require("./assets/logo.png")} style={s.splashLogo} resizeMode="contain" />
