@@ -6,7 +6,7 @@ import {marketText,MarketLanguage} from "../lib/i18n";
 import {MarketIcon} from "../components/MarketIcon";
 import { ScrollView, View, Text, TextInput, Pressable, StyleSheet, Linking, Alert, BackHandler } from "react-native";
 
-type Section = "hub" | "news" | "jobs" | "stocks" | "football" | "weather" | "map";
+type Section = "hub" | "news" | "jobs" | "stocks" | "football" | "weather" | "map" | "businesses";
 const orange = "#ef7b25";
 const navy = "#252a31";
 const news: {category:string;title:string;summary:string;source:string;age:string;sourceUrl?:string}[] = [];
@@ -25,6 +25,9 @@ export function ExploreScreens({language,onHardwareBack}:{language:MarketLanguag
   const [jobRows,setJobRows] = useState(jobs);
   const [stockRows,setStockRows] = useState(stocks);
   const [fixtureRows,setFixtureRows] = useState(fixtures);
+  const [businessRows,setBusinessRows]=useState<any[]>([]);
+  const [feedAds,setFeedAds]=useState<any[]>([]);
+  const [businessAds,setBusinessAds]=useState<any[]>([]);
   const [liveFlags,setLiveFlags] = useState({news:false,jobs:false,stocks:false,football:false});
   const [standings,setStandings] = useState<any[]>([]);
   const [loadingData,setLoadingData] = useState(true);
@@ -38,6 +41,25 @@ export function ExploreScreens({language,onHardwareBack}:{language:MarketLanguag
   const [mapResults,setMapResults] = useState<{name:string;latitude:number;longitude:number}[]>([]);
   const [mapError,setMapError] = useState("");
   const [mapLoading,setMapLoading] = useState(false);
+  useEffect(()=>{
+    let active=true;
+    const loadDirectoryAndAds=async()=>{
+      const now=new Date().toISOString();
+      const [shops,feed,business]=await Promise.all([
+        supabase.from("market_sellers").select("id,name,slug,description,location,logo_url,whatsapp_url,is_verified").eq("status","active").order("name").limit(100),
+        supabase.from("market_ad_campaigns").select("id,business_name,title,body,destination_url,image_url,placement").eq("status","active").eq("payment_status","paid").eq("placement","feed").or("starts_at.is.null,starts_at.lte."+now).or("ends_at.is.null,ends_at.gt."+now).limit(3),
+        supabase.from("market_ad_campaigns").select("id,business_name,title,body,destination_url,image_url,placement").eq("status","active").eq("payment_status","paid").eq("placement","business").or("starts_at.is.null,starts_at.lte."+now).or("ends_at.is.null,ends_at.gt."+now).limit(3)
+      ]);
+      if(!active)return;
+      if(shops.data)setBusinessRows(shops.data);
+      if(feed.data)setFeedAds(feed.data);
+      if(business.data)setBusinessAds(business.data);
+      for(const ad of [...(feed.data??[]),...(business.data??[])])void supabase.functions.invoke("onekhusa-payments",{body:{action:"track_ad_event",campaign_id:ad.id,event_type:"impression"}});
+    };
+    void loadDirectoryAndAds();
+    return()=>{active=false;};
+  },[]);
+
   const [locationLabel,setLocationLabel] = useState("Malawi overview");
   useEffect(()=>{
     const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
@@ -90,7 +112,8 @@ export function ExploreScreens({language,onHardwareBack}:{language:MarketLanguag
     try{await Linking.openURL(url);}
     catch{Alert.alert("Unable to open link","Check your internet connection or try opening this link again.");}
   };
-  const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":section==="weather"?"Weather":section==="map"?"Map & Location":"Malawi Market");
+  const sponsoredCard=(ad:any)=><Pressable key={ad.id} accessibilityRole="link" style={{backgroundColor:"#fff",borderWidth:1,borderColor:"#e4e7eb",borderRadius:13,marginTop:10,overflow:"hidden",flexDirection:"row"}} onPress={()=>{void supabase.functions.invoke("onekhusa-payments",{body:{action:"track_ad_event",campaign_id:ad.id,event_type:"click"}});void openExternal(ad.destination_url);}}><Image source={{uri:ad.image_url}} style={{width:92,height:104,backgroundColor:"#eee"}} resizeMode="cover"/><View style={{flex:1,padding:11,justifyContent:"center"}}><Text style={{fontSize:9,fontWeight:"900",color:"#b45d20"}}>SPONSORED · {ad.business_name}</Text><Text style={{fontSize:14,fontWeight:"900",color:navy,marginTop:5}}>{ad.title}</Text><Text numberOfLines={2} style={{fontSize:11,color:"#59616b",marginTop:4}}>{ad.body}</Text><Text style={{fontSize:10,color:orange,fontWeight:"900",marginTop:6}}>Learn more ›</Text></View></Pressable>;
+  const heading = marketText(language,section==="news"?"News":section==="jobs"?"Job vacancies":section==="stocks"?"Malawi Stock Market":section==="football"?"Football":section==="weather"?"Weather":section==="map"?"Map & Location":section==="businesses"?"Businesses":"Malawi Market");
   const pill = (label:string, active:boolean, action:()=>void) => <Pressable key={label} onPress={action} style={[s.pill,active&&s.pillActive]}><Text style={[s.pillText,active&&{color:"#fff"}]}>{label}</Text></Pressable>;
   const notice = (text:string) => <View style={s.notice}><Text style={s.noticeText}>DATA STATUS · {text}</Text></View>;
   return <ScrollView style={s.root} contentContainerStyle={s.content}>
@@ -99,6 +122,7 @@ export function ExploreScreens({language,onHardwareBack}:{language:MarketLanguag
     {loadingData?<View style={s.statusPanel}><Text style={s.statusTitle}>Loading verified information…</Text><Text style={s.statusBody}>Fetching the latest available content.</Text></View>:null}
     {loadError?<View style={s.statusPanel}><Text style={s.statusTitle}>Some information could not be loaded</Text><Text style={s.statusBody}>{loadError}</Text><Pressable onPress={()=>setReloadKey(v=>v+1)} style={s.retry}><Text style={s.retryText}>Try again</Text></Pressable></View>:null}
     {section==="hub" ? <>
+      {feedAds.map(sponsoredCard)}
       <Text style={s.subheading}>GENERAL</Text>
       <Text style={s.subtitle}>Useful information and opportunities from across Malawi.</Text>
       {[
@@ -107,10 +131,17 @@ export function ExploreScreens({language,onHardwareBack}:{language:MarketLanguag
         ["jobs","jobs","Jobs","Published job vacancies and opportunities"],
       ].map(([key,icon,label,desc])=><Pressable key={key} style={s.menuCard} onPress={()=>go(key as Section)}><View style={s.menuIcon}><MarketIcon name={icon} size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>{marketText(language,label)}</Text><Text style={s.menuDesc}>{desc}</Text></View><Text style={s.arrow}>›</Text></Pressable>)}
       <Text style={[s.subheading,{marginTop:24}]}>LOCAL SERVICES</Text>
+      <Pressable style={s.menuCard} onPress={()=>go("businesses")}><View style={s.menuIcon}><MarketIcon name="store" size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>Businesses</Text><Text style={s.menuDesc}>Discover active marketplace stores</Text></View><Text style={s.arrow}>›</Text></Pressable>
       <Pressable style={s.menuCard} onPress={()=>go("weather")}><View style={s.menuIcon}><MarketIcon name="weather" size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>Weather</Text><Text style={s.menuDesc}>Current conditions at your device location</Text></View><Text style={s.arrow}>›</Text></Pressable>
       <Pressable style={s.menuCard} onPress={()=>go("map")}><View style={s.menuIcon}><MarketIcon name="map" size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>Map & Location</Text><Text style={s.menuDesc}>Find places and view a map of Malawi</Text></View><Text style={s.arrow}>›</Text></Pressable>
       <Text style={[s.subheading,{marginTop:24}]}>SPORTS</Text>
       <Pressable style={s.menuCard} onPress={()=>go("football")}><View style={s.menuIcon}><MarketIcon name="football" size={23} color={orange}/></View><View style={{flex:1}}><Text style={s.menuTitle}>Football</Text><Text style={s.menuDesc}>Fixtures, results and league information</Text></View><Text style={s.arrow}>›</Text></Pressable>
+    </> : null}
+    {section==="businesses" ? <>
+      {businessAds.map(sponsoredCard)}
+      <Text style={s.subtitle}>Active marketplace businesses and their contact details.</Text>
+      {businessRows.map((shop:any)=><View key={shop.id} style={s.article}><View style={{flexDirection:"row",alignItems:"center",gap:12}}>{shop.logo_url?<Image source={{uri:shop.logo_url}} style={{width:54,height:54,borderRadius:12}}/>:<View style={{width:54,height:54,borderRadius:12,backgroundColor:"#fff0e4",alignItems:"center",justifyContent:"center"}}><MarketIcon name="store" size={23} color={orange}/></View>}<View style={{flex:1}}><Text style={s.cardTitle}>{shop.name}{shop.is_verified?" ✓":""}</Text><Text style={s.meta}>{shop.location||"Location not provided"}</Text></View></View><Text style={s.body}>{shop.description||"Marketplace seller"}</Text>{shop.whatsapp_url?<Pressable onPress={()=>void openExternal(shop.whatsapp_url)}><Text style={s.soon}>CONTACT BUSINESS</Text></Pressable>:null}</View>)}
+      {!businessRows.length?<Text style={s.empty}>No active businesses are listed yet.</Text>:null}
     </> : null}
     {section==="news" ? <>
       {notice(liveFlags.news?"Verified articles loaded from Malawi Market content feed.":"No verified articles are published yet. Sync Malawi24 RSS or add sourced articles in Admin.")}
