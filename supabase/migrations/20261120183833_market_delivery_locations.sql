@@ -41,8 +41,8 @@ create index if not exists market_delivery_addresses_buyer_idx
 create unique index if not exists market_delivery_addresses_one_default_per_buyer_idx
   on public.market_delivery_addresses(buyer_user_id) where is_default = true;
 alter table public.market_delivery_addresses enable row level security;
-revoke all on public.market_delivery_addresses from anon, public;
-grant select, insert, update, delete on public.market_delivery_addresses to authenticated;
+revoke all on table public.market_delivery_addresses from anon, public, authenticated;
+grant select, insert, update, delete on table public.market_delivery_addresses to authenticated;
 drop policy if exists "Buyers manage their own delivery addresses" on public.market_delivery_addresses;
 create policy "Buyers manage their own delivery addresses"
   on public.market_delivery_addresses for all to authenticated
