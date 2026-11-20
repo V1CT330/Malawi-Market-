@@ -16,7 +16,7 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, _ctx) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  let input: { action?: string; latitude?: number; longitude?: number };
+  let input: { action?: string; latitude?: number; longitude?: number; season?: number; leagueId?: number };
   try {
     input = await req.json();
   } catch {
@@ -45,6 +45,60 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, _ctx) => {
       sourceName: "API-Football",
     }));
     return json({ fixtures });
+  }
+
+  if (input.action === "standings") {
+    const key = Deno.env.get("FOOTBALL_API_KEY");
+    if (!key) return json({ error: "Football provider secret is not configured" }, 503);
+    const headers = { "x-apisports-key": key };
+    const requestedSeason = Number.isInteger(input.season) && Number(input.season) >= 2000 && Number(input.season) <= 2100
+      ? Number(input.season) : new Date().getFullYear();
+    let leagueId = Number(input.leagueId) || 0;
+    if (!Number.isInteger(leagueId) || leagueId < 1) {
+      const leaguesUrl = new URL("https://v3.football.api-sports.io/leagues");
+      leaguesUrl.searchParams.set("country", "Malawi");
+      leaguesUrl.searchParams.set("season", String(requestedSeason));
+      const leaguesResponse = await fetch(leaguesUrl, { headers });
+      const leaguesBody = await leaguesResponse.json().catch(() => ({}));
+      if (!leaguesResponse.ok || (leaguesBody.errors && Object.keys(leaguesBody.errors).length)) {
+        return json({ error: "Could not find Malawi football competitions", details: leaguesBody.errors ?? leaguesBody.message ?? leaguesResponse.status }, 502);
+      }
+      const competition = (leaguesBody.response ?? []).find((item: any) =>
+        item.country?.name?.toLowerCase() === "malawi" &&
+        /super league/i.test(item.league?.name ?? "") &&
+        item.league?.type === "League" &&
+        (item.seasons ?? []).some((season: any) => Number(season.year) === requestedSeason && season.coverage?.standings === true)
+      );
+      if (!competition) return json({ error: "No Malawi Super League standings are available for season " + requestedSeason + "." }, 404);
+      leagueId = Number(competition.league.id);
+    }
+    const standingsUrl = new URL("https://v3.football.api-sports.io/standings");
+    standingsUrl.searchParams.set("league", String(leagueId));
+    standingsUrl.searchParams.set("season", String(requestedSeason));
+    const standingsResponse = await fetch(standingsUrl, { headers });
+    const standingsBody = await standingsResponse.json().catch(() => ({}));
+    if (!standingsResponse.ok || (standingsBody.errors && Object.keys(standingsBody.errors).length)) {
+      return json({ error: "Football standings provider request failed", details: standingsBody.errors ?? standingsBody.message ?? standingsResponse.status }, 502);
+    }
+    const league = standingsBody.response?.[0]?.league;
+    const groups = league?.standings ?? [];
+    const rows = groups.flat().map((item: any) => ({
+      id: String(item.team?.id ?? item.rank),
+      competition: league?.name || "Malawi Super League",
+      season: String(league?.season ?? requestedSeason),
+      team_name: item.team?.name || "Team",
+      played: Number(item.all?.played ?? 0),
+      won: Number(item.all?.win ?? 0),
+      drawn: Number(item.all?.draw ?? 0),
+      lost: Number(item.all?.lose ?? 0),
+      goals_for: Number(item.all?.goals?.for ?? 0),
+      goals_against: Number(item.all?.goals?.against ?? 0),
+      points: Number(item.points ?? 0),
+      position: Number(item.rank ?? 0),
+      source_name: "API-Football",
+      source_url: "https://www.api-football.com/",
+    }));
+    return json({ standings: rows, competition: league?.name ?? "Malawi Super League", season: league?.season ?? requestedSeason, source: "API-Football" });
   }
 
   if (input.action === "weather") {
