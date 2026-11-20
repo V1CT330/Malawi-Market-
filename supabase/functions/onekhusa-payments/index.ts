@@ -123,7 +123,7 @@ async function initiatePayment(req: Request) {
 
 async function initiateAdPayment(req: Request) {
   const authHeader = req.headers.get("Authorization") ?? "";
-  const token = authHeader.replace(/^Bearer\\s+/i, "");
+  const token = authHeader.replace(/^Bearer\s+/i, "");
   if (!token || token === authHeader) return json({ error: "Sign in before paying." }, 401);
   const { data: userData, error: authError } = await admin.auth.getUser(token);
   if (authError || !userData.user) return json({ error: "Your session is invalid. Sign in again." }, 401);
