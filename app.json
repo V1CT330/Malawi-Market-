@@ -27,7 +27,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Allow Malawi Market to use your location for local weather and map features."
+          "locationWhenInUsePermission": "Allow Malawi Market to use your location for local weather, maps and optional delivery drop-off pins."
         }
       ],
       [
