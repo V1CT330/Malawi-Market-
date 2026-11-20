@@ -411,7 +411,8 @@ export default function App() {
         <Text style={s.filterHeading}>Condition</Text>
         <View style={s.filterRow}>{[["all","Any"],["new","New"],["used","Used"],["refurbished","Refurbished"]].map(([v,label])=><Pressable key={v} onPress={()=>setConditionFilter(v)} style={[s.filterPill,conditionFilter===v&&s.filterActive]}><Text style={[s.filterText,conditionFilter===v&&{color:"#fff"}]}>{label}</Text></Pressable>)}</View>
       </View> : null}
-      {tab==="Search"?adPlacement("search"):null}\n      {loading ? <View style={s.loading}><ActivityIndicator size="large" color="#ef7b25"/><Text style={s.loadingText}>Loading marketplace…</Text></View>
+      {tab==="Search"?adPlacement("search"):null}
+      {loading ? <View style={s.loading}><ActivityIndicator size="large" color="#ef7b25"/><Text style={s.loadingText}>Loading marketplace…</Text></View>
         : filtered.length ? <FlatList data={filtered} renderItem={productCard} keyExtractor={p=>p.id} numColumns={gridColumns} scrollEnabled={false} columnWrapperStyle={[s.productRow,{gap:horizontalGutter}]} contentContainerStyle={{paddingHorizontal:horizontalGutter}} />
         : emptyCatalogue}
       <View style={s.trust}><Text style={s.trustTitle}>Made for Malawi</Text><Text style={s.trustText}>Discover products, support local sellers and shop from one place.</Text></View>
