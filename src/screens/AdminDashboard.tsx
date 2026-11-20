@@ -4,11 +4,12 @@ import {supabase} from "../lib/supabase";
 import {AdminKycReview} from "../components/KycVerification";
 
 type Tab="overview"|"sellers"|"kyc"|"products"|"orders"|"users"|"reports"|"content"|"ads";
+type ManagedContent={id:string;kind:"news"|"jobs"|"football";title:string;source:string;created_at:string};
 const money=(n:number)=>"MK "+Number(n||0).toLocaleString("en-US");
 export function AdminDashboard(){
  const [allowed,setAllowed]=useState(false);const [loading,setLoading]=useState(true);const [busy,setBusy]=useState(false);const [syncing,setSyncing]=useState(false);const actionLock=useRef(false);const [tab,setTab]=useState<Tab>("overview");
  const [stats,setStats]=useState({sellers:0,pending:0,products:0,orders:0,paid:0,revenue:0});
- const [sellers,setSellers]=useState<any[]>([]);const [products,setProducts]=useState<any[]>([]);const [orders,setOrders]=useState<any[]>([]);const [users,setUsers]=useState<any[]>([]);const [reports,setReports]=useState<any[]>([]);const [ads,setAds]=useState<any[]>([]);const [adMetrics,setAdMetrics]=useState<Record<string,{impressions:number;clicks:number}>>({});
+ const [sellers,setSellers]=useState<any[]>([]);const [products,setProducts]=useState<any[]>([]);const [orders,setOrders]=useState<any[]>([]);const [users,setUsers]=useState<any[]>([]);const [reports,setReports]=useState<any[]>([]);const [ads,setAds]=useState<any[]>([]);const [managedContent,setManagedContent]=useState<ManagedContent[]>([]);const [adMetrics,setAdMetrics]=useState<Record<string,{impressions:number;clicks:number}>>({});
  const [contentType,setContentType]=useState<"news"|"jobs"|"stocks"|"football"|"standings">("news");
  const [title,setTitle]=useState("");const [summary,setSummary]=useState("");const [source,setSource]=useState("");const [sourceUrl,setSourceUrl]=useState("");const [category,setCategory]=useState("general");
  const [company,setCompany]=useState("");const [location,setLocation]=useState("");const [description,setDescription]=useState("");const [salary,setSalary]=useState("");const [applicationUrl,setApplicationUrl]=useState("");
@@ -20,17 +21,25 @@ export function AdminDashboard(){
    const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Sign in to access administration.");
    const {data:role,error:roleError}=await supabase.rpc("has_role",{_user_id:user.id,_role:"admin"});if(roleError)throw roleError;
    if(role!==true){setAllowed(false);return;}setAllowed(true);
-   const [s,p,o,paid,rev,u,rp]=await Promise.all([
+   const [s,p,o,paid,rev,u,rp,n,j,ft]=await Promise.all([
     supabase.from("market_sellers").select("id,name,slug,location,status,is_verified,created_at,auth_user_id").order("created_at",{ascending:false}),
     supabase.from("market_products").select("id,title,price_mwk,status,stock_quantity,created_at,seller:market_sellers(name)").order("created_at",{ascending:false}).limit(100),
     supabase.from("market_orders").select("id,status,payment_status,total_mwk,delivery_name,delivery_phone,delivery_address,created_at").order("created_at",{ascending:false}).limit(100),
     supabase.from("market_orders").select("id",{count:"exact",head:true}).eq("payment_status","paid"),
     supabase.from("market_orders").select("total_mwk").eq("payment_status","paid"),
     supabase.from("profiles").select("id,display_name,phone,location,suspended,created_at").order("created_at",{ascending:false}).limit(200),
-    supabase.from("market_reports").select("id,reporter_user_id,target_type,target_id,reason,details,status,created_at").order("created_at",{ascending:false}).limit(100)
+    supabase.from("market_reports").select("id,reporter_user_id,target_type,target_id,reason,details,status,created_at").order("created_at",{ascending:false}).limit(100),
+    supabase.from("market_news_articles").select("id,title,source_name,created_at,is_published").eq("is_published",true).order("created_at",{ascending:false}).limit(40),
+    supabase.from("market_job_listings").select("id,title,company_name,source_name,created_at,is_published").eq("is_published",true).order("created_at",{ascending:false}).limit(40),
+    supabase.from("market_football_fixtures").select("id,competition,home_team,away_team,source_name,created_at,is_published").eq("is_published",true).order("created_at",{ascending:false}).limit(40)
    ]);
-   if(s.error)throw s.error;if(p.error)throw p.error;if(o.error)throw o.error;if(paid.error)throw paid.error;if(rev.error)throw rev.error;if(u.error)throw u.error;if(rp.error)throw rp.error;
+   if(s.error)throw s.error;if(p.error)throw p.error;if(o.error)throw o.error;if(paid.error)throw paid.error;if(rev.error)throw rev.error;if(u.error)throw u.error;if(rp.error)throw rp.error;if(n.error)throw n.error;if(j.error)throw j.error;if(ft.error)throw ft.error;
    setSellers(s.data??[]);setProducts(p.data??[]);setOrders(o.data??[]);setUsers(u.data??[]);setReports(rp.data??[]);
+   setManagedContent([
+    ...(n.data??[]).map(x=>({id:x.id,kind:"news" as const,title:x.title,source:x.source_name||"News source",created_at:x.created_at})),
+    ...(j.data??[]).map(x=>({id:x.id,kind:"jobs" as const,title:x.title,source:x.company_name||x.source_name||"Employer",created_at:x.created_at})),
+    ...(ft.data??[]).map(x=>({id:x.id,kind:"football" as const,title:x.home_team+" vs "+x.away_team,source:x.source_name||x.competition,created_at:x.created_at}))
+   ].sort((a,b)=>new Date(b.created_at).getTime()-new Date(a.created_at).getTime()));
    const adResult=await supabase.from("market_ad_campaigns").select("id,business_name,title,placement,budget_mwk,spent_mwk,status,payment_status,created_at").order("created_at",{ascending:false}).limit(200);
    if(adResult.error)throw adResult.error;setAds(adResult.data??[]);
    const eventResult=await supabase.from("market_ad_events").select("campaign_id,event_type").gte("created_at",new Date(Date.now()-30*24*60*60*1000).toISOString()).limit(10000);
@@ -102,9 +111,25 @@ export function AdminDashboard(){
   }catch(e:any){Alert.alert("Campaign update failed",e?.message||"Please try again.");}
   finally{actionLock.current=false;setBusy(false);}
  };
+ const unpublishContent=(record:ManagedContent)=>{
+  Alert.alert("Unpublish content?","This removes the item from public Explore screens but keeps its record for administration.",[
+   {text:"Keep published",style:"cancel"},
+   {text:"Unpublish",style:"destructive",onPress:async()=>{
+    if(actionLock.current)return;actionLock.current=true;setBusy(true);
+    try{
+     let error:any=null;
+     if(record.kind==="news"){const result=await supabase.from("market_news_articles").update({is_published:false}).eq("id",record.id);error=result.error;}
+     else if(record.kind==="jobs"){const result=await supabase.from("market_job_listings").update({is_published:false}).eq("id",record.id);error=result.error;}
+     else{const result=await supabase.from("market_football_fixtures").update({is_published:false}).eq("id",record.id);error=result.error;}
+     if(error)throw error;await load();
+    }catch(e:any){Alert.alert("Could not unpublish content",e?.message||"Try again.");}
+    finally{setBusy(false);actionLock.current=false;}
+   }}
+  ]);
+ };
  const syncNews=async()=>{
   setSyncing(true);
-  try{const {data,error}=await supabase.functions.invoke("market-content-sync",{body:{}});if(error)throw error;if(data?.error)throw new Error(data.error);Alert.alert("News sync complete",String(data.stored??0)+" article records stored from Malawi24.");}
+  try{const {data,error}=await supabase.functions.invoke("market-content-sync",{body:{}});if(error)throw error;if(data?.error)throw new Error(data.error);Alert.alert("News sync complete",String(data.stored??0)+" article records stored from Malawi24 and BBC News.");}
   catch(e:any){Alert.alert("News sync failed",e?.message||"Could not sync RSS articles.");}
   finally{setSyncing(false);}
  };
@@ -154,13 +179,21 @@ export function AdminDashboard(){
   {tab==="orders"?<><Text style={s.section}>Marketplace orders</Text>{orders.map(x=><View key={x.id} style={s.card}><Text style={s.cardTitle}>Order {String(x.id).slice(0,8).toUpperCase()}</Text><Text style={s.meta}>{new Date(x.created_at).toLocaleString()} · {String(x.status).replace(/_/g," ").toUpperCase()}</Text><Text style={s.meta}>Payment {String(x.payment_status).toUpperCase()} · {money(x.total_mwk)}</Text><Text style={s.meta}>{x.delivery_name} · {x.delivery_phone}</Text><Text style={s.meta}>{x.delivery_address}</Text>{x.status==="pending_payment"?<Pressable disabled={busy} onPress={()=>Alert.alert("Cancel unpaid order?","This cancels the order and restores reserved stock. Paid orders cannot be cancelled here.",[{text:"Keep order",style:"cancel"},{text:"Cancel order",style:"destructive",onPress:async()=>{setBusy(true);const {error}=await supabase.rpc("admin_cancel_unpaid_market_order",{p_order_id:x.id});if(error)Alert.alert("Could not cancel",error.message);else await load();setBusy(false);}}])}><Text style={s.danger}>Cancel unpaid order</Text></Pressable>:null}</View>)}</>:null}
   {!orders.length?<Text style={s.meta}>No marketplace orders have been placed yet.</Text>:null}
   {tab==="ads"?<><Text style={s.section}>Advertising campaigns</Text><Text style={s.meta}>Automatic activation follows verified payment. Admin controls can pause, suspend or reject campaigns; unpaid campaigns cannot be activated manually.</Text>{ads.map(x=><View key={x.id} style={s.card}><Text style={s.cardTitle}>{x.title}</Text><Text style={s.meta}>{x.business_name} · {String(x.placement).toUpperCase()}</Text><Text style={s.meta}>Budget {money(x.budget_mwk)} · Spent {money(x.spent_mwk||0)}</Text><Text style={s.meta}>Campaign {String(x.status).toUpperCase()} · Payment {String(x.payment_status).toUpperCase()}</Text><Text style={s.meta}>Last 30 days: {adMetrics[x.id]?.impressions??0} impressions · {adMetrics[x.id]?.clicks??0} clicks</Text><View style={s.actions}>{x.status==="active"?<Pressable disabled={busy} onPress={()=>void updateAd(x.id,"paused")}><Text style={s.danger}>Pause campaign</Text></Pressable>:null}{x.status==="paused"&&x.payment_status==="paid"?<Pressable disabled={busy} onPress={()=>void updateAd(x.id,"active")}><Text style={s.action}>Reactivate</Text></Pressable>:null}{!["rejected","suspended"].includes(x.status)?<Pressable disabled={busy} onPress={()=>Alert.alert("Suspend campaign?","This stops the campaign from being served.",[{text:"Cancel",style:"cancel"},{text:"Suspend",style:"destructive",onPress:()=>void updateAd(x.id,"suspended")}])}><Text style={s.danger}>Suspend</Text></Pressable>:null}{x.status!=="rejected"?<Pressable disabled={busy} onPress={()=>Alert.alert("Reject campaign?","Reject this campaign. This does not automatically refund a completed payment.",[{text:"Cancel",style:"cancel"},{text:"Reject",style:"destructive",onPress:()=>void updateAd(x.id,"rejected")}])}><Text style={s.danger}>Reject</Text></Pressable>:null}</View></View>)}{!ads.length?<Text style={s.meta}>No advertising campaigns yet.</Text>:null}</>:null}
-  {tab==="content"?<><Text style={s.section}>Publish verified content</Text><Text style={s.meta}>Only enter information from a reliable source. These entries are published immediately and show the source in the app.</Text><Pressable disabled={syncing} style={s.secondary} onPress={()=>void syncNews()}>{syncing?<ActivityIndicator color="#ef7b25"/>:<Text style={s.refreshText}>Sync Malawi24 RSS news</Text>}</Pressable><View style={s.pills}>{(["news","jobs","stocks","football","standings"] as const).map(v=><Pressable key={v} onPress={()=>setContentType(v)} style={[s.pill,contentType===v&&s.pillActive]}><Text style={[s.pillText,contentType===v&&{color:"#fff"}]}>{v.toUpperCase()}</Text></Pressable>)}</View>
+  {tab==="content"?<><Text style={s.section}>Publish verified content</Text><Text style={s.meta}>Only enter information from a reliable source. These entries are published immediately and show the source in the app.</Text><Pressable disabled={syncing} style={s.secondary} onPress={()=>void syncNews()}>{syncing?<ActivityIndicator color="#ef7b25"/>:<Text style={s.refreshText}>Sync Malawi24 + BBC News feeds</Text>}</Pressable><View style={s.pills}>{(["news","jobs","stocks","football","standings"] as const).map(v=><Pressable key={v} onPress={()=>setContentType(v)} style={[s.pill,contentType===v&&s.pillActive]}><Text style={[s.pillText,contentType===v&&{color:"#fff"}]}>{v.toUpperCase()}</Text></Pressable>)}</View>
   {contentType==="news"?<><Text style={s.label}>Headline</Text><TextInput value={title} onChangeText={setTitle} style={s.input}/><Text style={s.label}>Summary</Text><TextInput value={summary} onChangeText={setSummary} style={[s.input,{height:75}]} multiline/><Text style={s.label}>Category</Text><TextInput value={category} onChangeText={setCategory} style={s.input}/><Text style={s.label}>Source name</Text><TextInput value={source} onChangeText={setSource} style={s.input}/><Text style={s.label}>Source URL (HTTPS)</Text><TextInput value={sourceUrl} onChangeText={setSourceUrl} style={s.input} autoCapitalize="none"/></>:null}
   {contentType==="jobs"?<><Text style={s.label}>Job title</Text><TextInput value={title} onChangeText={setTitle} style={s.input}/><Text style={s.label}>Employer</Text><TextInput value={company} onChangeText={setCompany} style={s.input}/><Text style={s.label}>Location</Text><TextInput value={location} onChangeText={setLocation} style={s.input}/><Text style={s.label}>Category</Text><TextInput value={category} onChangeText={setCategory} style={s.input}/><Text style={s.label}>Description</Text><TextInput value={description} onChangeText={setDescription} style={[s.input,{height:100}]} multiline/><Text style={s.label}>Salary range (optional)</Text><TextInput value={salary} onChangeText={setSalary} style={s.input}/><Text style={s.label}>Application URL (optional)</Text><TextInput value={applicationUrl} onChangeText={setApplicationUrl} style={s.input} autoCapitalize="none"/><Text style={s.label}>Source name</Text><TextInput value={source} onChangeText={setSource} style={s.input}/><Text style={s.label}>Source URL (optional)</Text><TextInput value={sourceUrl} onChangeText={setSourceUrl} style={s.input} autoCapitalize="none"/></>:null}
   {contentType==="stocks"?<><Text style={s.label}>Ticker symbol</Text><TextInput value={symbol} onChangeText={setSymbol} style={s.input}/><Text style={s.label}>Company</Text><TextInput value={company} onChangeText={setCompany} style={s.input}/><Text style={s.label}>Latest price</Text><TextInput value={price} onChangeText={setPrice} keyboardType="decimal-pad" style={s.input}/><Text style={s.label}>Change percent</Text><TextInput value={change} onChangeText={setChange} keyboardType="decimal-pad" style={s.input}/><Text style={s.label}>Currency</Text><TextInput value={currency} onChangeText={setCurrency} style={s.input}/><Text style={s.label}>Source name</Text><TextInput value={source} onChangeText={setSource} style={s.input}/><Text style={s.label}>Source URL</Text><TextInput value={sourceUrl} onChangeText={setSourceUrl} style={s.input} autoCapitalize="none"/></>:null}
   {contentType==="football"?<><Text style={s.label}>Competition</Text><TextInput value={competition} onChangeText={setCompetition} style={s.input}/><Text style={s.label}>Home team</Text><TextInput value={home} onChangeText={setHome} style={s.input}/><Text style={s.label}>Away team</Text><TextInput value={away} onChangeText={setAway} style={s.input}/><Text style={s.label}>Kickoff date/time (local)</Text><TextInput value={kickoff} onChangeText={setKickoff} style={s.input} placeholder="2026-12-01 15:00"/><Text style={s.label}>Source name</Text><TextInput value={source} onChangeText={setSource} style={s.input}/><Text style={s.label}>Source URL</Text><TextInput value={sourceUrl} onChangeText={setSourceUrl} style={s.input} autoCapitalize="none"/></>:null}
   {contentType==="standings"?<><Text style={s.label}>Competition</Text><TextInput value={competition} onChangeText={setCompetition} style={s.input}/><Text style={s.label}>Season</Text><TextInput value={season} onChangeText={setSeason} style={s.input}/><Text style={s.label}>Team</Text><TextInput value={team} onChangeText={setTeam} style={s.input}/>{[["Played",played,setPlayed],["Won",won,setWon],["Drawn",drawn,setDrawn],["Lost",lost,setLost],["Goals for",goalsFor,setGoalsFor],["Goals against",goalsAgainst,setGoalsAgainst],["Points",points,setPoints],["Position",position,setPosition]].map(([label,value,setter]:any)=><View key={label}><Text style={s.label}>{label}</Text><TextInput value={value} onChangeText={setter} keyboardType="numeric" style={s.input}/></View>)}<Text style={s.label}>Source name</Text><TextInput value={source} onChangeText={setSource} style={s.input}/><Text style={s.label}>Source URL</Text><TextInput value={sourceUrl} onChangeText={setSourceUrl} style={s.input} autoCapitalize="none"/></>:null}
   <Pressable disabled={busy} style={s.button} onPress={()=>void publishContent()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>Publish {contentType}</Text>}</Pressable></>:null}
+  <Text style={s.section}>Published content ({managedContent.length})</Text>
+  <Text style={s.meta}>Review recently published news, vacancies and football fixtures. Unpublishing hides an item from public screens without deleting its record.</Text>
+  {managedContent.map(record=><View key={record.kind+record.id} style={s.card}>
+   <Text style={s.cardTitle}>{record.title}</Text>
+   <Text style={s.meta}>{record.kind.toUpperCase()} · {record.source} · {new Date(record.created_at).toLocaleDateString()}</Text>
+   <View style={s.actions}><Pressable disabled={busy} onPress={()=>unpublishContent(record)}><Text style={s.danger}>Unpublish</Text></Pressable></View>
+  </View>)}
+  {!managedContent.length?<Text style={s.meta}>No published news, vacancies or fixtures are available to manage.</Text>:null}
   <Pressable style={s.refresh} onPress={()=>void load()}><Text style={s.refreshText}>Refresh administration data</Text></Pressable>
  </ScrollView>;
 }
