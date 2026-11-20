@@ -120,9 +120,47 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, _ctx) => {
     url.searchParams.set("lon", String(longitude));
     url.searchParams.set("appid", key);
     url.searchParams.set("units", "metric");
-    const upstream = await fetch(url);
+    const forecastUrl = new URL("https://api.openweathermap.org/data/2.5/forecast");
+    forecastUrl.searchParams.set("lat", String(latitude));
+    forecastUrl.searchParams.set("lon", String(longitude));
+    forecastUrl.searchParams.set("appid", key);
+    forecastUrl.searchParams.set("units", "metric");
+    const [upstream, forecastUpstream] = await Promise.all([fetch(url), fetch(forecastUrl)]);
     const body = await upstream.json().catch(() => ({}));
+    const forecastBody = await forecastUpstream.json().catch(() => ({}));
     if (!upstream.ok) return json({ error: "Weather provider request failed", details: body.message ?? upstream.status }, 502);
+    const offsetSeconds = Number(forecastBody.city?.timezone ?? body.timezone ?? 0);
+    const grouped = new Map<string, any>();
+    for (const entry of (forecastBody.list ?? [])) {
+      const timestamp = Number(entry.dt);
+      if (!Number.isFinite(timestamp)) continue;
+      const date = new Date((timestamp + offsetSeconds) * 1000).toISOString().slice(0, 10);
+      const hour = new Date((timestamp + offsetSeconds) * 1000).getUTCHours();
+      const item = grouped.get(date) ?? {
+        date,
+        min: Number(entry.main?.temp_min ?? entry.main?.temp),
+        max: Number(entry.main?.temp_max ?? entry.main?.temp),
+        description: entry.weather?.[0]?.description || "Forecast",
+        icon: entry.weather?.[0]?.icon || "",
+        precipitation: Number(entry.pop ?? 0),
+        representativeHourDistance: Math.abs(hour - 12),
+      };
+      item.min = Math.min(item.min, Number(entry.main?.temp_min ?? entry.main?.temp));
+      item.max = Math.max(item.max, Number(entry.main?.temp_max ?? entry.main?.temp));
+      item.precipitation = Math.max(item.precipitation, Number(entry.pop ?? 0));
+      if (Math.abs(hour - 12) < item.representativeHourDistance) {
+        item.description = entry.weather?.[0]?.description || item.description;
+        item.icon = entry.weather?.[0]?.icon || item.icon;
+        item.representativeHourDistance = Math.abs(hour - 12);
+      }
+      grouped.set(date, item);
+    }
+    const forecast = Array.from(grouped.values()).slice(0, 5).map(({ representativeHourDistance, ...item }) => ({
+      ...item,
+      min: Math.round(item.min),
+      max: Math.round(item.max),
+      precipitation: Math.round(item.precipitation * 100),
+    }));
     return json({
       weather: {
         place: body.name || "Current location",
@@ -131,6 +169,8 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, _ctx) => {
         humidity: Number(body.main?.humidity),
         description: body.weather?.[0]?.description || "Current conditions",
         wind: Number(body.wind?.speed || 0),
+        forecast,
+        forecastUnavailable: !forecastUpstream.ok,
       },
     });
   }
