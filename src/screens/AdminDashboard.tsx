@@ -186,14 +186,16 @@ export function AdminDashboard(){
   {contentType==="football"?<><Text style={s.label}>Competition</Text><TextInput value={competition} onChangeText={setCompetition} style={s.input}/><Text style={s.label}>Home team</Text><TextInput value={home} onChangeText={setHome} style={s.input}/><Text style={s.label}>Away team</Text><TextInput value={away} onChangeText={setAway} style={s.input}/><Text style={s.label}>Kickoff date/time (local)</Text><TextInput value={kickoff} onChangeText={setKickoff} style={s.input} placeholder="2026-12-01 15:00"/><Text style={s.label}>Source name</Text><TextInput value={source} onChangeText={setSource} style={s.input}/><Text style={s.label}>Source URL</Text><TextInput value={sourceUrl} onChangeText={setSourceUrl} style={s.input} autoCapitalize="none"/></>:null}
   {contentType==="standings"?<><Text style={s.label}>Competition</Text><TextInput value={competition} onChangeText={setCompetition} style={s.input}/><Text style={s.label}>Season</Text><TextInput value={season} onChangeText={setSeason} style={s.input}/><Text style={s.label}>Team</Text><TextInput value={team} onChangeText={setTeam} style={s.input}/>{[["Played",played,setPlayed],["Won",won,setWon],["Drawn",drawn,setDrawn],["Lost",lost,setLost],["Goals for",goalsFor,setGoalsFor],["Goals against",goalsAgainst,setGoalsAgainst],["Points",points,setPoints],["Position",position,setPosition]].map(([label,value,setter]:any)=><View key={label}><Text style={s.label}>{label}</Text><TextInput value={value} onChangeText={setter} keyboardType="numeric" style={s.input}/></View>)}<Text style={s.label}>Source name</Text><TextInput value={source} onChangeText={setSource} style={s.input}/><Text style={s.label}>Source URL</Text><TextInput value={sourceUrl} onChangeText={setSourceUrl} style={s.input} autoCapitalize="none"/></>:null}
   <Pressable disabled={busy} style={s.button} onPress={()=>void publishContent()}>{busy?<ActivityIndicator color="#fff"/>:<Text style={s.buttonText}>Publish {contentType}</Text>}</Pressable></>:null}
-  <Text style={s.section}>Published content ({managedContent.length})</Text>
-  <Text style={s.meta}>Review recently published news, vacancies and football fixtures. Unpublishing hides an item from public screens without deleting its record.</Text>
-  {managedContent.map(record=><View key={record.kind+record.id} style={s.card}>
-   <Text style={s.cardTitle}>{record.title}</Text>
-   <Text style={s.meta}>{record.kind.toUpperCase()} · {record.source} · {new Date(record.created_at).toLocaleDateString()}</Text>
-   <View style={s.actions}><Pressable disabled={busy} onPress={()=>unpublishContent(record)}><Text style={s.danger}>Unpublish</Text></Pressable></View>
-  </View>)}
-  {!managedContent.length?<Text style={s.meta}>No published news, vacancies or fixtures are available to manage.</Text>:null}
+  {tab==="content"?<>
+   <Text style={s.section}>Published content ({managedContent.length})</Text>
+   <Text style={s.meta}>Review recently published news, vacancies and football fixtures. Unpublishing hides an item from public screens without deleting its record.</Text>
+   {managedContent.map(record=><View key={record.kind+record.id} style={s.card}>
+    <Text style={s.cardTitle}>{record.title}</Text>
+    <Text style={s.meta}>{record.kind.toUpperCase()} · {record.source} · {new Date(record.created_at).toLocaleDateString()}</Text>
+    <View style={s.actions}><Pressable disabled={busy} onPress={()=>unpublishContent(record)}><Text style={s.danger}>Unpublish</Text></Pressable></View>
+   </View>)}
+   {!managedContent.length?<Text style={s.meta}>No published news, vacancies or fixtures are available to manage.</Text>:null}
+  </>:null}
   <Pressable style={s.refresh} onPress={()=>void load()}><Text style={s.refreshText}>Refresh administration data</Text></Pressable>
  </ScrollView>;
 }
