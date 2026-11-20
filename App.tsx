@@ -30,6 +30,7 @@ type Product = {
   images?: { image_url: string; sort_order: number; is_primary: boolean }[];
   demo?: boolean;
 };
+type AdCampaign={id:string;business_name:string;title:string;body:string;destination_url:string;image_url:string;placement:"homepage"|"search"|"feed"|"business"};
 type RawProduct = Omit<Product, "category" | "seller"> & { category?: Product["category"] | Product["category"][]; seller?: Product["seller"] | Product["seller"][] };
 const money = (n: number) => "MK " + Number(n || 0).toLocaleString("en-US");
 const productImage = (p: Product) =>
@@ -59,7 +60,7 @@ export default function App() {
     setCart(next);
   };
   const [saved, setSaved] = useState<string[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);\n  const [adCampaigns,setAdCampaigns]=useState<AdCampaign[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selected, setSelected] = useState<Product | null>(null);
   const [qrProduct, setQrProduct] = useState<Product | null>(null);
@@ -135,6 +136,14 @@ export default function App() {
         category: Array.isArray(p.category) ? (p.category[0] ?? null) : (p.category ?? null),
         seller: Array.isArray(p.seller) ? (p.seller[0] ?? null) : (p.seller ?? null),
       })) as Product[];
+      const now=new Date().toISOString();
+      const adResult=await supabase.from("market_ad_campaigns")
+        .select("id,business_name,title,body,destination_url,image_url,placement")
+        .eq("status","active").eq("payment_status","paid")
+        .or("starts_at.is.null,starts_at.lte."+now)
+        .or("ends_at.is.null,ends_at.gt."+now)
+        .order("created_at",{ascending:false}).limit(20);
+      setAdCampaigns((adResult.data??[]) as AdCampaign[]);
       const mergedCategories = new Map<string, Category>();
       ((categoryResult.data ?? []) as Category[]).forEach(item => mergedCategories.set(item.slug, item));
       setCategories(Array.from(mergedCategories.values()));
@@ -272,6 +281,7 @@ export default function App() {
     </Pressable>;
   };
 
+  const adPlacement=(placement:"homepage"|"search"|"feed"|"business")=>adCampaigns.filter(ad=>ad.placement===placement).slice(0,2).map(ad=><Pressable key={ad.id} accessibilityRole="link" accessibilityLabel={"Sponsored: "+ad.title} style={s.adCard} onPress={()=>{void supabase.functions.invoke("onekhusa-payments",{body:{action:"track_ad_event",campaign_id:ad.id,event_type:"click"}});void Linking.openURL(ad.destination_url).catch(()=>Alert.alert("Unable to open advertisement","Check your internet connection and try again."));}}><Image source={{uri:ad.image_url}} style={s.adImage} resizeMode="cover"/><View style={s.adCopy}><Text style={s.adLabel}>SPONSORED · {ad.business_name}</Text><Text numberOfLines={2} style={s.adTitle}>{ad.title}</Text><Text numberOfLines={2} style={s.adBody}>{ad.body}</Text><Text style={s.adLink}>Learn more ›</Text></View></Pressable>);
   const nav = <View style={[s.bottomNav,{bottom:Platform.OS==="android"?32:8,height:isCompact?60:66,left:isTablet?18:8,right:isTablet?18:8}]}>
     {[
       ["Home","Home","home"],
@@ -394,7 +404,7 @@ export default function App() {
         <Text style={s.filterHeading}>Condition</Text>
         <View style={s.filterRow}>{[["all","Any"],["new","New"],["used","Used"],["refurbished","Refurbished"]].map(([v,label])=><Pressable key={v} onPress={()=>setConditionFilter(v)} style={[s.filterPill,conditionFilter===v&&s.filterActive]}><Text style={[s.filterText,conditionFilter===v&&{color:"#fff"}]}>{label}</Text></Pressable>)}</View>
       </View> : null}
-      {loading ? <View style={s.loading}><ActivityIndicator size="large" color="#ef7b25"/><Text style={s.loadingText}>Loading marketplace…</Text></View>
+      {tab==="Search"?adPlacement("search"):null}\n      {loading ? <View style={s.loading}><ActivityIndicator size="large" color="#ef7b25"/><Text style={s.loadingText}>Loading marketplace…</Text></View>
         : filtered.length ? <FlatList data={filtered} renderItem={productCard} keyExtractor={p=>p.id} numColumns={gridColumns} scrollEnabled={false} columnWrapperStyle={[s.productRow,{gap:horizontalGutter}]} contentContainerStyle={{paddingHorizontal:horizontalGutter}} />
         : emptyCatalogue}
       <View style={s.trust}><Text style={s.trustTitle}>Made for Malawi</Text><Text style={s.trustText}>Discover products, support local sellers and shop from one place.</Text></View>
@@ -452,7 +462,7 @@ const s = StyleSheet.create({
  filterPanel:{marginHorizontal:14,marginTop:4,padding:16,backgroundColor:"#fff",borderWidth:1,borderColor:"#d9dde3",borderRadius:13},filterHeading:{fontSize:13,fontWeight:"900",color:"#414b59",marginTop:5,marginBottom:8},filterRow:{flexDirection:"row",flexWrap:"wrap",gap:7,marginBottom:10},filterPill:{borderWidth:1,borderColor:"#cbd1d9",borderRadius:18,paddingHorizontal:13,paddingVertical:10,backgroundColor:"#fff"},filterActive:{backgroundColor:"#f36f21",borderColor:"#f36f21"},filterText:{fontSize:12,color:"#414b59",fontWeight:"800"},page:{padding:18,paddingBottom:130},pageTitle:{fontSize:26,fontWeight:"900",color:"#252a31",marginBottom:16},empty:{color:"#4b5563",fontSize:15,lineHeight:23,paddingVertical:25,textAlign:"center"},emptyBox:{marginHorizontal:16,marginTop:22,padding:22,backgroundColor:"#fff",borderRadius:13,alignItems:"center"},emptyTitle:{fontSize:18,fontWeight:"900",color:"#252a31"},outlineButton:{marginTop:12,borderWidth:1,borderColor:"#ef7b25",paddingHorizontal:16,paddingVertical:11,borderRadius:8},outlineText:{fontSize:13,color:"#df6c19",fontWeight:"900"},loading:{padding:35,alignItems:"center",gap:10},loadingText:{fontSize:13,color:"#777"},
  cartRow:{flexDirection:"row",alignItems:"center",gap:10,borderBottomWidth:1,borderColor:"#eee",paddingVertical:12},cartImage:{width:72,height:72,borderRadius:9,backgroundColor:"#f3f4f6"},qtyButton:{width:32,height:32,borderRadius:8,backgroundColor:"#fff1e5",alignItems:"center",justifyContent:"center"},qtyText:{fontSize:14,fontWeight:"900",color:"#252a31"},total:{fontSize:18,fontWeight:"900",color:"#252a31",marginTop:20,textAlign:"right"},
  back:{padding:16},backText:{color:"#ef7b25",fontWeight:"900"},detailImage:{width:"100%",height:320,backgroundColor:"#f3f4f6",borderRadius:20,overflow:"hidden"},detailTitle:{fontSize:25,fontWeight:"900",color:"#252a31",letterSpacing:-.55,lineHeight:32},priceLarge:{fontSize:27,fontWeight:"900",color:"#ef7b25",marginTop:12},detailMeta:{fontSize:12,color:"#4b5563",marginTop:9},detailDescription:{fontSize:14,color:"#4b5563",lineHeight:22,marginTop:18},primaryButton:{backgroundColor:"#ef7b25",padding:17,borderRadius:13,alignItems:"center",marginTop:20,minHeight:54,justifyContent:"center",elevation:2},primaryText:{color:"#fff",fontWeight:"900",fontSize:14},reportButton:{alignItems:"center",padding:14,marginTop:8},reportText:{color:"#a33",fontWeight:"800",fontSize:12},
- homeTop:{paddingHorizontal:18,paddingTop:10,paddingBottom:4,backgroundColor:"#fffaf5"},
+ adCard:{marginHorizontal:16,marginTop:12,backgroundColor:"#fff",borderWidth:1,borderColor:"#eadfd6",borderRadius:14,overflow:"hidden",flexDirection:"row",minHeight:112},adImage:{width:104,minHeight:112,backgroundColor:"#f2f2f2"},adCopy:{flex:1,padding:11,justifyContent:"center"},adLabel:{fontSize:9,color:"#a45a24",fontWeight:"900",letterSpacing:.7},adTitle:{fontSize:14,color:"#252a31",fontWeight:"900",marginTop:5},adBody:{fontSize:11,color:"#5b6470",marginTop:4,lineHeight:15},adLink:{fontSize:10,color:"#ef7628",fontWeight:"900",marginTop:6},\n homeTop:{paddingHorizontal:18,paddingTop:10,paddingBottom:4,backgroundColor:"#fffaf5"},
  homeBrandRow:{minHeight:58,flexDirection:"row",alignItems:"center",justifyContent:"space-between"},
  homeLogo:{width:76,height:66},
  homeActions:{flexDirection:"row",alignItems:"center",gap:12},
