@@ -425,13 +425,14 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
         <View style={s.marketEmptyIcon}><Text style={s.marketEmptyIconText}>MSE</Text></View>
         <Text style={[s.marketEmptyTitle,{color:ink}]}>{stockRows.length?"No matching companies":"Market data has not been published yet"}</Text>
         <Text style={[s.body,{color:muted,textAlign:"center"}]}>{stockRows.length?"Try another ticker or filter.":"The market dashboard is ready, but the quotes database is empty. Verified prices will appear here once an authorized data feed or administrator-published quotes are available."}</Text>
-        <Pressable onPress={()=>void openExternal("https://www.mse.co.mw/")} style={s.marketOfficialLink}><Text style={s.marketOfficialLinkText}>VISIT OFFICIAL EXCHANGE ↗</Text></Pressable>
+        <Pressable onPress={()=>void openExternal("https://mse.co.mw/")} style={s.marketOfficialLink}><Text style={s.marketOfficialLinkText}>VISIT OFFICIAL EXCHANGE ↗</Text></Pressable>
       </View>:null}
       <View style={[s.marketFootnote,{backgroundColor:darkMode?"#252B35":"#F0F5F3"}]}>
         <Text style={[s.marketFootnoteTitle,{color:ink}]}>Data transparency</Text>
         <Text style={[s.meta,{color:muted}]}>Prices are shown only when a source and quote timestamp are recorded. This section does not represent delayed or missing data as live prices.</Text>
+        <Text style={[s.meta,{color:muted}]}>The Malawi Stock Exchange states that its market data is for personal, non-commercial use; commercial reuse requires a data agreement. Malawi Market will not republish its quotes until the required permission is secured.</Text>
         {stockRows.length>0?<Text style={[s.meta,{color:muted}]}>Latest recorded quote: {stockRows.reduce<string>((latest,x)=>{const stamp=x.quoteTime||"";return !latest||(stamp&&new Date(stamp)>new Date(latest))?stamp:latest;},"")}</Text>:null}
-        <Pressable onPress={()=>void openExternal("https://www.mse.co.mw/market/reports")}><Text style={s.marketReportLink}>VIEW OFFICIAL MARKET REPORTS ↗</Text></Pressable>
+        <Pressable onPress={()=>void openExternal("https://mse.co.mw/")}><Text style={s.marketReportLink}>VIEW OFFICIAL MARKET REPORTS ↗</Text></Pressable>
       </View>
     </> : null}
     {section==="exchange" ? <>
