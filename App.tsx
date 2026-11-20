@@ -46,6 +46,10 @@ export default function App() {
   const horizontalGutter = windowWidth >= 900 ? 24 : windowWidth >= 600 ? 20 : isCompact ? 10 : 14;
   const [tab, setTab] = useState("Home");
   const [language, setLanguage] = useState<MarketLanguage>("English");
+  const [appearance,setAppearance]=useState<{theme:"light"|"dark";accentColor:string}>({theme:"light",accentColor:"#3B82F6"});
+  const darkMode=appearance.theme==="dark";
+  const palette={background:darkMode?"#111318":"#ffffff",surface:darkMode?"#1b1f27":"#ffffff",text:darkMode?"#f3f4f6":"#202124",muted:darkMode?"#aab2bf":"#4b5563",border:darkMode?"#343b47":"#d9dde3",accent:appearance.accentColor};
+
   const [passwordRecovery, setPasswordRecovery] = useState(false);
   const [checkout, setCheckout] = useState(false);
   const [query, setQuery] = useState("");
@@ -73,6 +77,14 @@ export default function App() {
   const [homeName, setHomeName] = useState("there");
   const [unreadNotifications, setUnreadNotifications] = useState(0);
 
+  useEffect(() => {
+    let active=true;
+    AsyncStorage.getItem("@malawi-market/profile").then(raw=>{
+      if(!active||!raw)return;
+      try{const saved=JSON.parse(raw);const theme=saved.theme==="dark"?"dark":"light";const accentColor=/^#[0-9a-fA-F]{6}$/.test(saved.accentColor)?saved.accentColor:"#3B82F6";setAppearance({theme,accentColor});}catch{}
+    }).catch(()=>{});
+    return()=>{active=false;};
+  }, []);
   useEffect(() => {
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
       if (selected) {
@@ -309,8 +321,8 @@ export default function App() {
     <Pressable style={s.outlineButton} onPress={() => void loadCatalogue(true)}><Text style={s.outlineText}>{marketText(language,"Refresh catalogue")}</Text></Pressable>
   </View>;
 
-  return <SafeAreaView style={[s.safe,{paddingTop:Platform.OS==="android"?(StatusBar.currentHeight ?? 0):0}]}>
-    <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+  return <SafeAreaView style={[s.safe,{backgroundColor:palette.background,paddingTop:Platform.OS==="android"?(StatusBar.currentHeight ?? 0):0}]}>
+    <StatusBar translucent backgroundColor="transparent" barStyle={darkMode?"light-content":"dark-content"} />
     <View style={{width:"100%",maxWidth:contentMaxWidth,alignSelf:"center",flex:1,overflow:"hidden"}}>
     {checkout ? <CheckoutScreen items={cartProducts.map(({product,quantity})=>({id:product.id,title:product.title,price_mwk:product.price_mwk,quantity,demo:product.demo}))} onBack={()=>setCheckout(false)} onComplete={()=>{updateCart([]);setCheckout(false);setTab("Home");}} onOrderCreated={()=>{updateCart([]);}} />
     : selected ? <ScrollView contentContainerStyle={{paddingBottom:120,paddingHorizontal:isTablet?18:0}}>
@@ -443,7 +455,7 @@ export default function App() {
       {savedProducts.length ? <FlatList data={savedProducts} renderItem={productCard} keyExtractor={p=>p.id} numColumns={gridColumns} scrollEnabled={false} columnWrapperStyle={[s.productRow,{gap:horizontalGutter}]} contentContainerStyle={{paddingHorizontal:horizontalGutter}}/> :
         <Text style={s.empty}>Products you save will appear here.</Text>}
     </ScrollView>
-    : tab === "Explore" ? <ExploreScreens language={language} onHardwareBack={() => setTab("Home")} /> : <AccountScreens language={language} onHardwareBack={() => setTab("Home")} onLanguageChange={setLanguage} passwordRecovery={passwordRecovery} onPasswordRecoveryComplete={()=>setPasswordRecovery(false)} />}
+    : tab === "Explore" ? <ExploreScreens language={language} onHardwareBack={() => setTab("Home")} /> : <AccountScreens language={language} onHardwareBack={() => setTab("Home")} onLanguageChange={setLanguage} passwordRecovery={passwordRecovery} onPasswordRecoveryComplete={()=>setPasswordRecovery(false)} onAppearanceChange={(theme,accentColor)=>setAppearance({theme,accentColor})} />}
     {nav}
     {splashVisible ? <View style={s.splashOverlay}>
       <Image source={require("./assets/logo.png")} style={s.splashLogo} resizeMode="contain" />
