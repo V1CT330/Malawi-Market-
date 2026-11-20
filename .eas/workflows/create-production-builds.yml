@@ -1,9 +1,15 @@
 name: Malawi Market Production Android APK
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      release:
+        type: choice
+        options:
+          - production-apk
+        required: true
+        default: production-apk
+        description: Build the production APK from the selected main branch revision.
 
 jobs:
   build_android:
