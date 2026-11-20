@@ -121,6 +121,52 @@ async function initiatePayment(req: Request) {
   }
 }
 
+async function initiateAdPayment(req: Request) {
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const token = authHeader.replace(/^Bearer\\s+/i, "");
+  if (!token || token === authHeader) return json({ error: "Sign in before paying." }, 401);
+  const { data: userData, error: authError } = await admin.auth.getUser(token);
+  if (authError || !userData.user) return json({ error: "Your session is invalid. Sign in again." }, 401);
+  const { campaign_id } = await req.json();
+  if (typeof campaign_id !== "string") return json({ error: "campaign_id is required." }, 400);
+  const { data: campaign, error } = await admin.from("market_ad_campaigns")
+    .select("id,advertiser_user_id,status,payment_status,budget_mwk,payment_reference")
+    .eq("id", campaign_id).eq("advertiser_user_id", userData.user.id).maybeSingle();
+  if (error || !campaign) return json({ error: "Campaign not found." }, 404);
+  if (campaign.status !== "draft" || campaign.payment_status !== "unpaid") return json({ error: "This campaign is not awaiting payment." }, 409);
+  const env = (Deno.env.get("ONEKHUSA_ENV") ?? "sandbox").toLowerCase();
+  const base = env === "live" ? "https://api.onekhusa.com/live/v1" : "https://api.onekhusa.com/sandbox/v1";
+  const apiKey = Deno.env.get("ONEKHUSA_API_KEY");
+  const apiSecret = Deno.env.get("ONEKHUSA_API_SECRET");
+  const organisationId = Deno.env.get("ONEKHUSA_ORGANISATION_ID");
+  const merchantRaw = Deno.env.get("ONEKHUSA_MERCHANT_ACCOUNT_NUMBER");
+  const capturedBy = Deno.env.get("ONEKHUSA_CAPTURED_BY");
+  if (!apiKey || !apiSecret || !organisationId || !merchantRaw || !capturedBy) return json({ error: "OneKhusa merchant credentials are not configured." }, 503);
+  const merchantAccountNumber = Number(merchantRaw);
+  if (!Number.isInteger(merchantAccountNumber) || merchantAccountNumber < 10000000 || merchantAccountNumber > 99999999) return json({ error: "OneKhusa merchant account number is invalid." }, 500);
+  const reference = "MKA-" + crypto.randomUUID().replaceAll("-", "").toUpperCase();
+  const { data: reserved, error: reserveError } = await admin.from("market_ad_campaigns").update({
+    status: "pending_payment", payment_status: "pending", payment_reference: reference, updated_at: new Date().toISOString()
+  }).eq("id", campaign.id).eq("status", "draft").eq("payment_status", "unpaid").select("id").maybeSingle();
+  if (reserveError || !reserved) return json({ error: "Campaign payment is already being processed. Refresh and retry." }, 409);
+  try {
+    const tokenResponse = await fetch(base + "/account/getAccessToken", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ apiKey, apiSecret, organisationId, merchantAccountNumber }) });
+    const tokenBody = await tokenResponse.json();
+    if (!tokenResponse.ok || !tokenBody.accessToken) throw new Error(tokenBody.message ?? "OneKhusa authentication failed.");
+    const payResponse = await fetch(base + "/collections/requestToPay/initiate", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + tokenBody.accessToken, "Content-Type": "application/json", "Accept-Language": "en", "X-Idempotency-Key": reference },
+      body: JSON.stringify({ merchantAccountNumber, transactionAmount: Number(campaign.budget_mwk), transactionDescription: "Malawi Market advertising campaign " + campaign.id, referenceNumber: reference, capturedBy }),
+    });
+    const payBody = await payResponse.json();
+    if (!payResponse.ok || !payBody.timedAccountNumber) throw new Error(payBody.message ?? payBody.title ?? "OneKhusa could not create a payment request.");
+    return json({ provider: "onekhusa", reference, timed_account_number: String(payBody.timedAccountNumber), expires_at: payBody.expiryDate ?? new Date(Date.now() + 15 * 60 * 1000).toISOString(), amount_mwk: campaign.budget_mwk });
+  } catch (error) {
+    await admin.from("market_ad_campaigns").update({ status: "draft", payment_status: "failed", payment_reference: null, updated_at: new Date().toISOString() }).eq("id", campaign.id).eq("payment_reference", reference);
+    return json({ error: error instanceof Error ? error.message : "Ad payment initiation failed." }, 502);
+  }
+}
+
 async function receiveWebhook(req: Request) {
   const raw = await req.text();
   const signature = req.headers.get("X-OneKhusa-Webhook-Signature") ?? "";
@@ -136,6 +182,27 @@ async function receiveWebhook(req: Request) {
   const transactionReference = String(payload.transactionReferenceNumber ?? "");
   const amount = Number(payload.transactionAmount);
   if (!reference || !transactionReference || !Number.isFinite(amount)) return json({ error: "Missing transaction reference or amount." }, 400);
+
+  if (reference.startsWith("MKA-")) {
+    const { data: campaign, error: campaignError } = await admin.from("market_ad_campaigns")
+      .select("id,budget_mwk,status,payment_status,payment_reference").eq("payment_reference", reference).maybeSingle();
+    if (campaignError || !campaign) return json({ error: "No matching advertising payment." }, 404);
+    if (campaign.payment_status === "paid" && event === "payrequest.success") return json({ acknowledged: true, duplicate: true });
+    if (event === "payrequest.success" && String(payload.transactionStatusCode) === "S") {
+      if (Number(campaign.budget_mwk) !== amount) {
+        await admin.from("market_ad_campaigns").update({ status: "paused", payment_status: "review_required", provider_transaction_reference: transactionReference, updated_at: new Date().toISOString() }).eq("id", campaign.id);
+        return json({ acknowledged: true, review_required: true });
+      }
+      const now = new Date().toISOString();
+      const { data: paid, error: paidError } = await admin.from("market_ad_campaigns").update({
+        status: "active", payment_status: "paid", provider_transaction_reference: transactionReference, activated_at: now, updated_at: now
+      }).eq("id", campaign.id).eq("status", "pending_payment").eq("payment_status", "pending").select("id").maybeSingle();
+      if (paidError || !paid) return json({ acknowledged: true, review_required: true });
+    } else if (event === "payrequest.reversed") {
+      await admin.from("market_ad_campaigns").update({ status: "paused", payment_status: "reversed", provider_transaction_reference: transactionReference, updated_at: new Date().toISOString() }).eq("id", campaign.id);
+    } else return json({ acknowledged: true, ignored: true });
+    return json({ acknowledged: true });
+  }
 
   const { data: attempt, error } = await admin.from("market_payment_attempts")
     .select("id,order_id,amount_mwk,status").eq("provider_reference", reference).maybeSingle();
@@ -195,6 +262,7 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     if (url.pathname.endsWith("/webhook")) return await receiveWebhook(req);
     const body = await req.clone().json().catch(() => ({}));
+    if (body.action === "initiate_ad") return await initiateAdPayment(req);
     if (body.action !== "initiate") return json({ error: "Unsupported action." }, 400);
     return await initiatePayment(req);
   } catch (error) {
