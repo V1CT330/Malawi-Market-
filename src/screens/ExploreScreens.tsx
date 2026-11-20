@@ -15,6 +15,25 @@ const stocks: {symbol:string;name:string;sector:string;price:string;change:strin
 const fixtures: {league:string;home:string;away:string;time:string;score:string;status?:string;sourceName?:string;sourceUrl?:string}[] = [];
 const categories = ["All","Malawi","Africa","World","Business","Technology","Agriculture","Sports"];
 const jobTypes = ["All","Full time","Part time","Contract","Internship"];
+const freelanceCategories = [
+  "All","Web Development","Mobile App Development","Software & IT","Graphic Design","UI/UX Design",
+  "Video Editing","Photography","Writing & Copywriting","Translation","Transcription","Digital Marketing",
+  "SEO & Content","Social Media Management","Virtual Assistance","Data Entry","Research & Analytics",
+  "Accounting & Bookkeeping","Customer Support","Sales & Lead Generation","Tutoring & Education",
+  "Music & Audio","Animation & 3D","Engineering & Architecture","AI & Machine Learning","Consulting"
+];
+const freelancePlatforms = [
+  {name:"Upwork",tag:"PROJECTS · HOURLY · FIXED PRICE",description:"A broad marketplace for development, design, writing, admin, marketing and professional services.",url:"https://www.upwork.com/",color:"#14A800",ink:"#FFFFFF",mark:"up"},
+  {name:"Fiverr",tag:"SELL YOUR SERVICES",description:"Package a skill into a service gig: design, video, writing, programming, marketing and more.",url:"https://www.fiverr.com/",color:"#1DBF73",ink:"#062D1B",mark:"fi"},
+  {name:"Freelancer.com",tag:"BID ON PROJECTS",description:"Compete for client projects and contests across technology, creative and business categories.",url:"https://www.freelancer.com/",color:"#1685D9",ink:"#FFFFFF",mark:"fr"},
+  {name:"PeoplePerHour",tag:"FREELANCE PROJECTS",description:"Find client projects and offer services in design, development, writing and marketing.",url:"https://www.peopleperhour.com/",color:"#F7B733",ink:"#292929",mark:"pp"},
+  {name:"Guru",tag:"INDEPENDENT PROFESSIONALS",description:"Browse projects across programming, design, administration, writing and business support.",url:"https://www.guru.com/",color:"#F15A29",ink:"#FFFFFF",mark:"gu"},
+  {name:"Contra",tag:"INDEPENDENT WORK",description:"Build a portfolio, showcase services and connect with clients for creative and digital work.",url:"https://contra.com/",color:"#242424",ink:"#FFFFFF",mark:"co"},
+  {name:"Toptal",tag:"SCREENED TALENT NETWORK",description:"For experienced professionals in software, design, finance, product and project management. Screening applies.",url:"https://www.toptal.com/",color:"#204ECF",ink:"#FFFFFF",mark:"to"},
+  {name:"99designs",tag:"DESIGN SPECIALISTS",description:"A design-focused platform for logos, brand identity, web design, packaging and creative work.",url:"https://99designs.com/",color:"#2B2B2B",ink:"#FFFFFF",mark:"99"},
+  {name:"Dribbble",tag:"DESIGN · PORTFOLIO · JOBS",description:"Showcase visual work, build a design portfolio and discover design opportunities.",url:"https://dribbble.com/",color:"#EA4C89",ink:"#FFFFFF",mark:"dr"},
+  {name:"Behance",tag:"CREATIVE PORTFOLIOS",description:"Publish creative projects and connect with clients looking for design, photography and illustration.",url:"https://www.behance.net/",color:"#1769FF",ink:"#FFFFFF",mark:"Be"}
+];
 
 export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onHardwareBack}:{language:MarketLanguage;theme?:"light"|"dark";accentColor?:string;onHardwareBack:()=>void}) {
   const [section,setSection] = useState<Section>("hub");
@@ -40,6 +59,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
   const [sportsMatchTab,setSportsMatchTab] = useState("All");
   const [stocksFilter,setStocksFilter] = useState("All");
   const [jobType,setJobType] = useState("All");
+  const [jobCategory,setJobCategory] = useState("All");
   const [search,setSearch] = useState("");
   const [newsRows,setNewsRows] = useState(news);
   const [jobRows,setJobRows] = useState(jobs);
@@ -173,7 +193,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
   const filteredNews = useMemo(()=>newsRows.filter(x=>(newsCategory==="All"||x.category.toLowerCase()===newsCategory.toLowerCase())&&(!search||x.title.toLowerCase().includes(search.toLowerCase()))),[newsRows,newsCategory,search]);
   const sportsArticles = useMemo(()=>newsRows.filter(x=>/sport|football|basketball|athletic|netball|cricket/i.test(x.category)).filter(x=>sportsCategory==="All sports"||x.category.toLowerCase().includes(sportsCategory.toLowerCase())),[newsRows,sportsCategory]);
   const sportsFixtures = useMemo(()=>fixtureRows.filter(x=>{const status=(x.status||"").toLowerCase();if(sportsMatchTab==="Live")return /live|in.?play|half.?time/.test(status);if(sportsMatchTab==="Results")return /finished|full.?time|(^|\b)ft(\b|$)|completed/.test(status);if(sportsMatchTab==="Upcoming")return !/live|in.?play|half.?time|finished|full.?time|(^|\b)ft(\b|$)|completed/.test(status);return true;}),[fixtureRows,sportsMatchTab]);
-  const filteredJobs = useMemo(()=>jobRows.filter(x=>(jobType==="All"||x.type===jobType)&&(!search||[x.title,x.company,x.location,x.category].join(" ").toLowerCase().includes(search.toLowerCase()))),[jobRows,jobType,search]);
+  const filteredJobs = useMemo(()=>jobRows.filter(x=>(jobType==="All"||x.type===jobType)&&(jobCategory==="All"||x.category.toLowerCase()===jobCategory.toLowerCase())&&(!search||[x.title,x.company,x.location,x.category].join(" ").toLowerCase().includes(search.toLowerCase()))),[jobRows,jobType,jobCategory,search]);
   const marketStats = useMemo(()=>({gainers:stockRows.filter(x=>Number.parseFloat(x.change)<0?false:Number.parseFloat(x.change)>0).length,decliners:stockRows.filter(x=>Number.parseFloat(x.change)<0).length,unchanged:stockRows.filter(x=>Number.parseFloat(x.change)===0).length}),[stockRows]);
   const filteredStocks = useMemo(()=>stockRows.filter(x=>(stocksFilter==="All"||(stocksFilter==="Gainers"&&Number.parseFloat(x.change)>0)||(stocksFilter==="Decliners"&&Number.parseFloat(x.change)<0)||(stocksFilter==="Unchanged"&&Number.parseFloat(x.change)===0))&&(!search||[x.symbol,x.name,x.sector].join(" ").toLowerCase().includes(search.toLowerCase()))),[stockRows,stocksFilter,search]);
   const go = (next:Section) => { setSearch(""); setSection(next); };
@@ -277,8 +297,37 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
       </>}
     </> : null}
     {section==="jobs" ? <>
+      <View style={[s.jobsHero,{backgroundColor:darkMode?"#172C45":"#123B66"}]}>
+        <Text style={s.jobsHeroEyebrow}>MALAWI MARKET · CAREERS</Text>
+        <Text style={s.jobsHeroTitle}>Find work. Build your next opportunity.</Text>
+        <Text style={s.jobsHeroCopy}>Explore published vacancies and discover established platforms where independent professionals can offer their skills.</Text>
+        <View style={s.jobsHeroPills}><Text style={s.jobsHeroPill}>LOCAL VACANCIES</Text><Text style={s.jobsHeroPill}>FREELANCE WORK</Text></View>
+      </View>
+      <TextInput value={search} onChangeText={setSearch} placeholder="Search role, skill, company or location" placeholderTextColor={muted} style={[s.search,{backgroundColor:darkMode?"#252b35":"#f1f2f4",borderColor:line,color:ink}]}/>
+      <Text style={[s.jobsSectionTitle,{color:ink}]}>Freelance skill categories</Text>
+      <Text style={[s.body,{color:muted}]}>Browse the kinds of services clients commonly hire independent professionals to deliver.</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:10}}>{freelanceCategories.map(c=>pill(c,jobCategory===c,()=>setJobCategory(c)))}</ScrollView>
+      <Text style={[s.jobsSectionTitle,{color:ink,marginTop:8}]}>Freelance platforms</Text>
+      <Text style={[s.body,{color:muted}]}>Official websites for independent work, client projects and creative portfolios. Platform accounts, fees and payout options are controlled by each provider.</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:11,paddingVertical:12}}>
+        {freelancePlatforms.map(platform=><Pressable key={platform.name} accessibilityRole="link" onPress={()=>void openExternal(platform.url)} style={[s.freelanceBanner,{backgroundColor:surface,borderColor:line}]}>
+          <View style={[s.freelanceBannerTop,{backgroundColor:platform.color}]}>
+            <View style={s.freelanceMark}><Text style={[s.freelanceMarkText,{color:platform.ink}]}>{platform.mark}</Text></View>
+            <Text style={[s.freelanceBrand,{color:platform.ink}]}>{platform.name}</Text>
+            <Text style={[s.freelanceTag,{color:platform.ink}]}>{platform.tag}</Text>
+          </View>
+          <View style={s.freelanceBannerBody}>
+            <Text style={[s.freelanceDescription,{color:muted}]}>{platform.description}</Text>
+            <Text style={s.freelanceVisit}>VISIT OFFICIAL SITE  ↗</Text>
+          </View>
+        </Pressable>)}
+      </ScrollView>
+      <View style={[s.jobsSafetyNote,{backgroundColor:darkMode?"#30291B":"#FFF7E6",borderColor:darkMode?"#67512B":"#F3D99A"}]}>
+        <Text style={[s.jobsSafetyTitle,{color:darkMode?"#F7D78B":"#80530A"}]}>Before you sign up</Text>
+        <Text style={[s.jobsSafetyText,{color:darkMode?"#E7D8B5":"#73551D"}]}>Malawi access, identity checks, client availability and withdrawal methods can differ by platform. Confirm that registration and a payout method work for your account in Malawi before investing time. Never pay someone who promises guaranteed freelance work or asks for your password or one-time PIN.</Text>
+      </View>
+      <Text style={[s.jobsSectionTitle,{color:ink,marginTop:18}]}>Published job vacancies</Text>
       {notice(liveFlags.jobs?"Published job listings from Malawi Market content feed.":"No verified job listings are published yet. Employers and administrators can submit sourced vacancies.")}
-      <TextInput value={search} onChangeText={setSearch} placeholder="Search role, company or location" style={[s.search,{backgroundColor:darkMode?"#252b35":"#f1f2f4",borderColor:line,color:ink}]}/>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:10}}>{jobTypes.map(c=>pill(c,jobType===c,()=>setJobType(c)))}</ScrollView>
       {filteredJobs.map((item,i)=><Pressable key={i} disabled={!item.applicationUrl} style={[s.article,{backgroundColor:surface,borderColor:line}]} onPress={()=>void openExternal(item.applicationUrl)}><View style={s.row}><Text style={s.category}>{item.category.toUpperCase()}</Text><Text style={s.type}>{item.type}</Text></View><Text style={[s.cardTitle,{color:ink}]}>{item.title}</Text><Text style={[s.body,{color:muted}]}>{item.company}</Text><Text style={[s.meta,{color:muted}]}>⌖ {item.location}   ·   {item.salary}</Text>{item.applicationUrl?<Text style={s.soon}>OPEN APPLICATION</Text>:null}</Pressable>)}
       {!filteredJobs.length&&<Text style={[s.empty,{color:muted}]}>No verified vacancies match your search yet.</Text>}
@@ -393,7 +442,7 @@ const s=StyleSheet.create({
  menuCard:{flexDirection:"row",alignItems:"center",backgroundColor:"#ffffff",borderWidth:1,borderColor:"#d9dde3",borderRadius:13,padding:14,marginTop:8,elevation:0},menuIcon:{width:40,height:40,borderRadius:11,backgroundColor:"#fff1e5",alignItems:"center",justifyContent:"center",marginRight:13},menuTitle:{fontSize:15,fontWeight:"800",color:navy},menuDesc:{fontSize:12,color:"#4b5563",marginTop:4},arrow:{fontSize:26,color:orange,marginLeft:8},
  subheading:{fontSize:15,fontWeight:"900",color:navy,marginTop:24,marginBottom:8},coming:{backgroundColor:"#fff",borderRadius:10,padding:13,marginTop:7,borderWidth:1,borderColor:"#d9dde3"},comingText:{fontSize:12,fontWeight:"700",color:"#465267"},soon:{fontSize:12,color:"#9a6a3a",fontWeight:"900",marginTop:7,letterSpacing:.5},
  statusPanel:{backgroundColor:"#fff",borderRadius:16,padding:16,marginTop:13,borderWidth:1,borderColor:"#e7ebf0"},statusTitle:{fontSize:13,fontWeight:"900",color:navy},statusBody:{fontSize:12,color:"#4b5563",lineHeight:17,marginTop:5},retry:{alignSelf:"flex-start",backgroundColor:orange,borderRadius:8,paddingHorizontal:13,paddingVertical:9,marginTop:10},retryText:{fontSize:12,color:"#fff",fontWeight:"900"},
- notice:{backgroundColor:"#fff1e5",borderRadius:9,padding:11,marginTop:12},noticeText:{fontSize:12,color:"#8a4c19",fontWeight:"800",lineHeight:15},
+ jobsHero:{borderRadius:20,padding:19,marginTop:12,overflow:"hidden"},jobsHeroEyebrow:{fontSize:12,fontWeight:"900",letterSpacing:1.2,color:"#A9D5FF"},jobsHeroTitle:{fontSize:26,lineHeight:31,fontWeight:"900",color:"#FFFFFF",letterSpacing:-.6,marginTop:13},jobsHeroCopy:{fontSize:14,lineHeight:20,color:"#E0EDFA",marginTop:8},jobsHeroPills:{flexDirection:"row",gap:8,marginTop:15},jobsHeroPill:{fontSize:11,fontWeight:"900",letterSpacing:.5,color:"#FFFFFF",borderWidth:1,borderColor:"#7198BE",borderRadius:8,paddingHorizontal:9,paddingVertical:7},jobsSectionTitle:{fontSize:19,fontWeight:"900",letterSpacing:-.3,marginTop:16},freelanceBanner:{width:270,borderWidth:1,borderRadius:15,overflow:"hidden"},freelanceBannerTop:{height:112,padding:14,justifyContent:"flex-end"},freelanceMark:{position:"absolute",top:12,right:13,minWidth:34,height:34,borderRadius:10,backgroundColor:"rgba(255,255,255,0.2)",alignItems:"center",justifyContent:"center",paddingHorizontal:5},freelanceMarkText:{fontSize:15,fontWeight:"900"},freelanceBrand:{fontSize:23,fontWeight:"900",letterSpacing:-.5},freelanceTag:{fontSize:10,fontWeight:"900",letterSpacing:.8,marginTop:5},freelanceBannerBody:{padding:13,minHeight:111,justifyContent:"space-between"},freelanceDescription:{fontSize:13,lineHeight:18},freelanceVisit:{fontSize:12,fontWeight:"900",letterSpacing:.4,color:"#155EEF",marginTop:12},jobsSafetyNote:{borderWidth:1,borderRadius:13,padding:14,marginTop:8},jobsSafetyTitle:{fontSize:14,fontWeight:"900"},jobsSafetyText:{fontSize:13,lineHeight:19,marginTop:6},notice:{backgroundColor:"#fff1e5",borderRadius:9,padding:11,marginTop:12},noticeText:{fontSize:12,color:"#8a4c19",fontWeight:"800",lineHeight:15},
  search:{height:48,backgroundColor:"#f1f2f4",borderWidth:1,borderColor:"#d9dde3",borderRadius:12,paddingHorizontal:14,marginTop:13,color:"#29292e"},
  pill:{borderRadius:12,borderWidth:1,borderColor:"#cbd1d9",paddingHorizontal:15,paddingVertical:11,minHeight:44,justifyContent:"center",backgroundColor:"#fff"},pillActive:{backgroundColor:orange,borderColor:orange},pillText:{fontSize:12,color:"#4f5a6c",fontWeight:"700"},
  article:{backgroundColor:"#ffffff",padding:14,borderRadius:13,borderWidth:1,borderColor:"#d9dde3",marginTop:11,elevation:0},category:{fontSize:12,fontWeight:"900",color:orange,letterSpacing:.7},cardTitle:{fontSize:15,fontWeight:"800",color:navy,marginTop:8,lineHeight:22},body:{fontSize:12,color:"#4b5563",lineHeight:18,marginTop:5},meta:{fontSize:12,color:"#4b5563",marginTop:8},row:{flexDirection:"row",justifyContent:"space-between",alignItems:"center"},type:{fontSize:12,color:navy,backgroundColor:"#edf1f6",paddingHorizontal:8,paddingVertical:5,borderRadius:6},empty:{textAlign:"center",color:"#4b5563",padding:24,fontSize:12},
