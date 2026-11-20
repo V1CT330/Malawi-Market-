@@ -3,6 +3,23 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "./supabase";
 
 export type Coordinates = { latitude: number; longitude: number };
+export function parseCoordinatesFromMapInput(value:string):Coordinates|null {
+  const input=value.trim();
+  if(!input)return null;
+  const candidates=[
+    input.match(/!3d(-?\\d+(?:\\.\\d+)?)!4d(-?\\d+(?:\\.\\d+)?)/i),
+    input.match(/@(-?\\d+(?:\\.\\d+)?),\\s*(-?\\d+(?:\\.\\d+)?)/),
+    input.match(/[?&](?:q|query|destination|ll)=(-?\\d+(?:\\.\\d+)?),\\s*(-?\\d+(?:\\.\\d+)?)/i),
+    input.match(/^\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*$/)
+  ];
+  for(const match of candidates){
+    if(!match)continue;
+    const latitude=Number(match[1]),longitude=Number(match[2]);
+    if(Number.isFinite(latitude)&&Number.isFinite(longitude)&&latitude>=-90&&latitude<=90&&longitude>=-180&&longitude<=180)return {latitude,longitude};
+  }
+  return null;
+}
+
 export type LiveFixture = { league:string; home:string; away:string; time:string; score:string; status:string; sourceName:string };
 
 const MAPBOX_TOKEN = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? "";
