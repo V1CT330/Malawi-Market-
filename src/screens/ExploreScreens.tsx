@@ -132,7 +132,11 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
       const point=await requestDeviceCoordinates();
       setCoordinates(point);setLocationLabel("Current device location");setMapResults([]);
       await loadNearbyShops(point,shopCategory,shopQuery);
-    }catch(error:any){setMapError(error?.message||"Could not read device location.");}
+    }catch(error:any){
+      const message=error?.message||"Could not read device location.";
+      setMapError(message);
+      if(message.includes("phone's Settings"))Alert.alert("Location access is off",message,[{text:"Cancel",style:"cancel"},{text:"Open Settings",onPress:()=>void Linking.openSettings()}]);
+    }
     finally{setMapLoading(false);}
   };
   const findMapPlaces = async () => {
