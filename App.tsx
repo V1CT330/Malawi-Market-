@@ -281,20 +281,20 @@ export default function App() {
 
   const productCard = ({ item }: { item: Product }) => {
     const image = productImage(item);
-    return <Pressable style={s.card} onPress={() => setSelected(item)}>
-      <View style={s.imageWrap}>
+    return <Pressable style={[s.card,{backgroundColor:palette.surface,borderColor:palette.border}]} onPress={() => setSelected(item)}>
+      <View style={[s.imageWrap,{backgroundColor:darkMode?"#252b35":"#f3f4f6"}]}>
         {image ? <Image source={{uri:image}} style={s.productImage} resizeMode="cover" /> :
           <View style={[s.productImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No image</Text></View>}
         {item.demo ? <Text style={[s.badge,{backgroundColor:"#65758b"}]}>DEMO</Text> : item.is_featured ? <Text style={s.badge}>FEATURED</Text> : null}
         <Pressable style={s.heart} onPress={(event) => {event.stopPropagation();toggleSaved(item.id);}}>
-          <MarketIcon name="wishlist" size={19} color={saved.includes(item.id)?"#e34d59":"#444"} filled={saved.includes(item.id)} />
+          <MarketIcon name="wishlist" size={19} color={saved.includes(item.id)?"#e34d59":(darkMode?"#d4d8df":"#444")} filled={saved.includes(item.id)} />
         </Pressable>
       </View>
       <View style={s.cardInfo}>
-        <Text numberOfLines={2} style={s.productName}>{item.title}</Text>
-        <Text style={s.price}>{money(item.price_mwk)}</Text>
+        <Text numberOfLines={2} style={[s.productName,{color:palette.text}]}>{item.title}</Text>
+        <Text style={[s.price,{color:palette.text}]}>{money(item.price_mwk)}</Text>
         {item.compare_at_price_mwk ? <Text style={s.oldPrice}>{money(item.compare_at_price_mwk)}</Text> : null}
-        <Text numberOfLines={1} style={s.seller}>{item.seller?.name ?? "Malawi Market seller"}{item.seller?.is_verified ? "  ✓" : ""}</Text>
+        <Text numberOfLines={1} style={[s.seller,{color:palette.muted}]}>{item.seller?.name ?? "Malawi Market seller"}{item.seller?.is_verified ? "  ✓" : ""}</Text>
         <Pressable disabled={item.stock_quantity<=0} style={[s.addButton,item.stock_quantity<=0&&{opacity:1,backgroundColor:"#858b94"}]} onPress={(event) => {event.stopPropagation();addToCart(item.id);}}><Text style={s.addText}>{marketText(language,item.stock_quantity>0?"Add to cart":"Out of stock")}</Text></Pressable>
       </View>
     </Pressable>;
@@ -360,17 +360,17 @@ export default function App() {
             <Image source={require("./assets/logo.png")} style={s.homeLogo} resizeMode="contain" />
             <View style={s.homeActions}>
               <Pressable accessibilityRole="button" accessibilityLabel={unreadNotifications ? `${unreadNotifications} unread notifications` : "Notifications"} onPress={() => setTab("Account")} style={s.homeAction}>
-                <MarketIcon name="notifications" size={25} color="#34241b" />
+                <MarketIcon name="notifications" size={25} color={darkMode?"#f3f4f6":"#34241b"} />
                 {unreadNotifications > 0 ? <View style={s.notificationDot} /> : null}
               </Pressable>
               <Pressable accessibilityRole="button" accessibilityLabel="Open profile" onPress={() => setTab("Account")} style={[s.homeAction,s.homeAvatar]}>
-                <MarketIcon name="account" size={25} color="#34241b" />
+                <MarketIcon name="account" size={25} color={darkMode?"#f3f4f6":"#34241b"} />
               </Pressable>
             </View>
           </View>
-          <Text numberOfLines={1} style={s.homeGreeting}>Hello, {homeName} 👋</Text>
-          <Text style={s.homeWelcome}>What would you like to shop today?</Text>
-          <View style={s.homeSearch}>
+          <Text numberOfLines={1} style={[s.homeGreeting,{color:darkMode?"#f3f4f6":"#342018"}]}>Hello, {homeName} 👋</Text>
+          <Text style={[s.homeWelcome,{color:darkMode?"#b9c0cb":"#51453e"}]}>What would you like to shop today?</Text>
+          <View style={[s.homeSearch,{backgroundColor:palette.surface,borderColor:palette.border}]}>
             <MarketIcon name="search" size={21} color="#858585" />
             <TextInput
               value={query}
@@ -379,10 +379,10 @@ export default function App() {
               returnKeyType="search"
               placeholder="Search for products, essentials..."
               placeholderTextColor="#858585"
-              style={s.homeSearchInput}
+              style={[s.homeSearchInput,{color:palette.text}]}
             />
             <Pressable accessibilityRole="button" accessibilityLabel="Browse categories and filters" onPress={() => setTab("Search")} style={s.homeFilter}>
-              <MarketIcon name="categories" size={21} color="#34241b" />
+              <MarketIcon name="categories" size={21} color={palette.text} />
             </Pressable>
           </View>
         </View>
@@ -395,40 +395,40 @@ export default function App() {
           </View>
         </View>
         {adPlacement("homepage")}
-        <View style={s.shortcutRow}>
-          {shortcuts.map(([icon,label,action])=><Pressable key={label} style={s.shortcut} onPress={action}><View style={s.shortcutIcon}><MarketIcon name={icon} size={21} color="#e87520" /></View><Text style={s.shortcutLabel}>{label}</Text></Pressable>)}
+        <View style={[s.shortcutRow,{backgroundColor:palette.surface,borderColor:palette.border}]}>
+          {shortcuts.map(([icon,label,action])=><Pressable key={label} style={s.shortcut} onPress={action}><View style={[s.shortcutIcon,{backgroundColor:darkMode?"#39271d":"#fff2e9"}]}><MarketIcon name={icon} size={21} color="#e87520" /></View><Text style={[s.shortcutLabel,{color:palette.text}]}>{label}</Text></Pressable>)}
         </View>
       </> : null}
       <View style={s.sectionHead}><Text style={[s.sectionTitle,{color:palette.text}]}>Shop by category</Text><Pressable onPress={()=>setTab("Search")}><Text style={s.viewAll}>See all  ›</Text></Pressable></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.categoryRow}>
         {[{id:"all",name:"All products",slug:"all",icon:"all-products"},...categories].map(c =>
-          <Pressable key={c.id} onPress={() => {setCategory(c.slug);setTab("Search");}} style={[s.categoryTile,category===c.slug&&s.categoryTileActive]}>
-            <View style={[s.categoryIcon,category===c.slug&&s.categoryIconActive]}><MarketIcon name={c.slug} size={22} color={category===c.slug?"#ffffff":"#e87520"} /></View>
-            <Text numberOfLines={2} style={[s.categoryText,category===c.slug&&s.categoryTextActive]}>{c.name}</Text>
+          <Pressable key={c.id} onPress={() => {setCategory(c.slug);setTab("Search");}} style={[s.categoryTile,{backgroundColor:palette.surface,borderColor:palette.border},category===c.slug&&s.categoryTileActive]}>
+            <View style={[s.categoryIcon,{backgroundColor:darkMode?"#39271d":"#fff0e5"},category===c.slug&&s.categoryIconActive]}><MarketIcon name={c.slug} size={22} color={category===c.slug?"#ffffff":"#e87520"} /></View>
+            <Text numberOfLines={2} style={[s.categoryText,{color:palette.text},category===c.slug&&s.categoryTextActive]}>{c.name}</Text>
           </Pressable>)}
       </ScrollView>
       {tab === "Home" && products.some(p=>p.is_featured) ? <>
-        <View style={s.sectionHead}><View><Text style={s.sectionTitle}>Featured finds</Text><Text style={s.sectionHint}>Selected products from Malawi Market sellers</Text></View><Text style={s.viewAll}>{products.filter(p=>p.is_featured).length} items</Text></View>
+        <View style={s.sectionHead}><View><Text style={[s.sectionTitle,{color:palette.text}]}>Featured finds</Text><Text style={[s.sectionHint,{color:palette.muted}]}>Selected products from Malawi Market sellers</Text></View><Text style={s.viewAll}>{products.filter(p=>p.is_featured).length} items</Text></View>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.featuredRow}>
-          {products.filter(p=>p.is_featured).slice(0,8).map(p=><Pressable key={p.id} style={s.featuredCard} onPress={()=>setSelected(p)}>
+          {products.filter(p=>p.is_featured).slice(0,8).map(p=><Pressable key={p.id} style={[s.featuredCard,{backgroundColor:palette.surface,borderColor:palette.border}]} onPress={()=>setSelected(p)}>
             {productImage(p)?<Image source={{uri:productImage(p)}} style={s.featuredImage} resizeMode="cover"/>:<View style={[s.featuredImage,s.imagePlaceholder]}><Text style={s.placeholderText}>No image</Text></View>}
-            <Text numberOfLines={2} style={s.featuredName}>{p.title}</Text><Text style={s.featuredPrice}>{money(p.price_mwk)}</Text>
+            <Text numberOfLines={2} style={[s.featuredName,{color:palette.text}]}>{p.title}</Text><Text style={[s.featuredPrice,{color:palette.text}]}>{money(p.price_mwk)}</Text>
             {p.seller?.is_verified?<Text style={s.featuredSeller}>✓ Verified seller</Text>:null}
           </Pressable>)}
         </ScrollView>
       </> : null}
       <View style={s.sectionHead}><Text style={s.sectionTitle}>{marketText(language,tab === "Search" ? "Find products" : query ? "Search results" : "Recommended for you")}</Text><Text style={s.viewAll}>{filtered.length} items</Text></View>
-      {tab === "Search" ? <View style={s.filterPanel}>
-        <Text style={s.filterHeading}>Sort by</Text>
+      {tab === "Search" ? <View style={[s.filterPanel,{backgroundColor:palette.surface,borderColor:palette.border}]}>
+        <Text style={[s.filterHeading,{color:palette.text}]}>Sort by</Text>
         <View style={s.filterRow}>{[["relevance","Featured"],["price-low","Price ↑"],["price-high","Price ↓"],["name","Name"]].map(([v,label])=><Pressable key={v} onPress={()=>setSortBy(v)} style={[s.filterPill,sortBy===v&&s.filterActive]}><Text style={[s.filterText,sortBy===v&&{color:"#fff"}]}>{label}</Text></Pressable>)}</View>
-        <Text style={s.filterHeading}>Condition</Text>
+        <Text style={[s.filterHeading,{color:palette.text}]}>Condition</Text>
         <View style={s.filterRow}>{[["all","Any"],["new","New"],["used","Used"],["refurbished","Refurbished"]].map(([v,label])=><Pressable key={v} onPress={()=>setConditionFilter(v)} style={[s.filterPill,conditionFilter===v&&s.filterActive]}><Text style={[s.filterText,conditionFilter===v&&{color:"#fff"}]}>{label}</Text></Pressable>)}</View>
       </View> : null}
       {tab==="Search"?adPlacement("search"):null}
       {loading ? <View style={s.loading}><ActivityIndicator size="large" color="#ef7b25"/><Text style={s.loadingText}>Loading marketplace…</Text></View>
         : filtered.length ? <FlatList data={filtered} renderItem={productCard} keyExtractor={p=>p.id} numColumns={gridColumns} scrollEnabled={false} columnWrapperStyle={[s.productRow,{gap:horizontalGutter}]} contentContainerStyle={{paddingHorizontal:horizontalGutter}} />
         : emptyCatalogue}
-      <View style={s.trust}><Text style={s.trustTitle}>Made for Malawi</Text><Text style={s.trustText}>Discover products, support local sellers and shop from one place.</Text></View>
+      <View style={[s.trust,{backgroundColor:palette.surface,borderColor:palette.border}]}><Text style={[s.trustTitle,{color:palette.text}]}>Made for Malawi</Text><Text style={[s.trustText,{color:palette.muted}]}>Discover products, support local sellers and shop from one place.</Text></View>
     </ScrollView>
     : tab === "Cart" ? <ScrollView contentContainerStyle={s.page}>
       <Text style={s.pageTitle}>{marketText(language,"Your cart")}</Text>
