@@ -183,7 +183,9 @@ export default function App() {
       else if (categoryResult.error) setLoadError(categoryResult.error.message);
     } catch (error:any) {
       setProducts(DEMO_PRODUCTS as unknown as Product[]);
-      setCategories(Array.from(new Map(DEMO_PRODUCTS.map(item=>[item.category.slug,{id:"demo-category-"+item.category.slug,name:item.category.name,slug:item.category.slug}])).values()));
+      const fallbackCategories = new Map<string, Category>();
+      DEMO_PRODUCTS.forEach(item => fallbackCategories.set(item.category.slug,{id:"demo-category-"+item.category.slug,name:item.category.name,slug:item.category.slug}));
+      setCategories(Array.from(fallbackCategories.values()));
       setLoadError(error?.message || "The catalogue could not be loaded. Check your connection and try again. Demo listings are shown for preview.");
     } finally {
       setLoading(false);
@@ -334,7 +336,7 @@ export default function App() {
   const emptyCatalogue = <View style={s.emptyBox}>
     <Text style={s.emptyTitle}>{loadError ? "Catalogue unavailable" : marketText(language,"No products listed yet")}</Text>
     <Text style={s.empty}>{loadError ? loadError : "Products published by Malawi Market sellers will appear here. We are not displaying sample or fake listings."}</Text>
-    <Pressable style={s.outlineButton} onPress={() => void loadCatalogue(true)}><Text style={s.outlineText}>{marketText(language,"Refresh catalogue")}</Text></Pressable>
+    <Pressable style={[s.outlineButton,{borderColor:palette.accent}]} onPress={() => void loadCatalogue(true)}><Text style={[s.outlineText,{color:palette.accent}]}>{marketText(language,"Refresh catalogue")}</Text></Pressable>
   </View>;
 
   return <SafeAreaView style={[s.safe,{backgroundColor:palette.background,paddingTop:Platform.OS==="android"?(StatusBar.currentHeight ?? 0):0}]}>
@@ -419,14 +421,14 @@ export default function App() {
         </View>
         {adPlacement("homepage")}
         <View style={[s.shortcutRow,{backgroundColor:palette.surface,borderColor:palette.border}]}>
-          {shortcuts.map(([icon,label,action])=><Pressable key={label} style={s.shortcut} onPress={action}><View style={[s.shortcutIcon,{backgroundColor:darkMode?"#39271d":"#fff2e9"}]}><MarketIcon name={icon} size={21} color="#e87520" /></View><Text style={[s.shortcutLabel,{color:palette.text}]}>{label}</Text></Pressable>)}
+          {shortcuts.map(([icon,label,action])=><Pressable key={label} style={s.shortcut} onPress={action}><View style={[s.shortcutIcon,{backgroundColor:darkMode?"#39271d":"#fff2e9"}]}><MarketIcon name={icon} size={21} color={palette.energy} /></View><Text style={[s.shortcutLabel,{color:palette.text}]}>{label}</Text></Pressable>)}
         </View>
       </> : null}
       <View style={s.sectionHead}><Text style={[s.sectionTitle,{color:palette.text}]}>Shop by category</Text><Pressable onPress={()=>setTab("Search")}><Text style={s.viewAll}>See all  ›</Text></Pressable></View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.categoryRow}>
         {[{id:"all",name:"All products",slug:"all",icon:"all-products"},...categories].map(c =>
-          <Pressable key={c.id} onPress={() => {setCategory(c.slug);setTab("Search");}} style={[s.categoryTile,{backgroundColor:palette.surface,borderColor:palette.border},category===c.slug&&s.categoryTileActive]}>
-            <View style={[s.categoryIcon,{backgroundColor:darkMode?"#39271d":"#fff0e5"},category===c.slug&&s.categoryIconActive]}><MarketIcon name={c.slug} size={22} color={category===c.slug?"#ffffff":"#e87520"} /></View>
+          <Pressable key={c.id} onPress={() => {setCategory(c.slug);setTab("Search");}} style={[s.categoryTile,{backgroundColor:palette.surface,borderColor:palette.border},category===c.slug&&{borderColor:palette.accent,backgroundColor:palette.accent}]}>
+            <View style={[s.categoryIcon,{backgroundColor:darkMode?"#39271d":"#fff0e5"},category===c.slug&&{backgroundColor:"rgba(255,255,255,0.2)"}]}><MarketIcon name={c.slug} size={22} color={category===c.slug?"#ffffff":palette.energy} /></View>
             <Text numberOfLines={2} style={[s.categoryText,{color:palette.text},category===c.slug&&s.categoryTextActive]}>{c.name}</Text>
           </Pressable>)}
       </ScrollView>
