@@ -8,13 +8,21 @@ const url=Deno.env.get("SUPABASE_URL")!;
 const admin=createClient(url,serverKey(),{auth:{persistSession:false,autoRefreshToken:false}});
 function decode(value:string){return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1").replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&#(\d+);/g,(_,n)=>String.fromCodePoint(Number(n))).replace(/\s+/g," ").trim();}
 function tag(xml:string,name:string){const m=xml.match(new RegExp("<"+name+"(?:\\s[^>]*)?>([\\s\\S]*?)</"+name+">","i"));return m?decode(m[1]):"";}
-async function fetchFeed(feedUrl:string,category:string){
+function safeImageUrl(value:string){
+ try{const url=new URL(value.trim());return url.protocol==="https:"?url.toString():null;}catch{return null;}
+}
+function imageFromItem(item:string){
+ const attribute=item.match(/<(?:media:content|media:thumbnail|enclosure)\b[^>]*\burl=["']([^"']+)["'][^>]*>/i)?.[1];
+ const inline=item.match(/<img\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/i)?.[1];
+ return safeImageUrl(attribute||inline||"");
+}
+async function fetchFeed(feedUrl:string,category:string,sourceName:string){
  const response=await fetch(feedUrl,{headers:{"User-Agent":"MalawiMarket/1.0 (+https://malawi-market.vercel.app)","Accept":"application/rss+xml, application/xml, text/xml"}});
  if(!response.ok)throw new Error("RSS source returned HTTP "+response.status+": "+feedUrl);
  const xml=await response.text();const items=[...xml.matchAll(/<item\b[\s\S]*?<\/item>/gi)].map(x=>x[0]);
  return items.slice(0,30).map(item=>{
   const title=tag(item,"title"),link=tag(item,"link"),description=tag(item,"description"),date=tag(item,"pubDate");
-  const parsed=new Date(date);return {title,summary:description.slice(0,480)||null,category,source_name:"Malawi24",source_url:link,published_at:Number.isNaN(parsed.getTime())?new Date().toISOString():parsed.toISOString(),is_published:true};
+  const parsed=new Date(date);return {title,summary:description.slice(0,480)||null,image_url:imageFromItem(item),category,source_name:sourceName,source_url:link,published_at:Number.isNaN(parsed.getTime())?new Date().toISOString():parsed.toISOString(),is_published:true};
  }).filter(x=>x.title.length>4&&/^https:\/\//i.test(x.source_url));
 }
 Deno.serve(async(req)=>{
@@ -27,12 +35,20 @@ Deno.serve(async(req)=>{
   if(authError||!user)return json({error:"Your session is invalid. Sign in again."},401);
   const {data:isAdmin,error:roleError}=await admin.rpc("has_role",{_user_id:user.id,_role:"admin"});
   if(roleError||isAdmin!==true)return json({error:"Administrator access required."},403);
-  const feeds=[["https://malawi24.com/feed/","general"],["https://malawi24.com/business/feed/","business"]] as const;
-  const results=await Promise.allSettled(feeds.map(([feed,category])=>fetchFeed(feed,category)));
+  const feeds=[
+   {url:"https://malawi24.com/feed/",category:"Malawi",source:"Malawi24"},
+   {url:"https://malawi24.com/business/feed/",category:"Business",source:"Malawi24"},
+   {url:"https://feeds.bbci.co.uk/news/world/africa/rss.xml",category:"Africa",source:"BBC News"},
+   {url:"https://feeds.bbci.co.uk/news/world/rss.xml",category:"World",source:"BBC News"},
+   {url:"https://feeds.bbci.co.uk/news/business/rss.xml",category:"Business",source:"BBC News"},
+   {url:"https://feeds.bbci.co.uk/news/technology/rss.xml",category:"Technology",source:"BBC News"},
+   {url:"https://feeds.bbci.co.uk/sport/rss.xml",category:"Sports",source:"BBC Sport"}
+  ] as const;
+  const results=await Promise.allSettled(feeds.map(feed=>fetchFeed(feed.url,feed.category,feed.source)));
   const rows=results.flatMap(r=>r.status==="fulfilled"?r.value:[]);
-  if(!rows.length)return json({error:"No articles were returned from the configured Malawi24 RSS feeds.",sources:results.map((r,i)=>({feed:feeds[i][0],status:r.status,error:r.status==="rejected"?String(r.reason):null}))},502);
+  if(!rows.length)return json({error:"No articles were returned from the configured Malawi24 RSS feeds.",sources:results.map((r,i)=>({feed:feeds[i].url,status:r.status,error:r.status==="rejected"?String(r.reason):null}))},502);
   const {data,error}=await admin.from("market_news_articles").upsert(rows,{onConflict:"source_url",ignoreDuplicates:false}).select("id");
   if(error)throw error;
-  return json({ok:true,received:rows.length,stored:data?.length??0,source:"Malawi24 RSS",synced_at:new Date().toISOString(),feed_status:results.map((r,i)=>({feed:feeds[i][0],ok:r.status==="fulfilled",items:r.status==="fulfilled"?r.value.length:0}))});
+  return json({ok:true,received:rows.length,stored:data?.length??0,source:"Malawi24 + BBC News RSS",synced_at:new Date().toISOString(),feed_status:results.map((r,i)=>({feed:feeds[i][0],ok:r.status==="fulfilled",items:r.status==="fulfilled"?r.value.length:0}))});
  }catch(error){return json({error:error instanceof Error?error.message:"News sync failed."},500);}
 });
