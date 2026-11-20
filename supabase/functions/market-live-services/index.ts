@@ -52,12 +52,14 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, _ctx) => {
     if (!key) return json({ error: "Football provider secret is not configured" }, 503);
     const headers = { "x-apisports-key": key };
     const requestedSeason = Number.isInteger(input.season) && Number(input.season) >= 2000 && Number(input.season) <= 2100
-      ? Number(input.season) : new Date().getFullYear();
+      ? Number(input.season) : null;
     let leagueId = Number(input.leagueId) || 0;
+    let selectedSeason = requestedSeason;
     if (!Number.isInteger(leagueId) || leagueId < 1) {
       const leaguesUrl = new URL("https://v3.football.api-sports.io/leagues");
       leaguesUrl.searchParams.set("country", "Malawi");
-      leaguesUrl.searchParams.set("season", String(requestedSeason));
+      if (requestedSeason) leaguesUrl.searchParams.set("season", String(requestedSeason));
+      else leaguesUrl.searchParams.set("current", "true");
       const leaguesResponse = await fetch(leaguesUrl, { headers });
       const leaguesBody = await leaguesResponse.json().catch(() => ({}));
       if (!leaguesResponse.ok || (leaguesBody.errors && Object.keys(leaguesBody.errors).length)) {
@@ -67,14 +69,18 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, _ctx) => {
         item.country?.name?.toLowerCase() === "malawi" &&
         /super league/i.test(item.league?.name ?? "") &&
         item.league?.type === "League" &&
-        (item.seasons ?? []).some((season: any) => Number(season.year) === requestedSeason && season.coverage?.standings === true)
+        (item.seasons ?? []).some((season: any) => (!requestedSeason || Number(season.year) === requestedSeason) && season.coverage?.standings === true && (!requestedSeason ? season.current === true : true))
       );
-      if (!competition) return json({ error: "No Malawi Super League standings are available for season " + requestedSeason + "." }, 404);
+      if (!competition) return json({ error: "No Malawi Super League standings are available for the requested season." }, 404);
       leagueId = Number(competition.league.id);
+      const season = (competition.seasons ?? []).find((item: any) => Number(item.year) === requestedSeason && item.coverage?.standings === true)
+        ?? (competition.seasons ?? []).find((item: any) => item.current === true && item.coverage?.standings === true);
+      selectedSeason = Number(season?.year);
     }
+    if (!selectedSeason || !Number.isInteger(selectedSeason)) return json({ error: "A supported football season could not be determined." }, 404);
     const standingsUrl = new URL("https://v3.football.api-sports.io/standings");
     standingsUrl.searchParams.set("league", String(leagueId));
-    standingsUrl.searchParams.set("season", String(requestedSeason));
+    standingsUrl.searchParams.set("season", String(selectedSeason));
     const standingsResponse = await fetch(standingsUrl, { headers });
     const standingsBody = await standingsResponse.json().catch(() => ({}));
     if (!standingsResponse.ok || (standingsBody.errors && Object.keys(standingsBody.errors).length)) {
@@ -85,7 +91,7 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, _ctx) => {
     const rows = groups.flat().map((item: any) => ({
       id: String(item.team?.id ?? item.rank),
       competition: league?.name || "Malawi Super League",
-      season: String(league?.season ?? requestedSeason),
+      season: String(league?.season ?? selectedSeason),
       team_name: item.team?.name || "Team",
       played: Number(item.all?.played ?? 0),
       won: Number(item.all?.win ?? 0),
@@ -98,7 +104,7 @@ Deno.serve(withSupabase({ auth: "user" }, async (req, _ctx) => {
       source_name: "API-Football",
       source_url: "https://www.api-football.com/",
     }));
-    return json({ standings: rows, competition: league?.name ?? "Malawi Super League", season: league?.season ?? requestedSeason, source: "API-Football" });
+    return json({ standings: rows, competition: league?.name ?? "Malawi Super League", season: league?.season ?? selectedSeason, source: "API-Football" });
   }
 
   if (input.action === "weather") {
