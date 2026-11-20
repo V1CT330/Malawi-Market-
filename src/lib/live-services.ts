@@ -1,4 +1,5 @@
 import * as Location from "expo-location";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "./supabase";
 
 export type Coordinates = { latitude: number; longitude: number };
@@ -30,9 +31,20 @@ export async function fetchLiveFootballFixtures(): Promise<LiveFixture[]> {
   return Array.isArray(data?.fixtures) ? data.fixtures : [];
 }
 
+const LOCATION_PERMISSION_REQUESTED_KEY = "@malawi-market/permissions/location-requested";
+
 export async function requestDeviceCoordinates(): Promise<Coordinates> {
-  const permission = await Location.requestForegroundPermissionsAsync();
-  if (permission.status !== "granted") throw new Error("Location permission was denied. Allow location access in Android settings to use this feature.");
+  let permission = await Location.getForegroundPermissionsAsync();
+  if (permission.status !== "granted") {
+    const alreadyAsked = await AsyncStorage.getItem(LOCATION_PERMISSION_REQUESTED_KEY);
+    if (!alreadyAsked && permission.canAskAgain) {
+      permission = await Location.requestForegroundPermissionsAsync();
+      await AsyncStorage.setItem(LOCATION_PERMISSION_REQUESTED_KEY, "true");
+    }
+  }
+  if (permission.status !== "granted") {
+    throw new Error("Location access is off. Open your phone's Settings > Apps > Malawi Market > Permissions > Location to enable it.");
+  }
   const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
   return { latitude: position.coords.latitude, longitude: position.coords.longitude };
 }
