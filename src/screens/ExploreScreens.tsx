@@ -15,24 +15,33 @@ const stocks: {symbol:string;name:string;sector:string;price:string;change:strin
 const fixtures: {league:string;home:string;away:string;time:string;score:string;status?:string;sourceName?:string;sourceUrl?:string}[] = [];
 const categories = ["All","Malawi","Africa","World","Business","Technology","Agriculture","Sports"];
 const jobTypes = ["All","Full time","Part time","Contract","Internship"];
-const freelanceCategories = [
-  "All","Web Development","Mobile App Development","Software & IT","Graphic Design","UI/UX Design",
-  "Video Editing","Photography","Writing & Copywriting","Translation","Transcription","Digital Marketing",
-  "SEO & Content","Social Media Management","Virtual Assistance","Data Entry","Research & Analytics",
-  "Accounting & Bookkeeping","Customer Support","Sales & Lead Generation","Tutoring & Education",
-  "Music & Audio","Animation & 3D","Engineering & Architecture","AI & Machine Learning","Consulting"
+const freelanceSkillGroups = [
+  {name:"Technology",items:["Web Development","Mobile App Development","Software & IT","AI & Machine Learning"]},
+  {name:"Design & Creative",items:["Graphic Design","UI/UX Design","Video Editing","Photography","Music & Audio","Animation & 3D"]},
+  {name:"Writing & Languages",items:["Writing & Copywriting","Translation","Transcription","SEO & Content"]},
+  {name:"Marketing & Sales",items:["Digital Marketing","Social Media Management","Sales & Lead Generation"]},
+  {name:"Business Support",items:["Virtual Assistance","Data Entry","Research & Analytics","Accounting & Bookkeeping","Customer Support"]},
+  {name:"Education & Professional",items:["Tutoring & Education","Engineering & Architecture","Consulting"]}
 ];
-const freelancePlatforms = [
-  {name:"Upwork",tag:"PROJECTS · HOURLY · FIXED PRICE",description:"A broad marketplace for development, design, writing, admin, marketing and professional services.",url:"https://www.upwork.com/",color:"#14A800",ink:"#FFFFFF",mark:"up"},
-  {name:"Fiverr",tag:"SELL YOUR SERVICES",description:"Package a skill into a service gig: design, video, writing, programming, marketing and more.",url:"https://www.fiverr.com/",color:"#1DBF73",ink:"#062D1B",mark:"fi"},
-  {name:"Freelancer.com",tag:"BID ON PROJECTS",description:"Compete for client projects and contests across technology, creative and business categories.",url:"https://www.freelancer.com/",color:"#1685D9",ink:"#FFFFFF",mark:"fr"},
-  {name:"PeoplePerHour",tag:"FREELANCE PROJECTS",description:"Find client projects and offer services in design, development, writing and marketing.",url:"https://www.peopleperhour.com/",color:"#F7B733",ink:"#292929",mark:"pp"},
-  {name:"Guru",tag:"INDEPENDENT PROFESSIONALS",description:"Browse projects across programming, design, administration, writing and business support.",url:"https://www.guru.com/",color:"#F15A29",ink:"#FFFFFF",mark:"gu"},
-  {name:"Contra",tag:"INDEPENDENT WORK",description:"Build a portfolio, showcase services and connect with clients for creative and digital work.",url:"https://contra.com/",color:"#242424",ink:"#FFFFFF",mark:"co"},
-  {name:"Toptal",tag:"SCREENED TALENT NETWORK",description:"For experienced professionals in software, design, finance, product and project management. Screening applies.",url:"https://www.toptal.com/",color:"#204ECF",ink:"#FFFFFF",mark:"to"},
-  {name:"99designs",tag:"DESIGN SPECIALISTS",description:"A design-focused platform for logos, brand identity, web design, packaging and creative work.",url:"https://99designs.com/",color:"#2B2B2B",ink:"#FFFFFF",mark:"99"},
-  {name:"Dribbble",tag:"DESIGN · PORTFOLIO · JOBS",description:"Showcase visual work, build a design portfolio and discover design opportunities.",url:"https://dribbble.com/",color:"#EA4C89",ink:"#FFFFFF",mark:"dr"},
-  {name:"Behance",tag:"CREATIVE PORTFOLIOS",description:"Publish creative projects and connect with clients looking for design, photography and illustration.",url:"https://www.behance.net/",color:"#1769FF",ink:"#FFFFFF",mark:"Be"}
+const freelancePlatformGroups = [
+  {name:"General freelance marketplaces",intro:"Best starting point for browsing client briefs and applying to projects.",items:[
+    {name:"Upwork",kind:"Project marketplace",bestFor:"Development, design, writing, admin and professional services.",url:"https://www.upwork.com/",color:"#14A800"},
+    {name:"Freelancer.com",kind:"Projects and contests",bestFor:"Bidding on technical, creative and business projects.",url:"https://www.freelancer.com/",color:"#1685D9"},
+    {name:"PeoplePerHour",kind:"Client projects",bestFor:"Design, development, writing and digital marketing.",url:"https://www.peopleperhour.com/",color:"#D99A16"},
+    {name:"Guru",kind:"Professional services",bestFor:"Programming, design, administration and business support.",url:"https://www.guru.com/",color:"#F15A29"}
+  ]},
+  {name:"Sell a defined service",intro:"Useful when you can package a clear service with a price, scope and delivery time.",items:[
+    {name:"Fiverr",kind:"Service listings",bestFor:"Fixed-scope gigs in design, video, writing, programming and marketing.",url:"https://www.fiverr.com/",color:"#1DBF73"},
+    {name:"Contra",kind:"Independent work",bestFor:"Portfolio-led creative and digital services, with client-facing profiles.",url:"https://contra.com/",color:"#242424"}
+  ]},
+  {name:"Creative portfolios and design work",intro:"Build proof of work and get discovered; these are not all conventional job boards.",items:[
+    {name:"Behance",kind:"Creative portfolio",bestFor:"Graphic design, photography, illustration and visual projects.",url:"https://www.behance.net/",color:"#1769FF"},
+    {name:"Dribbble",kind:"Design portfolio and jobs",bestFor:"UI, product and visual designers showcasing their work.",url:"https://dribbble.com/",color:"#EA4C89"},
+    {name:"99designs",kind:"Design marketplace",bestFor:"Brand identity, logos, web design and packaging.",url:"https://99designs.com/",color:"#2B2B2B"}
+  ]},
+  {name:"Experienced specialist network",intro:"More selective routes; not the easiest place for a beginner to get their first client.",items:[
+    {name:"Toptal",kind:"Screened talent network",bestFor:"Experienced software, design, finance and product professionals. Screening applies.",url:"https://www.toptal.com/",color:"#204ECF"}
+  ]}
 ];
 
 export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onHardwareBack}:{language:MarketLanguage;theme?:"light"|"dark";accentColor?:string;onHardwareBack:()=>void}) {
@@ -304,24 +313,34 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
         <View style={s.jobsHeroPills}><Text style={s.jobsHeroPill}>LOCAL VACANCIES</Text><Text style={s.jobsHeroPill}>FREELANCE WORK</Text></View>
       </View>
       <TextInput value={search} onChangeText={setSearch} placeholder="Search role, skill, company or location" placeholderTextColor={muted} style={[s.search,{backgroundColor:darkMode?"#252b35":"#f1f2f4",borderColor:line,color:ink}]}/>
-      <Text style={[s.jobsSectionTitle,{color:ink}]}>Freelance skill categories</Text>
-      <Text style={[s.body,{color:muted}]}>Browse the kinds of services clients commonly hire independent professionals to deliver.</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:8,paddingVertical:10}}>{freelanceCategories.map(c=>pill(c,jobCategory===c,()=>setJobCategory(c)))}</ScrollView>
-      <Text style={[s.jobsSectionTitle,{color:ink,marginTop:8}]}>Freelance platforms</Text>
-      <Text style={[s.body,{color:muted}]}>Official websites for independent work, client projects and creative portfolios. Platform accounts, fees and payout options are controlled by each provider.</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:11,paddingVertical:12}}>
-        {freelancePlatforms.map(platform=><Pressable key={platform.name} accessibilityRole="link" onPress={()=>void openExternal(platform.url)} style={[s.freelanceBanner,{backgroundColor:surface,borderColor:line}]}>
-          <View style={[s.freelanceBannerTop,{backgroundColor:platform.color}]}>
-            <View style={s.freelanceMark}><Text style={[s.freelanceMarkText,{color:platform.ink}]}>{platform.mark}</Text></View>
-            <Text style={[s.freelanceBrand,{color:platform.ink}]}>{platform.name}</Text>
-            <Text style={[s.freelanceTag,{color:platform.ink}]}>{platform.tag}</Text>
+      <View style={[s.jobsStartPanel,{backgroundColor:darkMode?"#202a38":"#F1F6FC",borderColor:line}]}>
+        <Text style={[s.jobsStartEyebrow,{color:topic.accent}]}>NEW TO FREELANCING?</Text>
+        <Text style={[s.jobsStartTitle,{color:ink}]}>Start with one skill. Build proof. Then pitch.</Text>
+        <Text style={[s.jobsStartCopy,{color:muted}]}>Choose a service you can deliver, prepare 2–3 examples of your work, then use the platform directory below to find the right route to clients.</Text>
+        <View style={s.jobsStartSteps}><Text style={[s.jobsStartStep,{color:ink}]}>01  Pick a skill</Text><Text style={[s.jobsStartStep,{color:ink}]}>02  Build a portfolio</Text><Text style={[s.jobsStartStep,{color:ink}]}>03  Contact clients</Text></View>
+      </View>
+      <Text style={[s.jobsSectionTitle,{color:ink}]}>Browse skills</Text>
+      <Text style={[s.body,{color:muted}]}>Select a skill to filter published vacancies below. Categories are grouped by the kind of work.</Text>
+      <Pressable onPress={()=>setJobCategory("All")} style={[s.skillAllButton,{backgroundColor:jobCategory==="All"?topic.accent:surface,borderColor:jobCategory==="All"?topic.accent:line}]}>
+        <Text style={[s.skillAllText,{color:jobCategory==="All"?"#fff":ink}]}>Show all vacancies</Text>
+      </Pressable>
+      {freelanceSkillGroups.map(group=><View key={group.name} style={s.skillGroup}>
+        <Text style={[s.skillGroupTitle,{color:ink}]}>{group.name}</Text>
+        <View style={s.skillChipWrap}>{group.items.map(skill=><Pressable key={skill} onPress={()=>setJobCategory(skill)} style={[s.skillChip,{backgroundColor:jobCategory===skill?topic.accent:surface,borderColor:jobCategory===skill?topic.accent:line}]}><Text style={[s.skillChipText,{color:jobCategory===skill?"#fff":muted}]}>{skill}</Text></Pressable>)}</View>
+      </View>)}
+      <View style={s.jobsDirectoryHeading}><View style={{flex:1}}><Text style={[s.jobsSectionTitle,{color:ink,marginTop:8}]}>Freelance platform directory</Text><Text style={[s.body,{color:muted}]}>Choose by how you want to work—not by logo. Every link opens the platform's official website.</Text></View><Text style={[s.jobsDirectoryCount,{color:topic.accent}]}>10 SITES</Text></View>
+      {freelancePlatformGroups.map(group=><View key={group.name} style={s.platformGroup}>
+        <Text style={[s.platformGroupTitle,{color:ink}]}>{group.name}</Text>
+        <Text style={[s.platformGroupIntro,{color:muted}]}>{group.intro}</Text>
+        {group.items.map(platform=><Pressable key={platform.name} accessibilityRole="link" onPress={()=>void openExternal(platform.url)} style={[s.platformRow,{backgroundColor:surface,borderColor:line}]}>
+          <View style={[s.platformAccent,{backgroundColor:platform.color}]}/>
+          <View style={{flex:1,minWidth:0}}>
+            <View style={s.platformNameLine}><Text style={[s.platformName,{color:ink}]}>{platform.name}</Text><Text style={[s.platformKind,{color:topic.accent}]}>{platform.kind}</Text></View>
+            <Text style={[s.platformBestFor,{color:muted}]}>{platform.bestFor}</Text>
           </View>
-          <View style={s.freelanceBannerBody}>
-            <Text style={[s.freelanceDescription,{color:muted}]}>{platform.description}</Text>
-            <Text style={s.freelanceVisit}>VISIT OFFICIAL SITE  ↗</Text>
-          </View>
+          <Text style={[s.platformOpen,{color:topic.accent}]}>OPEN ↗</Text>
         </Pressable>)}
-      </ScrollView>
+      </View>)}
       <View style={[s.jobsSafetyNote,{backgroundColor:darkMode?"#30291B":"#FFF7E6",borderColor:darkMode?"#67512B":"#F3D99A"}]}>
         <Text style={[s.jobsSafetyTitle,{color:darkMode?"#F7D78B":"#80530A"}]}>Before you sign up</Text>
         <Text style={[s.jobsSafetyText,{color:darkMode?"#E7D8B5":"#73551D"}]}>Malawi access, identity checks, client availability and withdrawal methods can differ by platform. Confirm that registration and a payout method work for your account in Malawi before investing time. Never pay someone who promises guaranteed freelance work or asks for your password or one-time PIN.</Text>
@@ -442,7 +461,7 @@ const s=StyleSheet.create({
  menuCard:{flexDirection:"row",alignItems:"center",backgroundColor:"#ffffff",borderWidth:1,borderColor:"#d9dde3",borderRadius:13,padding:14,marginTop:8,elevation:0},menuIcon:{width:40,height:40,borderRadius:11,backgroundColor:"#fff1e5",alignItems:"center",justifyContent:"center",marginRight:13},menuTitle:{fontSize:15,fontWeight:"800",color:navy},menuDesc:{fontSize:12,color:"#4b5563",marginTop:4},arrow:{fontSize:26,color:orange,marginLeft:8},
  subheading:{fontSize:15,fontWeight:"900",color:navy,marginTop:24,marginBottom:8},coming:{backgroundColor:"#fff",borderRadius:10,padding:13,marginTop:7,borderWidth:1,borderColor:"#d9dde3"},comingText:{fontSize:12,fontWeight:"700",color:"#465267"},soon:{fontSize:12,color:"#9a6a3a",fontWeight:"900",marginTop:7,letterSpacing:.5},
  statusPanel:{backgroundColor:"#fff",borderRadius:16,padding:16,marginTop:13,borderWidth:1,borderColor:"#e7ebf0"},statusTitle:{fontSize:13,fontWeight:"900",color:navy},statusBody:{fontSize:12,color:"#4b5563",lineHeight:17,marginTop:5},retry:{alignSelf:"flex-start",backgroundColor:orange,borderRadius:8,paddingHorizontal:13,paddingVertical:9,marginTop:10},retryText:{fontSize:12,color:"#fff",fontWeight:"900"},
- jobsHero:{borderRadius:20,padding:19,marginTop:12,overflow:"hidden"},jobsHeroEyebrow:{fontSize:12,fontWeight:"900",letterSpacing:1.2,color:"#A9D5FF"},jobsHeroTitle:{fontSize:26,lineHeight:31,fontWeight:"900",color:"#FFFFFF",letterSpacing:-.6,marginTop:13},jobsHeroCopy:{fontSize:14,lineHeight:20,color:"#E0EDFA",marginTop:8},jobsHeroPills:{flexDirection:"row",gap:8,marginTop:15},jobsHeroPill:{fontSize:11,fontWeight:"900",letterSpacing:.5,color:"#FFFFFF",borderWidth:1,borderColor:"#7198BE",borderRadius:8,paddingHorizontal:9,paddingVertical:7},jobsSectionTitle:{fontSize:19,fontWeight:"900",letterSpacing:-.3,marginTop:16},freelanceBanner:{width:270,borderWidth:1,borderRadius:15,overflow:"hidden"},freelanceBannerTop:{height:112,padding:14,justifyContent:"flex-end"},freelanceMark:{position:"absolute",top:12,right:13,minWidth:34,height:34,borderRadius:10,backgroundColor:"rgba(255,255,255,0.2)",alignItems:"center",justifyContent:"center",paddingHorizontal:5},freelanceMarkText:{fontSize:15,fontWeight:"900"},freelanceBrand:{fontSize:23,fontWeight:"900",letterSpacing:-.5},freelanceTag:{fontSize:10,fontWeight:"900",letterSpacing:.8,marginTop:5},freelanceBannerBody:{padding:13,minHeight:111,justifyContent:"space-between"},freelanceDescription:{fontSize:13,lineHeight:18},freelanceVisit:{fontSize:12,fontWeight:"900",letterSpacing:.4,color:"#155EEF",marginTop:12},jobsSafetyNote:{borderWidth:1,borderRadius:13,padding:14,marginTop:8},jobsSafetyTitle:{fontSize:14,fontWeight:"900"},jobsSafetyText:{fontSize:13,lineHeight:19,marginTop:6},notice:{backgroundColor:"#fff1e5",borderRadius:9,padding:11,marginTop:12},noticeText:{fontSize:12,color:"#8a4c19",fontWeight:"800",lineHeight:15},
+ jobsHero:{borderRadius:20,padding:19,marginTop:12,overflow:"hidden"},jobsHeroEyebrow:{fontSize:12,fontWeight:"900",letterSpacing:1.2,color:"#A9D5FF"},jobsHeroTitle:{fontSize:26,lineHeight:31,fontWeight:"900",color:"#FFFFFF",letterSpacing:-.6,marginTop:13},jobsHeroCopy:{fontSize:14,lineHeight:20,color:"#E0EDFA",marginTop:8},jobsHeroPills:{flexDirection:"row",gap:8,marginTop:15},jobsHeroPill:{fontSize:11,fontWeight:"900",letterSpacing:.5,color:"#FFFFFF",borderWidth:1,borderColor:"#7198BE",borderRadius:8,paddingHorizontal:9,paddingVertical:7},jobsSectionTitle:{fontSize:19,fontWeight:"900",letterSpacing:-.3,marginTop:16},jobsStartPanel:{borderWidth:1,borderRadius:16,padding:15,marginTop:14},jobsStartEyebrow:{fontSize:11,fontWeight:"900",letterSpacing:1.1},jobsStartTitle:{fontSize:18,lineHeight:23,fontWeight:"900",marginTop:7},jobsStartCopy:{fontSize:13,lineHeight:19,marginTop:6},jobsStartSteps:{flexDirection:"row",flexWrap:"wrap",gap:7,marginTop:12},jobsStartStep:{fontSize:11,fontWeight:"900",backgroundColor:"rgba(128,150,175,0.13)",paddingHorizontal:9,paddingVertical:7,borderRadius:7},skillAllButton:{alignSelf:"flex-start",borderWidth:1,borderRadius:9,paddingHorizontal:12,paddingVertical:9,marginTop:10},skillAllText:{fontSize:12,fontWeight:"900"},skillGroup:{marginTop:12},skillGroupTitle:{fontSize:14,fontWeight:"900",marginBottom:7},skillChipWrap:{flexDirection:"row",flexWrap:"wrap",gap:7},skillChip:{borderWidth:1,borderRadius:18,paddingHorizontal:11,paddingVertical:8},skillChipText:{fontSize:12,fontWeight:"700"},jobsDirectoryHeading:{flexDirection:"row",alignItems:"flex-end",gap:8},jobsDirectoryCount:{fontSize:11,fontWeight:"900",letterSpacing:.7,marginBottom:3},platformGroup:{marginTop:17},platformGroupTitle:{fontSize:15,fontWeight:"900"},platformGroupIntro:{fontSize:12,lineHeight:17,marginTop:4,marginBottom:8},platformRow:{flexDirection:"row",alignItems:"center",borderWidth:1,borderRadius:12,overflow:"hidden",marginTop:7,minHeight:76,paddingRight:11},platformAccent:{width:5,alignSelf:"stretch",marginRight:11},platformNameLine:{flexDirection:"row",alignItems:"center",flexWrap:"wrap",gap:7},platformName:{fontSize:14,fontWeight:"900"},platformKind:{fontSize:10,fontWeight:"900"},platformBestFor:{fontSize:12,lineHeight:17,marginTop:4},platformOpen:{fontSize:10,fontWeight:"900",marginLeft:8},jobsSafetyNote:{borderWidth:1,borderRadius:13,padding:14,marginTop:8},jobsSafetyTitle:{fontSize:14,fontWeight:"900"},jobsSafetyText:{fontSize:13,lineHeight:19,marginTop:6},notice:{backgroundColor:"#fff1e5",borderRadius:9,padding:11,marginTop:12},noticeText:{fontSize:12,color:"#8a4c19",fontWeight:"800",lineHeight:15},
  search:{height:48,backgroundColor:"#f1f2f4",borderWidth:1,borderColor:"#d9dde3",borderRadius:12,paddingHorizontal:14,marginTop:13,color:"#29292e"},
  pill:{borderRadius:12,borderWidth:1,borderColor:"#cbd1d9",paddingHorizontal:15,paddingVertical:11,minHeight:44,justifyContent:"center",backgroundColor:"#fff"},pillActive:{backgroundColor:orange,borderColor:orange},pillText:{fontSize:12,color:"#4f5a6c",fontWeight:"700"},
  article:{backgroundColor:"#ffffff",padding:14,borderRadius:13,borderWidth:1,borderColor:"#d9dde3",marginTop:11,elevation:0},category:{fontSize:12,fontWeight:"900",color:orange,letterSpacing:.7},cardTitle:{fontSize:15,fontWeight:"800",color:navy,marginTop:8,lineHeight:22},body:{fontSize:12,color:"#4b5563",lineHeight:18,marginTop:5},meta:{fontSize:12,color:"#4b5563",marginTop:8},row:{flexDirection:"row",justifyContent:"space-between",alignItems:"center"},type:{fontSize:12,color:navy,backgroundColor:"#edf1f6",paddingHorizontal:8,paddingVertical:5,borderRadius:6},empty:{textAlign:"center",color:"#4b5563",padding:24,fontSize:12},
