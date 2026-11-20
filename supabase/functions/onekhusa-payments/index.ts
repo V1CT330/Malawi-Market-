@@ -167,6 +167,34 @@ async function initiateAdPayment(req: Request) {
   }
 }
 
+async function trackAdEvent(req: Request) {
+  const body = await req.json().catch(() => ({}));
+  const campaignId = typeof body.campaign_id === "string" ? body.campaign_id : "";
+  const eventType = body.event_type === "click" ? "click" : body.event_type === "impression" ? "impression" : "";
+  if (!campaignId || !eventType) return json({ error: "campaign_id and a valid event_type are required." }, 400);
+  const now = new Date();
+  const { data: campaign, error } = await admin.from("market_ad_campaigns")
+    .select("id").eq("id", campaignId).eq("status", "active").eq("payment_status", "paid")
+    .or("starts_at.is.null,starts_at.lte." + now.toISOString())
+    .or("ends_at.is.null,ends_at.gt." + now.toISOString()).maybeSingle();
+  if (error || !campaign) return json({ error: "Campaign is not currently eligible to be displayed." }, 404);
+  const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "";
+  const userAgent = req.headers.get("user-agent") ?? "";
+  const day = now.toISOString().slice(0, 10);
+  const fingerprint = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(campaignId + "|" + forwarded + "|" + userAgent + "|" + day));
+  const visitorHash = [...new Uint8Array(fingerprint)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  const dayStart = day + "T00:00:00.000Z";
+  const { data: prior } = await admin.from("market_ad_events").select("id")
+    .eq("campaign_id", campaignId).eq("event_type", eventType).eq("visitor_hash", visitorHash)
+    .gte("created_at", dayStart).limit(1).maybeSingle();
+  if (prior) return json({ tracked: true, duplicate: true });
+  const { error: insertError } = await admin.from("market_ad_events").insert({
+    campaign_id: campaignId, event_type: eventType, visitor_hash: visitorHash,
+  });
+  if (insertError) return json({ error: "Could not record advertising event." }, 500);
+  return json({ tracked: true });
+}
+
 async function receiveWebhook(req: Request) {
   const raw = await req.text();
   const signature = req.headers.get("X-OneKhusa-Webhook-Signature") ?? "";
@@ -262,7 +290,7 @@ Deno.serve(async (req: Request) => {
     const url = new URL(req.url);
     if (url.pathname.endsWith("/webhook")) return await receiveWebhook(req);
     const body = await req.clone().json().catch(() => ({}));
-    if (body.action === "initiate_ad") return await initiateAdPayment(req);
+    if (body.action === "initiate_ad") return await initiateAdPayment(req);\n    if (body.action === "track_ad_event") return await trackAdEvent(req);
     if (body.action !== "initiate") return json({ error: "Unsupported action." }, 400);
     return await initiatePayment(req);
   } catch (error) {
