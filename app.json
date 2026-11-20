@@ -19,8 +19,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow Malawi Market to select product and profile photos.",
-          "microphonePermission": false
+          "photosPermission": "Allow Malawi Market to select identity, profile and product photos.",
+          "microphonePermission": false,
+          "cameraPermission": "Allow Malawi Market to use your camera to take identity-verification selfies."
         }
       ],
       [
