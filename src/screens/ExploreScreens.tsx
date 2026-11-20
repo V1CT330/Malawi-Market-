@@ -131,7 +131,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
     const loadDirectoryAndAds=async()=>{
       const now=new Date().toISOString();
       const [shops,feed,business]=await Promise.all([
-        supabase.from("market_sellers").select("id,name,slug,description,location,logo_url,whatsapp_url,is_verified").eq("status","active").order("name").limit(100),
+        supabase.from("market_sellers").select("id,name,slug,description,location,logo_url,banner_url,whatsapp_url,is_verified").eq("status","active").order("name").limit(100),
         supabase.from("market_ad_campaigns").select("id,business_name,title,body,destination_url,image_url,placement").eq("status","active").eq("payment_status","paid").eq("placement","feed").or("starts_at.is.null,starts_at.lte."+now).or("ends_at.is.null,ends_at.gt."+now).limit(3),
         supabase.from("market_ad_campaigns").select("id,business_name,title,body,destination_url,image_url,placement").eq("status","active").eq("payment_status","paid").eq("placement","business").or("starts_at.is.null,starts_at.lte."+now).or("ends_at.is.null,ends_at.gt."+now).limit(3)
       ]);
@@ -271,7 +271,7 @@ export function ExploreScreens({language,theme="light",accentColor="#3B82F6",onH
     {section==="businesses" ? <>
       {businessAds.map(sponsoredCard)}
       <Text style={s.subtitle}>Active marketplace businesses and their contact details.</Text>
-      {businessRows.map((shop:any)=><View key={shop.id} style={[s.article,{backgroundColor:surface,borderColor:line}]}><View style={{flexDirection:"row",alignItems:"center",gap:12}}>{shop.logo_url?<Image source={{uri:shop.logo_url}} style={{width:54,height:54,borderRadius:12}}/>:<View style={{width:54,height:54,borderRadius:12,backgroundColor:"#fff0e4",alignItems:"center",justifyContent:"center"}}><MarketIcon name="store" size={23} color={orange}/></View>}<View style={{flex:1}}><Text style={[s.cardTitle,{color:ink}]}>{shop.name}{shop.is_verified?" ✓":""}</Text><Text style={[s.meta,{color:muted}]}>{shop.location||"Location not provided"}</Text></View></View><Text style={[s.body,{color:muted}]}>{shop.description||"Marketplace seller"}</Text>{shop.whatsapp_url?<Pressable onPress={()=>void openExternal(shop.whatsapp_url)}><Text style={s.soon}>CONTACT BUSINESS</Text></Pressable>:null}</View>)}
+      {businessRows.map((shop:any)=><View key={shop.id} style={[s.article,{backgroundColor:surface,borderColor:line}]}>{shop.banner_url?<Image source={{uri:shop.banner_url}} style={{width:"100%",height:108,borderRadius:9,marginBottom:11}} resizeMode="cover"/>:null}<View style={{flexDirection:"row",alignItems:"center",gap:12}}>{shop.logo_url?<Image source={{uri:shop.logo_url}} style={{width:54,height:54,borderRadius:12}}/>:<View style={{width:54,height:54,borderRadius:12,backgroundColor:"#fff0e4",alignItems:"center",justifyContent:"center"}}><MarketIcon name="store" size={23} color={orange}/></View>}<View style={{flex:1}}><Text style={[s.cardTitle,{color:ink}]}>{shop.name}{shop.is_verified?" ✓":""}</Text><Text style={[s.meta,{color:muted}]}>{shop.location||"Location not provided"}</Text></View></View><Text style={[s.body,{color:muted}]}>{shop.description||"Marketplace seller"}</Text>{shop.whatsapp_url?<Pressable onPress={()=>void openExternal(shop.whatsapp_url)}><Text style={s.soon}>CONTACT BUSINESS</Text></Pressable>:null}</View>)}
       {!businessRows.length?<Text style={[s.empty,{color:muted}]}>No active businesses are listed yet.</Text>:null}
     </> : null}
     {section==="news" ? <>
