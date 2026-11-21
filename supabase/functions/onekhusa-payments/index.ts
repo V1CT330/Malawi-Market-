@@ -213,7 +213,7 @@ async function receiveWebhook(req: Request) {
 
   if (reference.startsWith("MKA-")) {
     const { data: campaign, error: campaignError } = await admin.from("market_ad_campaigns")
-      .select("id,budget_mwk,status,payment_status,payment_reference").eq("payment_reference", reference).maybeSingle();
+      .select("id,budget_mwk,status,payment_status,payment_reference,provider_transaction_reference").eq("payment_reference", reference).maybeSingle();
     if (campaignError || !campaign) return json({ error: "No matching advertising payment." }, 404);
     if (campaign.payment_status === "paid" && event === "payrequest.success") return json({ acknowledged: true, duplicate: true });
     if (event === "payrequest.success" && String(payload.transactionStatusCode) === "S") {
@@ -227,20 +227,31 @@ async function receiveWebhook(req: Request) {
       }).eq("id", campaign.id).eq("status", "pending_payment").eq("payment_status", "pending").select("id").maybeSingle();
       if (paidError || !paid) return json({ acknowledged: true, review_required: true });
     } else if (event === "payrequest.reversed") {
-      await admin.from("market_ad_campaigns").update({ status: "paused", payment_status: "reversed", provider_transaction_reference: transactionReference, updated_at: new Date().toISOString() }).eq("id", campaign.id);
+      // A reversal is valid only for the exact provider transaction that was
+      // previously settled. Old/replayed events must not reverse a newer state.
+      if (campaign.payment_status === "reversed") return json({ acknowledged: true, duplicate: true });
+      if (campaign.payment_status !== "paid" || campaign.status !== "active" ||
+          campaign.provider_transaction_reference !== transactionReference) {
+        return json({ acknowledged: true, ignored: true });
+      }
+      const { data: reversed, error: reversalError } = await admin.from("market_ad_campaigns").update({
+        status: "paused", payment_status: "reversed", updated_at: new Date().toISOString()
+      }).eq("id", campaign.id).eq("payment_status", "paid").eq("status", "active")
+        .eq("provider_transaction_reference", transactionReference).select("id").maybeSingle();
+      if (reversalError || !reversed) return json({ acknowledged: true, ignored: true });
     } else return json({ acknowledged: true, ignored: true });
     return json({ acknowledged: true });
   }
 
   const { data: attempt, error } = await admin.from("market_payment_attempts")
-    .select("id,order_id,amount_mwk,status").eq("provider_reference", reference).maybeSingle();
+    .select("id,order_id,amount_mwk,status,provider_transaction_reference").eq("provider_reference", reference).maybeSingle();
   if (error || !attempt) return json({ error: "No matching Malawi Market payment attempt." }, 404);
   if (attempt.status === "paid" && event === "payrequest.success") return json({ acknowledged: true, duplicate: true });
   if (attempt.status === "reversed" && event === "payrequest.success") {
     await admin.from("market_orders").update({ status: "review_required", payment_status: "review_required", updated_at: new Date().toISOString() }).eq("id", attempt.order_id);
     return json({ acknowledged: true, review_required: true });
   }
-  const orderResult = await admin.from("market_orders").select("id,status,payment_status,total_mwk").eq("id", attempt.order_id).single();
+  const orderResult = await admin.from("market_orders").select("id,status,payment_status,total_mwk,payment_reference").eq("id", attempt.order_id).single();
   const order = orderResult.data;
   if (!order) return json({ error: "Order not found." }, 404);
   if (Math.abs(amount - Number(attempt.amount_mwk)) > 0.000001 || Number(order.total_mwk) !== Number(attempt.amount_mwk)) {
@@ -271,12 +282,27 @@ async function receiveWebhook(req: Request) {
     }).eq("id", attempt.id);
     await admin.from("market_order_items").update({ fulfillment_status: "processing" }).eq("order_id", order.id).eq("fulfillment_status", "awaiting_payment");
   } else if (event === "payrequest.reversed") {
-    await admin.from("market_payment_attempts").update({
-      status: "reversed", provider_transaction_reference: transactionReference, provider_response_code: String(payload.responseCode ?? ""), updated_at: new Date().toISOString(),
-    }).eq("id", attempt.id);
-    await admin.from("market_orders").update({
-      status: "payment_reversed", payment_status: "reversed", updated_at: new Date().toISOString(),
-    }).eq("id", order.id);
+    // Only reverse the exact transaction that previously paid this order.
+    // A stale webhook for an older attempt must not affect a later payment.
+    if (attempt.status === "reversed") return json({ acknowledged: true, duplicate: true });
+    if (attempt.status !== "paid" || order.payment_status !== "paid" ||
+        order.status !== "processing" || order.payment_reference !== reference ||
+        attempt.provider_transaction_reference !== transactionReference) {
+      return json({ acknowledged: true, ignored: true });
+    }
+    const reversedAt = new Date().toISOString();
+    const { data: reversedAttempt, error: reversalError } = await admin.from("market_payment_attempts").update({
+      status: "reversed", provider_response_code: String(payload.responseCode ?? ""), updated_at: reversedAt,
+    }).eq("id", attempt.id).eq("status", "paid")
+      .eq("provider_transaction_reference", transactionReference).select("id").maybeSingle();
+    if (reversalError || !reversedAttempt) return json({ acknowledged: true, ignored: true });
+    const { data: reversedOrder, error: orderReversalError } = await admin.from("market_orders").update({
+      status: "payment_reversed", payment_status: "reversed", updated_at: reversedAt,
+    }).eq("id", order.id).eq("payment_reference", reference)
+      .eq("status", "processing").eq("payment_status", "paid").select("id").maybeSingle();
+    if (orderReversalError || !reversedOrder) {
+      return json({ acknowledged: true, review_required: true });
+    }
   } else {
     return json({ acknowledged: true, ignored: true });
   }
