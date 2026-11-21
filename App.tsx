@@ -334,7 +334,7 @@ export default function App() {
     ].map(([tabName,label,icon]) =>
       <Pressable key={tabName} accessibilityRole="button" accessibilityState={{selected:tab===tabName}} onPress={() => { setSelected(null); setTab(tabName); }} style={[s.navItem,{backgroundColor:"transparent"}]}>
         <MarketIcon name={icon} size={isCompact?20:22} color={tab===tabName?palette.accent:palette.muted} />
-        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.navLabel,{color:tab===tabName?palette.accent:palette.muted,fontSize:isCompact?10:11}]}>{marketText(language,label)}</Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.navLabel,{color:tab===tabName?palette.accent:palette.muted,fontSize:isCompact?11:12}]}>{marketText(language,label)}</Text>
       </Pressable>)}
   </View>;
 
