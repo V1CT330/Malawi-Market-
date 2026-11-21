@@ -301,6 +301,10 @@ async function receiveWebhook(req: Request) {
     }).eq("id", order.id).eq("payment_reference", reference)
       .eq("status", "processing").eq("payment_status", "paid").select("id").maybeSingle();
     if (orderReversalError || !reversedOrder) {
+      // Keep the order out of fulfillment if the two-table transition races.
+      await admin.from("market_orders").update({
+        status: "review_required", payment_status: "review_required", updated_at: reversedAt,
+      }).eq("id", order.id).eq("payment_status", "paid");
       return json({ acknowledged: true, review_required: true });
     }
   } else {
